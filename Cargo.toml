@@ -2,5 +2,15 @@
 name = "px2ansi-rs"
 version = "0.1.0"
 edition = "2024"
+authors = [
+	"T. Sawyer <saylesss87@proton.me>",
+	"Nell Fauveau <nellousan@hotmail.fr> (original Python version)",
+]
+license = "GPL-3.0"
+description = "Convert pixel art images to ANSI terminal art (Rust port)"
+repository = "https://github.com/saylesss88/px2ansi-rs"
 
 [dependencies]
+image = "0.25"
+clap = {version = "4", features = ["derive"]}
+anyhow = "1.0"
