@@ -1,4 +1,4 @@
-use image::io::Reader as ImageReader;
+use image::ImageReader;
 use image::{DynamicImage, GenericImageView, Rgba};
 use std::path::Path;
 
@@ -11,33 +11,31 @@ pub fn convert_file<P: AsRef<Path>>(path: P) -> Result<String, image::ImageError
 fn pixels_to_ansi(px1: Rgba<u8>, px2: Rgba<u8>) -> String {
     let mut res = String::new();
 
-    // Reset if either pixel is transparent
-    if px1[3] != 255 || px2[3] != 255 {
-        res.push_str("\x1b[0m");
-    }
-
-    // Both transparent = space
-    if px1[3] != 255 && px2[3] != 255 {
-        res.push(' ');
-        return res;
-    }
-
-    // Top pixel opaque
     if px1[3] == 255 {
+        // Top pixel opaque
         res.push_str(&format!("\x1b[38;2;{};{};{}m", px1[0], px1[1], px1[2]));
 
-        // Bottom pixel opaque = use as background
         if px2[3] == 255 {
+            // Bottom also opaque -> set BG
             res.push_str(&format!("\x1b[48;2;{};{};{}m", px2[0], px2[1], px2[2]));
+            res.push('▀');
+        } else {
+            // Bottom transparent -> reset BG
+            res.push_str("\x1b[49m▀");
         }
-        res.push('▀'); // Upper half block
+    } else {
+        // Top pixel transparent
+        if px2[3] == 255 {
+            // Bottom opaque -> use Lower Half Block
+            res.push_str(&format!(
+                "\x1b[38;2;{};{};{}m\x1b[49m▄",
+                px2[0], px2[1], px2[2]
+            ));
+        } else {
+            // Both transparent
+            res.push_str("\x1b[0m ");
+        }
     }
-    // Only bottom pixel opaque
-    else if px2[3] == 255 {
-        res.push_str(&format!("\x1b[38;2;{};{};{}m", px2[0], px2[1], px2[2]));
-        res.push('▄'); // Lower half block
-    }
-
     res
 }
 
@@ -57,8 +55,9 @@ pub fn image_to_ansi(img: &DynamicImage) -> String {
 
             output.push_str(&pixels_to_ansi(px1, px2));
         }
-        output.push_str("\x1b[0m\n");
+        output.push('\n'); // Just newline, no reset per line
     }
 
+    output.push_str("\x1b[0m"); // Single reset at the very end
     output
 }
