@@ -55,9 +55,8 @@ pub fn image_to_ansi(img: &DynamicImage) -> String {
 
             output.push_str(&pixels_to_ansi(px1, px2));
         }
-        output.push('\n'); // Just newline, no reset per line
+        output.push_str("\x1b[0m\n"); // Reset colors before \n
     }
 
-    output.push_str("\x1b[0m"); // Single reset at the very end
     output
 }
