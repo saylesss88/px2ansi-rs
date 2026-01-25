@@ -40,13 +40,13 @@ CLI
 Convert an image and print to stdout:
 
 ```bash
-px2ansi path/to/image.png
+px2ansi-rs path/to/image.png
 ```
 
 Save output to a file:
 
 ```bash
-px2ansi image.png -o art.txt
+px2ansi-rs image.png -o art.txt
 ```
 
 Try it out!
@@ -55,5 +55,5 @@ You can test it right now with the included `test.png` (a small pixel art
 example):
 
 ```bash
-px2ansi tests/test.png
+px2ansi-rs tests/test.png
 ```
