@@ -78,7 +78,12 @@ fn main() -> Result<()> {
             None
         }
     } else {
-        Some(100)
+        // Fallback: Only resize the image if its wider than 100
+        if img.width() > 100 {
+            Some(100)
+        } else {
+            None
+        }
     };
 
     // 3. Resize if needed
