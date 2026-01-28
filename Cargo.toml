@@ -17,6 +17,7 @@ categories = ["command-line-utilities", "multimedia::images", "rendering"]
 image = "0.25"
 clap = {version = "4.5", features = ["derive"]}
 anyhow = "1.0"
+terminal_size = "0.4.3"
 
 [[bin]]
 name = "px2ansi-rs"
