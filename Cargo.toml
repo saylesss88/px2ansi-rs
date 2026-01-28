@@ -1,6 +1,6 @@
 [package]
 name = "px2ansi-rs"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2024"
 authors = [
 	"T. Sawyer <saylesss87@proton.me>",
@@ -12,6 +12,7 @@ repository = "https://github.com/saylesss88/px2ansi-rs"
 readme = "README.md"
 keywords = ["ansi", "pixel-art", "terminal", "image", "cli"]
 categories = ["command-line-utilities", "multimedia::images", "rendering"]
+exclude = ["assets/*", "tests/*", "target/*", ".github/*", ".gitignore"]
 
 [dependencies]
 image = "0.25"
