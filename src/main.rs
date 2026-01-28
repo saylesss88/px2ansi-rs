@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::Parser;
-use px2ansi_rs::image_to_ansi;
+use px2ansi_rs::write_ansi_art;
 use std::fs::File;
-use std::io::Write;
+use std::io::{self, BufWriter, Write};
 
 #[derive(Parser)]
 #[command(name = "px2ansi")]
@@ -22,15 +22,16 @@ fn main() -> Result<()> {
     // Load image
     let img = image::ImageReader::open(&cli.filename)?.decode()?;
 
-    // Convert to ANSI
-    let ansi_art = image_to_ansi(&img);
-
     // Output
     if let Some(output_path) = cli.output {
-        let mut file = File::create(output_path)?;
-        file.write_all(ansi_art.as_bytes())?;
+        let file = File::create(output_path)?;
+        let mut writer = BufWriter::new(file);
+        write_ansi_art(&img, &mut writer)?;
     } else {
-        print!("{}", ansi_art);
+        let stdout = io::stdout();
+        let mut writer = BufWriter::new(stdout.lock());
+        write_ansi_art(&img, &mut writer)?;
+        writer.flush()?;
     }
 
     Ok(())
