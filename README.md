@@ -35,7 +35,7 @@ as terminal background).
 ### From Source
 
 ```bash
-git clone https://github.com/yourusername/px2ansi-rs
+git clone https://github.com/saylesss88/px2ansi-rs
 cd px2ansi-rs
 cargo install --path .
 ```
