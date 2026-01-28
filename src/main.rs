@@ -1,8 +1,12 @@
 use anyhow::Result;
 use clap::Parser;
-use px2ansi_rs::write_ansi_art;
+use image::imageops::FilterType;
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
+use terminal_size::{terminal_size, Height, Width};
+
+// Import the function from your lib
+use px2ansi_rs::write_ansi_art;
 
 #[derive(Parser)]
 #[command(name = "px2ansi")]
@@ -11,18 +15,70 @@ struct Cli {
     /// Input image file
     filename: String,
 
-    /// Output file (stdout if not specified)
+    /// Output file (optional). If not provided, prints to stdout.
     #[arg(short, long)]
     output: Option<String>,
+
+    /// Force a specific width (disables auto-resizing to terminal)
+    #[arg(long)]
+    width: Option<u32>,
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // Load image
-    let img = image::ImageReader::open(&cli.filename)?.decode()?;
+    // 1. Load image
+    // We disable limits to prevent "InsufficientMemory" errors on large screenshots.
+    // The resize step immediately after will discard the excess data.
+    let mut reader = image::ImageReader::open(&cli.filename)?;
+    reader.no_limits();
+    let mut img = reader.decode()?;
 
-    // Output
+    // 2. Determine Target Size
+    let target_width = if let Some(w) = cli.width {
+        Some(w)
+    } else if let Some((Width(term_w), Height(term_h))) = terminal_size() {
+        // Calculate max dimensions based on terminal size
+        let max_w = term_w as u32;
+        // Terminals are ~2x taller than wide per char, so we double height capacity
+        let max_h = (term_h as u32) * 2;
+
+        let img_w = img.width();
+        let img_h = img.height();
+
+        // Only resize if the image is actually bigger than the terminal
+        if img_w > max_w || img_h > max_h {
+            // Shrink to fit width, but ensure we don't exceed height either
+            // (Basic aspect ratio logic: pick the limiting dimension)
+            let width_ratio = max_w as f64 / img_w as f64;
+            let height_ratio = max_h as f64 / img_h as f64;
+
+            // Use the smaller ratio to ensure it fits both dimensions
+            let scale = width_ratio.min(height_ratio);
+
+            // Calculate new width based on the safe scale
+            Some((img_w as f64 * scale) as u32)
+        } else {
+            None
+        }
+    } else {
+        // Fallback if not a TTY (e.g. piping)
+        Some(100)
+    };
+
+    // 3. Resize if needed
+    if let Some(w) = target_width {
+        // Ensure we don't resize to 0 width
+        let safe_w = w.max(1);
+        let new_height = (img.height() as f64 * (safe_w as f64 / img.width() as f64)) as u32;
+
+        // FilterType::Lanczos3 is high quality but slower.
+        // If it feels sluggish on huge images, try FilterType::Triangle.
+        img = img.resize(safe_w, new_height, FilterType::Lanczos3);
+    }
+
+    // 4. Output
+    // BufWriter is critical for performance here.
     if let Some(output_path) = cli.output {
         let file = File::create(output_path)?;
         let mut writer = BufWriter::new(file);
