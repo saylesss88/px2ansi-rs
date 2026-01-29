@@ -4,7 +4,7 @@ use clap::{Parser, ValueEnum}; // Added ValueEnum
 use image::imageops::FilterType;
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
-use terminal_size::{terminal_size, Height, Width};
+use terminal_size::{Height, Width, terminal_size};
 
 use px2ansi_rs::write_ansi_art;
 
