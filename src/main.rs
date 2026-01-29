@@ -4,12 +4,12 @@ use clap::{Parser, ValueEnum}; // Added ValueEnum
 use image::imageops::FilterType;
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
-use terminal_size::{Height, Width, terminal_size};
+use terminal_size::{terminal_size, Height, Width};
 
 use px2ansi_rs::write_ansi_art;
 
 // 1. Define an Enum for the CLI argument
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Parser)]
 enum ResizeFilter {
     Nearest,
     Triangle,
@@ -32,8 +32,11 @@ impl From<ResizeFilter> for FilterType {
 }
 
 #[derive(Parser)]
-#[command(name = "px2ansi")]
-#[command(about = "Convert pixel art to ANSI terminal art")]
+#[command(
+    name = "px2ansi",
+    version,
+    about = "Convert pixel art to ANSI terminal art"
+)]
 struct Cli {
     /// Input image file
     filename: String,
@@ -93,11 +96,10 @@ fn main() -> Result<()> {
             clippy::cast_sign_loss,
             clippy::cast_precision_loss
         )]
-        // let new_height = (img.height() as f64 * (safe_w as f64 / img.width() as f64)) as u32;
         let new_height =
             (f64::from(img.height()) * (f64::from(safe_w) / f64::from(img.width()))) as u32;
 
-        // CHANGE: Use the user-selected filter
+        // Use the user-selected filter
         img = img.resize(safe_w, new_height, cli.filter.into());
     }
 
