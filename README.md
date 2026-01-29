@@ -18,17 +18,19 @@ a single, static binary.
 ## Features
 
 - 🚀 **Fast**: Written in Rust, optimized for speed (~25x faster than Python).
+
 - 🎨 **Truecolor**: Supports full 24-bit RGB colors.
+
 - 📐 Smart Resizing: Automatically detects terminal width and resizes large
   images to fit.
 
-🖼️ Flexible Filtering: Choose between sharp pixel art (nearest) or smooth
-high-res downscaling (lanczos3).
+- 🖼️ Flexible Filtering: Choose between sharp pixel art (nearest) or smooth
+  high-res downscaling (lanczos3).
 
-🧩 Transparency: Correctly handles alpha channels (rendering transparent pixels
-as terminal background).
+- 🧩 Transparency: Correctly handles alpha channels (rendering transparent
+  pixels as terminal background).
 
-📦 Simple: Single binary, no dependencies required at runtime.
+- 📦 Simple: Single binary, no dependencies required at runtime.
 
 ## Installation
 
