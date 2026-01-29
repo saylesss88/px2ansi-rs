@@ -3,7 +3,7 @@ use clap::{Parser, ValueEnum}; // Added ValueEnum
 use image::imageops::FilterType;
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
-use terminal_size::{terminal_size, Height, Width};
+use terminal_size::{Height, Width, terminal_size};
 
 use px2ansi_rs::write_ansi_art;
 
@@ -79,11 +79,7 @@ fn main() -> Result<()> {
         }
     } else {
         // Fallback: Only resize the image if its wider than 100
-        if img.width() > 100 {
-            Some(100)
-        } else {
-            None
-        }
+        if img.width() > 100 { Some(100) } else { None }
     };
 
     // 3. Resize if needed
