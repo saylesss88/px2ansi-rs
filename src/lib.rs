@@ -1,13 +1,11 @@
+#![allow(clippy::multiple_crate_versions)]
 use image::{DynamicImage, GenericImageView, Rgba};
 use std::io::Write;
 
 /// This function iterates over the image pixels, processing them in vertical pairs
-/// to utilize the "Upper Half Block" (▀) character. This effectively gives us
-/// two vertical "sub-pixels" per character cell.
-///
-/// # Arguments
-/// * `img` - The image to convert. Should be resized to fit the terminal before calling.
-/// * `out` - A writable output (e.g., stdout or a file).
+/// to utilize the "Upper Half Block" (▀) character.
+/// # Errors
+/// Returns an error if writing to the output stream fails
 pub fn write_ansi_art<W: Write>(img: &DynamicImage, out: &mut W) -> std::io::Result<()> {
     let (width, height) = img.dimensions();
 

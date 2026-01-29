@@ -1,6 +1,6 @@
 [package]
 name = "px2ansi-rs"
-version = "0.2.4"
+version = "0.2.5"
 edition = "2024"
 authors = [
 	"T. Sawyer <saylesss87@proton.me>",
@@ -15,7 +15,7 @@ categories = ["command-line-utilities", "multimedia::images", "rendering"]
 exclude = ["assets/*", "tests/*", "target/*", ".github/*", ".gitignore"]
 
 [dependencies]
-image = "0.25"
+image = {version = "0.25", default-features = false, features = ["png", "jpeg"]}
 clap = {version = "4.5", features = ["derive"]}
 anyhow = "1.0"
 terminal_size = "0.4.3"

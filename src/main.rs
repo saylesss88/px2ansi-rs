@@ -1,3 +1,4 @@
+#![allow(clippy::multiple_crate_versions)]
 use anyhow::Result;
 use clap::{Parser, ValueEnum}; // Added ValueEnum
 use image::imageops::FilterType;
@@ -21,11 +22,11 @@ enum ResizeFilter {
 impl From<ResizeFilter> for FilterType {
     fn from(f: ResizeFilter) -> Self {
         match f {
-            ResizeFilter::Nearest => FilterType::Nearest,
-            ResizeFilter::Triangle => FilterType::Triangle,
-            ResizeFilter::CatmullRom => FilterType::CatmullRom,
-            ResizeFilter::Gaussian => FilterType::Gaussian,
-            ResizeFilter::Lanczos3 => FilterType::Lanczos3,
+            ResizeFilter::Nearest => Self::Nearest,
+            ResizeFilter::Triangle => Self::Triangle,
+            ResizeFilter::CatmullRom => Self::CatmullRom,
+            ResizeFilter::Gaussian => Self::Gaussian,
+            ResizeFilter::Lanczos3 => Self::Lanczos3,
         }
     }
 }
@@ -60,32 +61,41 @@ fn main() -> Result<()> {
     let mut img = reader.decode()?;
 
     // 2. Determine Target Size
-    let target_width = if let Some(w) = cli.width {
-        Some(w)
-    } else if let Some((Width(term_w), Height(term_h))) = terminal_size() {
-        let max_w = term_w as u32;
-        let max_h = (term_h as u32) * 2;
+    let target_width = cli.width.or_else(|| {
+        if let Some((Width(term_w), Height(term_h))) = terminal_size() {
+            let max_w = u32::from(term_w);
+            let max_h = u32::from(term_h) * 2;
+            let img_w = img.width();
+            let img_h = img.height();
 
-        let img_w = img.width();
-        let img_h = img.height();
-
-        if img_w > max_w || img_h > max_h {
-            let width_ratio = max_w as f64 / img_w as f64;
-            let height_ratio = max_h as f64 / img_h as f64;
-            let scale = width_ratio.min(height_ratio);
-            Some((img_w as f64 * scale) as u32)
+            if img_w > max_w || img_h > max_h {
+                let width_ratio = f64::from(max_w) / f64::from(img_w);
+                let height_ratio = f64::from(max_h) / f64::from(img_h);
+                let scale = width_ratio.min(height_ratio);
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                Some((f64::from(img_w) * scale).round() as u32)
+            } else {
+                None
+            }
+        } else if img.width() > 100 {
+            // Fallback: Only resize if wider than 100 and no terminal size found
+            Some(100)
         } else {
             None
         }
-    } else {
-        // Fallback: Only resize the image if its wider than 100
-        if img.width() > 100 { Some(100) } else { None }
-    };
+    });
 
     // 3. Resize if needed
     if let Some(w) = target_width {
         let safe_w = w.max(1);
-        let new_height = (img.height() as f64 * (safe_w as f64 / img.width() as f64)) as u32;
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            clippy::cast_precision_loss
+        )]
+        // let new_height = (img.height() as f64 * (safe_w as f64 / img.width() as f64)) as u32;
+        let new_height =
+            (f64::from(img.height()) * (f64::from(safe_w) / f64::from(img.width()))) as u32;
 
         // CHANGE: Use the user-selected filter
         img = img.resize(safe_w, new_height, cli.filter.into());
