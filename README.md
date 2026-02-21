@@ -58,9 +58,21 @@ Convert an image and print to stdout (auto-resizes to fit your terminal):
 px2ansi-rs image.png
 ```
 
-**Advanced Options**
+### Resize filter (`--filter`)
 
-Resize filters:
+- Help: `px2ansi-rs --filter --help`
+
+Controls the resampling filter used when px2ansi resizes your input image.
+
+Valid values:
+
+- `nearest` — Nearest-neighbor. Fastest; best for pixel art / hard edges.
+- `triangle` — Linear filter (bilinear).
+- `catmull-rom` — Cubic filter.
+- `gaussian` — Gaussian filter.
+- `lanczos3` — Lanczos filter (window 3). Default.
+
+Examples:
 
 Use `--filter` to control how the image is downscaled.
 
