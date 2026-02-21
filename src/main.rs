@@ -1,59 +1,13 @@
 #![allow(clippy::multiple_crate_versions)]
+mod cli;
+use crate::cli::Cli;
 use anyhow::Result;
-use clap::{Parser, ValueEnum}; // Added ValueEnum
-use image::imageops::FilterType;
+use clap::Parser;
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
-use terminal_size::{Height, Width, terminal_size};
+use terminal_size::{terminal_size, Height, Width};
 
 use px2ansi_rs::write_ansi_art;
-
-// 1. Define an Enum for the CLI argument
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Parser)]
-enum ResizeFilter {
-    Nearest,
-    Triangle,
-    CatmullRom,
-    Gaussian,
-    Lanczos3,
-}
-
-// 2. Add helper to convert CLI enum to image::FilterType
-impl From<ResizeFilter> for FilterType {
-    fn from(f: ResizeFilter) -> Self {
-        match f {
-            ResizeFilter::Nearest => Self::Nearest,
-            ResizeFilter::Triangle => Self::Triangle,
-            ResizeFilter::CatmullRom => Self::CatmullRom,
-            ResizeFilter::Gaussian => Self::Gaussian,
-            ResizeFilter::Lanczos3 => Self::Lanczos3,
-        }
-    }
-}
-
-#[derive(Parser)]
-#[command(
-    name = "px2ansi",
-    version,
-    about = "Convert pixel art to ANSI terminal art"
-)]
-struct Cli {
-    /// Input image file
-    filename: String,
-
-    /// Output file (optional). If not provided, prints to stdout.
-    #[arg(short, long)]
-    output: Option<String>,
-
-    /// Force a specific width (disables auto-resizing to terminal)
-    #[arg(long)]
-    width: Option<u32>,
-
-    /// Resize filter to use (default: lanczos3).
-    /// Use 'nearest' for pixel art to keep hard edges.
-    #[arg(long, value_enum, default_value_t = ResizeFilter::Lanczos3)]
-    filter: ResizeFilter,
-}
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
