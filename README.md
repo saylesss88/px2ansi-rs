@@ -9,10 +9,10 @@ modern terminals. It uses 24-bit truecolor and unicode half-block characters
 It is significantly faster than the original Python implementation and ships as
 a single, static binary.
 
-(Before)
+(Input)
 ![screenshot1](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pik1.png)
 
-(After)
+(Output)
 ![screenshot2](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pik2.png)
 
 ## Features
@@ -98,7 +98,13 @@ px2ansi-rs pikachu.png --filter=nearest --width 50
 Save output to a file:
 
 ```bash
-px2ansi-rs image.png -o art.txt
+px2ansi-rs image.png -o ~/Pictures/art.txt
+```
+
+For quick viewing, use `cat` or `bat`:
+
+```bash
+cat ~/Pictures/art.txt
 ```
 
 Try it out!
