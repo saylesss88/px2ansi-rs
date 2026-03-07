@@ -115,3 +115,7 @@ example if you cloned the repo):
 ```bash
 px2ansi-rs tests/test.png
 ```
+
+## Example Project build with px2ansi-rs
+
+- [slasher-horrorscripts](https://crates.io/crates/slasher-horrorscripts)
