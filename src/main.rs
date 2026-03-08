@@ -28,23 +28,28 @@ fn main() -> Result<()> {
                 OutputMode::Ansi
             };
 
-            // 1. Load image - Use 'filename' directly
             let mut reader = image::ImageReader::open(&filename)?;
             reader.no_limits();
             let mut img = reader.decode()?;
 
-            // 2. Determine Target Size - Use 'width' directly
             let target_width = width.or_else(|| {
-                if let Some((Width(term_w), Height(term_h))) = terminal_size() {
-                    let max_w = u32::from(term_w);
+                if let Some((Width(tw), Height(th))) = terminal_size() {
+                    let term_w = u32::from(tw);
+                    let term_h = u32::from(th);
 
-                    // IF UNICODE: 1 char = 1 pixel (max height is term_h)
-                    // IF ANSI: 1 char = 2 pixels (max height is term_h * 2)
-                    let max_h = if output_mode == OutputMode::Unicode {
-                        u32::from(term_h)
+                    let max_w = if output_mode == OutputMode::Unicode {
+                        term_w / 2
                     } else {
-                        u32::from(term_h) * 2
-                    };
+                        term_w
+                    }
+                    .saturating_sub(2);
+
+                    let max_h = if output_mode == OutputMode::Unicode {
+                        term_h
+                    } else {
+                        term_h * 2
+                    }
+                    .saturating_sub(2);
 
                     let img_w = img.width();
                     let img_h = img.height();
@@ -62,25 +67,14 @@ fn main() -> Result<()> {
                 }
             });
 
-            // 3. Resize with Aspect Correction
             if let Some(w) = target_width {
                 let safe_w = w.max(1);
-
-                // Calculate height based on original aspect ratio
                 let new_height =
                     (f64::from(img.height()) * (f64::from(safe_w) / f64::from(img.width()))) as u32;
-
-                if output_mode == OutputMode::Unicode {
-                    // new_height = (f64::from(new_height) * 0.5).max(1.0) as u32;
-                    // Use resize_exact to force the squashed ratio
-                    // img = img.resize_exact(safe_w, new_height, filter.into());
-                    img = img.resize(safe_w, new_height, filter.into());
-                } else {
-                    // Ansi mode handles aspect ratio naturally with half-blocks
-                    img = img.resize(safe_w, new_height, filter.into());
-                }
+                // .into() converts your CLI filter to image::imageops::FilterType
+                img = img.resize(safe_w, new_height, filter.into());
             }
-            // 4. Output - Use 'output' and 'output_mode'
+
             if let Some(output_path) = output {
                 let file = File::create(output_path)?;
                 let mut writer = BufWriter::new(file);
@@ -92,6 +86,7 @@ fn main() -> Result<()> {
                 writer.flush()?;
             }
         }
+
         Commands::Index { dir, output } => {
             let json = crate::indexer::build_index(&dir)?;
             std::fs::write(output, json)?;
@@ -99,11 +94,9 @@ fn main() -> Result<()> {
         }
 
         Commands::Show { name, index, mode } => {
-            // 1. Load the index
             let index_data = std::fs::read_to_string(&index)?;
             let entries: Vec<crate::indexer::ImageEntry> = serde_json::from_str(&index_data)?;
 
-            // 2. Find the match
             if let Some(entry) = entries.iter().find(|e| e.name == name) {
                 let output_mode = if mode == "unicode" {
                     OutputMode::Unicode
@@ -111,16 +104,37 @@ fn main() -> Result<()> {
                     OutputMode::Ansi
                 };
 
-                // 3. loading/rendering logic
-                let reader = image::ImageReader::open(&entry.path)?;
-                let img = reader.decode()?;
+                let mut img = image::ImageReader::open(&entry.path)?.decode()?;
+
+                if let Some((Width(tw), Height(th))) = terminal_size() {
+                    let term_w = u32::from(tw);
+                    let term_h = u32::from(th);
+
+                    let max_w = if output_mode == OutputMode::Unicode {
+                        term_w / 2
+                    } else {
+                        term_w
+                    }
+                    .saturating_sub(2);
+
+                    let max_h = if output_mode == OutputMode::Unicode {
+                        term_h
+                    } else {
+                        term_h * 2
+                    }
+                    .saturating_sub(2);
+
+                    if img.width() > max_w || img.height() > max_h {
+                        img = img.resize(max_w, max_h, image::imageops::FilterType::Nearest);
+                    }
+                }
 
                 let stdout = io::stdout();
                 let mut writer = BufWriter::new(stdout.lock());
                 write_ansi_art(&img, &mut writer, output_mode)?;
                 writer.flush()?;
             } else {
-                eprintln!("Error: Could not find '{}' in {}", name, index);
+                eprintln!("Error: Could not find '{name}'");
             }
         }
     }
