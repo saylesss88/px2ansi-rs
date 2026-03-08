@@ -1,28 +1,54 @@
-use clap::{Parser, ValueEnum};
+use clap::{Parser, Subcommand, ValueEnum};
 use image::imageops::FilterType;
 
 #[derive(Parser)]
-#[command(
-    name = "px2ansi",
-    version,
-    about = "Convert pixel art to ANSI terminal art"
-)]
+#[command(name = "px2ansi", version, about = "Pixel art tools")]
 pub struct Cli {
-    /// Input image file
-    pub filename: String,
+    #[command(subcommand)]
+    pub command: Commands,
+}
+#[derive(Subcommand)]
+pub enum Commands {
+    /// Convert a single image to ANSI/Unicode
+    Convert {
+        /// Input image file
+        filename: String,
 
-    /// Output file (optional). If not provided, prints to stdout.
-    #[arg(short, long)]
-    pub output: Option<String>,
+        /// Output file (optional)
+        #[arg(short, long)]
+        output: Option<String>,
 
-    /// Force a specific width (disables auto-resizing to terminal)
-    #[arg(long)]
-    pub width: Option<u32>,
+        /// Output mode (ansi, unicode)
+        #[arg(short, long, default_value = "ansi")]
+        mode: String,
 
-    /// Resize filter to use (default: lanczos3).
-    /// Use 'nearest' for pixel art to keep hard edges.
-    #[arg(long, value_enum, default_value_t = ResizeFilter::Lanczos3)]
-    pub filter: ResizeFilter,
+        /// Force a specific width
+        #[arg(long)]
+        width: Option<u32>,
+
+        /// Resize filter
+        #[arg(long, value_enum, default_value_t = ResizeFilter::Lanczos3)]
+        filter: ResizeFilter,
+    },
+    /// Create a JSON index of a directory
+    Index {
+        /// Directory to scan
+        dir: String,
+        /// Path to save the JSON index
+        #[arg(short, long, default_value = "index.json")]
+        output: String,
+    },
+
+    Show {
+        /// The name of the image (from the index)
+        name: String,
+        /// Path to the index.json file
+        #[arg(short, long, default_value = "index.json")]
+        index: String,
+        /// Output mode (ansi, unicode)
+        #[arg(short, long, default_value = "ansi")]
+        mode: String,
+    },
 }
 // 1. Define an Enum for the CLI argument
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Parser)]
