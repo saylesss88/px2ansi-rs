@@ -1,6 +1,6 @@
 [package]
 name = "px2ansi-rs"
-version = "0.2.6"
+version = "0.3.6"
 edition = "2024"
 authors = ["T. Sawyer <saylesss87@proton.me>", "Nell Fauveau <nellousan@hotmail.fr> (original Python version)"]
 license = "GPL-3.0"

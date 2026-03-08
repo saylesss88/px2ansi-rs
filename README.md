@@ -3,8 +3,8 @@
 A high-performance Rust port of [px2ansi](https://github.com/Nellousan/px2ansi).
 
 **px2ansi** converts pixel art images into ANSI escape codes for display in
-modern terminals. It uses 24-bit truecolor and unicode half-block characters
-(`▀` / `▄`) to render images with precision.
+modern terminals. It supports both ANSI half-blocks for high-density rendering
+and Unicode full-blocks for a retro, "colorscript" style.
 
 It is significantly faster than the original Python implementation and ships as
 a single, static binary.
@@ -13,7 +13,7 @@ a single, static binary.
 ![screenshot1](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pik1.png)
 
 (Output)
-![screenshot2](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pik2.png)
+![screenshot2](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pikaclean.png)
 
 ## Features
 
@@ -24,13 +24,16 @@ a single, static binary.
 - 📐 Smart Resizing: Automatically detects terminal width and resizes large
   images to fit.
 
-- 🖼️ Flexible Filtering: Choose between sharp pixel art (nearest) or smooth
-  high-res downscaling (lanczos3).
+- 📂 JSON Indexing: Built-in tool to scan directories and generate a searchable
+  manifest of your art library.
+
+- 🖼️ Flexible Filtering: Use `nearest` for sharp pixel art or `laczos3` for
+  fmooth photos.
 
 - 🧩 Transparency: Correctly handles alpha channels (rendering transparent
   pixels as terminal background).
 
-- 📦 Simple: Single binary, no dependencies required at runtime.
+---
 
 ## Installation
 
@@ -50,71 +53,58 @@ cargo install px2ansi-rs
 
 ## Usage
 
-**Basic**
+`px2ansi-rs` now uses a subcommand-based interface: `convert`, `index`, and
+`show`
 
-Convert an image and print to stdout (auto-resizes to fit your terminal):
+1. Convert an Image
 
-```bash
-px2ansi-rs image.png
+Basic conversion to stdout (auto-resizes to fit your terminal):
+
+```Bash
+px2ansi-rs convert image.png
 ```
 
-### Resize filter (`--filter`)
+**Unicode Mode** (Retro Style)
 
-- Help: `px2ansi-rs --filter --help`
+To get the chunky "Pokemon Colorscript" look:
 
-Controls the resampling filter used when px2ansi resizes your input image.
+```Bash
+px2ansi-rs convert image.png --mode unicode --filter nearest
+```
 
-Valid values:
+**Force Width & Filtering**
+
+```Bash
+px2ansi-rs convert sprite.png --width 50 --filter nearest
+```
+
+2. The Library Indexer
+
+You can create a JSON manifest of a directory full of sprites. This is useful
+for building art collections or scripts.
+
+```Bash
+px2ansi-rs index ./assets/sprites --output index.json
+```
+
+3. Show by Name
+
+Once indexed, you can display an image by its name (file stem) without needing
+the full path:
+
+```Bash
+px2ansi-rs show pikachu --mode ansi
+```
+
+---
+
+## Resize Filters (`--filter`)
 
 - `nearest` — Nearest-neighbor. Fastest; best for pixel art / hard edges.
 - `triangle` — Linear filter (bilinear).
 - `catmull-rom` — Cubic filter.
 - `gaussian` — Gaussian filter.
 - `lanczos3` — Lanczos filter (window 3). Default.
-
-Examples:
-
-Use `--filter` to control how the image is downscaled.
-
-- Pixel Art (Pikachu, sprites): Use `nearest` to keep sharp edges.
-
-```bash
-px2ansi-rs sprite.png --filter nearest
-```
-
-- Photos / Logos: Default (Lanczos3) works best.
-
-```bash
-px2ansi-rs photo.jpg
-```
-
-Manual Sizing(WIP):
-
-```bash
-px2ansi-rs huge_screenshot.png --width 100
-px2ansi-rs pikachu.png --filter=nearest --width 50
-```
-
-Save output to a file:
-
-```bash
-px2ansi-rs image.png -o ~/Pictures/art.txt
-```
-
-For quick viewing, use `cat` or `bat`:
-
-```bash
-cat ~/Pictures/art.txt
-```
-
-Try it out!
-
-You can test it right now with the included `test.png` (a small pixel art
-example if you cloned the repo):
-
-```bash
-px2ansi-rs tests/test.png
-```
 
 ## Example Project build with px2ansi-rs
 
