@@ -1,0 +1,10 @@
+[
+  {
+    "name": "test",
+    "path": "./tests/test.png",
+    "dimensions": [
+      96,
+      96
+    ]
+  }
+]

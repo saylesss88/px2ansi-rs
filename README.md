@@ -15,6 +15,11 @@ a single, static binary.
 (Output)
 ![screenshot2](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pikaclean.png)
 
+> If you see horizontal lines or gaps in the image, check your terminal's Line
+> Height or Vertical Offset settings. For the best experience, set line-height
+> to 1.0 and use a "Mono" spaced font. Terminals like foot, kitty, and wezterm
+> generally provide the best results out of the box.
+
 ## Features
 
 - 🚀 **Fast**: Written in Rust, optimized for speed (~25x faster than Python).
