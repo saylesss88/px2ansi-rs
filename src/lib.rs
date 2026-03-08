@@ -8,10 +8,11 @@ pub enum OutputMode {
     Unicode, // Full blocks or specialized chars (like pokemon-colorscripts)
 }
 
-/// This function iterates over the image pixels, processing them in vertical pairs
-/// to utilize the "Upper Half Block" (▀) character.
-/// # Errors
-///  Returns an error if writing to the output stream fails
+/// Renders an image into the terminal using ANSI escape sequences.
+///
+/// Depending on the `mode`, this will either:
+/// - **Ansi**: Squash two vertical pixels into one character cell using half-blocks (▀/▄).
+/// - **Unicode**: Render each pixel as a double-width square block (██) for a retro look.
 pub fn write_ansi_art<W: Write>(
     img: &DynamicImage,
     out: &mut W,
@@ -21,7 +22,9 @@ pub fn write_ansi_art<W: Write>(
 
     match mode {
         OutputMode::Ansi => {
-            // Process 2 rows at a time
+            // Ansi mode uses a "vertical pairing" trick to double the effective resolution.
+            // By using the foreground for the top pixel and background for the bottom,
+            // we can fit two pixels into a single character's space.
             for y in (0..height).step_by(2) {
                 for x in 0..width {
                     let top = img.get_pixel(x, y);
@@ -36,7 +39,8 @@ pub fn write_ansi_art<W: Write>(
             }
         }
         OutputMode::Unicode => {
-            // Process every single row
+            // Unicode mode treats every pixel as a distinct "square" by printing
+            // two full-block characters side-by-side.
             for y in 0..height {
                 for x in 0..width {
                     let px = img.get_pixel(x, y);
