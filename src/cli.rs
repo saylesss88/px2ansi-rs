@@ -18,7 +18,9 @@ pub enum Commands {
         #[arg(short, long)]
         output: Option<String>,
 
-        /// Output mode (ansi, unicode)
+        /// Output mode:
+        /// - 'ansi': Highest detail. Uses half-blocks to fit 2 pixels per cell.
+        /// - 'unicode': Retro look. Uses '██' to represent 1 pixel as a square.
         #[arg(short, long, default_value = "ansi")]
         mode: String,
 
@@ -40,7 +42,8 @@ pub enum Commands {
     },
 
     Show {
-        /// The name of the image (from the index)
+        /// The name of the image to show. Use 'random' to pick a surprise sprite!
+        #[arg(help = "The name of the image (e.g., 'charizard') or 'random'")]
         name: String,
         /// Path to the index.json file
         #[arg(short, long, default_value = "index.json")]
