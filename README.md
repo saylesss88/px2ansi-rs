@@ -32,7 +32,7 @@ a single, static binary.
 - 📂 JSON Indexing: Built-in tool to scan directories and generate a searchable
   manifest of your art library.
 
-- 🖼️ Flexible Filtering: Use `nearest` for sharp pixel art or `laczos3` for
+- 🖼️ Flexible Filtering: Use `nearest` for sharp pixel art or `lanczos3` for
   fmooth photos.
 
 - 🧩 Transparency: Correctly handles alpha channels (rendering transparent
@@ -83,6 +83,12 @@ px2ansi-rs convert image.png --mode unicode --filter nearest
 px2ansi-rs convert sprite.png --width 50 --filter nearest
 ```
 
+For bigger images `lanczos3` seems to look better:
+
+```bash
+px2ansi-rs convert tests/scream.png --filter lanczos3
+```
+
 2. The Library Indexer
 
 You can create a JSON manifest of a directory full of sprites. This is useful
@@ -99,6 +105,22 @@ the full path:
 
 ```Bash
 px2ansi-rs show pikachu --mode ansi
+# Show a random sprite from your index
+px2ansi-rs show random
+px2ansi-rs show random --mode unicode
+px2ansi-rs show random --mode ansi --filter nearest
+```
+
+If you clone the repo, I've included some test `.png` files:
+
+```bash
+git clone https://github.com/saylesss88/px2ansi-rs
+cd px2ansi-rs
+px2ansi-rs convert tests/test.png --filter nearest
+# Create an index
+px2ansi-rs index tests -o index.json
+px2ansi-rs show random
+px2ansi-rs show scream --filter lanczos3
 ```
 
 ---
