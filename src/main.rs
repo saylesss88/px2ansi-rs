@@ -51,7 +51,12 @@ fn main() -> Result<()> {
         }
 
         // Retrieve and display an image from a previously generated index
-        Commands::Show { name, index, mode } => {
+        Commands::Show {
+            name,
+            index,
+            mode,
+            filter,
+        } => {
             let output_mode = if mode == "unicode" {
                 OutputMode::Unicode
             } else {
@@ -81,7 +86,7 @@ fn main() -> Result<()> {
             println!("Showing: {}", entry.name);
 
             // Default to Nearest filter for 'Show' to keep pixel art crisp
-            process_and_render(img, output_mode, None, image::imageops::FilterType::Nearest)?;
+            process_and_render(img, output_mode, None, filter.into())?;
         }
     }
     Ok(())

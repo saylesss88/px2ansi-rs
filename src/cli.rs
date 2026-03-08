@@ -48,6 +48,8 @@ pub enum Commands {
         /// Output mode (ansi, unicode)
         #[arg(short, long, default_value = "ansi")]
         mode: String,
+        #[arg(short, long, value_enum, default_value_t = ResizeFilter::Nearest)]
+        filter: ResizeFilter,
     },
 }
 // 1. Define an Enum for the CLI argument
