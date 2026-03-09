@@ -125,6 +125,71 @@ px2ansi-rs show scream --filter lanczos3
 
 ---
 
+## ⚡ Performance & Workflow
+
+`px2ansi-rs` is designed for high-performance terminal environments. While it
+can convert images on the fly, it is optimized for a "Build Once, Show Many"
+workflow.
+
+By default, the latency timer is visible. To suppress it for a cleaner output,
+use the `-s` or `--silent` flag. **The Indexing Advantage**
+
+### The Indexing Advantage
+
+Standard image-to-ANSI tools must decode, resize, and re-calculate ANSI escape
+sequences every time they are run. `px2ansi-rs` separates these concerns:
+
+1. `index`: Scans your asset directory and creates a JSON manifest. This avoids
+   slow recursive directory walks during daily use.
+
+2. `show`: Uses the index to jump directly to the file. When combined with the
+   `--silent` flag, this provides an "instant-on" experience suitable for shell
+   startup scripts (`.zshrc`, `config.nu`).
+
+**Benchmarking**
+
+System: AMD AM06 Pro (Ryzen) | OS: NixOS
+
+**Benchmarking Targets:**
+
+- **Sprite (test.png):** 96x96 (~9k pixels) -> 6ms (Nearest)
+- **High-Fi (scream.png):** 700x909 (~636k pixels) -> 80ms (Nearest) / 400ms
+  (Lanczos3)
+
+Performance is divided into two categories: Sprites (low resolution/nearest
+filter) and High-Fidelity (high resolution/complex filters).
+
+The following measurements reflect the performance of the tool in a real-world
+environment using a release build (`opt-level = 3`).
+
+- `px2ansi-rs show <name>`: Latency = 5ms
+
+- `px2ansi-rs convert <file>`: Latency = 6ms
+
+- `px2ansi-rs index <dir>` = 66 ms
+
+- `px2ansi-rs convert tests/scream.png --filter nearest` = 80ms
+
+- `px2ansi-rs convert tests/scream.png --filter lanczos3` = 360ms
+
+- `px2ansi-rs show scream --filter lanczos3` = 360ms
+
+> Note: While Lanczos3 provides the highest visual quality, it is mathematically
+> intensive. For shell greetings, using the show command with pre-indexed
+> sprites is recommended for a sub-10ms "instant" feel.
+
+Silent Mode For use in automation or terminal greetings, use the `-s` or
+`--silent` flag to suppress performance metrics and output only the raw ANSI
+art:
+
+```Bash
+# Don't show latency on screen
+px2ansi -s show random
+px2ansi convert <file> --silent
+```
+
+---
+
 ## Resize Filters (`--filter`)
 
 - `nearest` — Nearest-neighbor. Fastest; best for pixel art / hard edges.
