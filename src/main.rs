@@ -4,16 +4,21 @@ mod indexer;
 use crate::cli::{Cli, Commands};
 use anyhow::Result;
 use clap::Parser;
+use colored::Colorize;
 use px2ansi_rs::OutputMode;
 use rand::prelude::IndexedRandom;
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
+use std::time::Instant;
 use terminal_size::{Height, Width, terminal_size};
 
 use px2ansi_rs::write_ansi_art;
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    // Start the clock
+    let start = Instant::now();
 
     match cli.command {
         // Handle single-file conversion
@@ -41,13 +46,28 @@ fn main() -> Result<()> {
                 // If printing to stdout, we use the helper to fit the image to the current window
                 process_and_render(img, output_mode, width, filter.into())?;
             }
+            if !cli.silent {
+                let duration = start.elapsed();
+                eprintln!(
+                    "\n{} in {}ms",
+                    "Finished".green().bold(),
+                    duration.as_millis()
+                );
+            }
         }
 
         // Build a JSON index of an image directory for quick retrieval
         Commands::Index { dir, output } => {
             let json = crate::indexer::build_index(&dir)?;
             std::fs::write(output, json)?;
-            println!("Index created successfully!");
+            if !cli.silent {
+                let duration = start.elapsed();
+                println!(
+                    "{} created successfully in {}ms!",
+                    "Index".cyan().bold(),
+                    duration.as_millis()
+                );
+            }
         }
 
         // Retrieve and display an image from a previously generated index
@@ -87,6 +107,14 @@ fn main() -> Result<()> {
 
             // Default to Nearest filter for 'Show' to keep pixel art crisp
             process_and_render(img, output_mode, None, filter.into())?;
+            if !cli.silent {
+                let duration = start.elapsed();
+                eprintln!(
+                    "\n{} in {}ms",
+                    "Finished".green().bold(),
+                    duration.as_millis()
+                );
+            }
         }
     }
     Ok(())

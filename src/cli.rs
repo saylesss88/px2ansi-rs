@@ -6,6 +6,10 @@ use image::imageops::FilterType;
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
+
+    /// Suppress performance metrics and status messages
+    #[arg(short, long, global = true)]
+    pub silent: bool,
 }
 #[derive(Subcommand)]
 pub enum Commands {
