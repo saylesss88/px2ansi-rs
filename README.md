@@ -133,6 +133,8 @@ px2ansi-rs show scream --filter lanczos3
 - `gaussian` — Gaussian filter.
 - `lanczos3` — Lanczos filter (window 3). Default.
 
+- [guide.encode.moe resampling](https://guide.encode.moe/encoding/resampling.html)
+
 ## Example Project build with px2ansi-rs
 
 - [slasher-horrorscripts](https://crates.io/crates/slasher-horrorscripts)
