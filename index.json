@@ -1,7 +1,7 @@
 [
   {
     "name": "scream",
-    "path": "./tests/scream.png",
+    "path": "tests/scream.png",
     "dimensions": [
       700,
       909
@@ -9,7 +9,7 @@
   },
   {
     "name": "test",
-    "path": "./tests/test.png",
+    "path": "tests/test.png",
     "dimensions": [
       96,
       96

@@ -152,8 +152,8 @@ System: AMD AM06 Pro (Ryzen) | OS: NixOS
 
 **Benchmarking Targets:**
 
-- **Sprite (test.png):** 96x96 (~9k pixels) -> 6ms (Nearest)
-- **High-Fi (scream.png):** 700x909 (~636k pixels) -> 80ms (Nearest) / 400ms
+- **Sprite (test.png):** 96x96 (~9k pixels) -> 2ms (Nearest)
+- **High-Fi (scream.png):** 700x909 (~636k pixels) -> 15ms (Nearest) / 17ms
   (Lanczos3)
 
 Performance is divided into two categories: Sprites (low resolution/nearest
@@ -162,15 +162,15 @@ filter) and High-Fidelity (high resolution/complex filters).
 The following measurements reflect the performance of the tool in a real-world
 environment using a release build (`opt-level = 3`).
 
-- `px2ansi-rs show <name>`: Latency = 5ms
+- `px2ansi-rs show tests/test.png`: Latency = 2ms
 
-- `px2ansi-rs convert <file>`: Latency = 6ms
+- `px2ansi-rs convert tests/test.png`: Latency = 3ms
 
-- `px2ansi-rs index <dir>` = 66 ms
+- `px2ansi-rs index <dir>` = 5ms
 
-- `px2ansi-rs convert tests/scream.png --filter nearest` = 80ms
+- `px2ansi-rs convert tests/scream.png --filter nearest` = 15ms
 
-- `px2ansi-rs convert tests/scream.png --filter lanczos3` = 360ms
+- `px2ansi-rs convert tests/scream.png --filter lanczos3` = 17ms
 
 - `px2ansi-rs show scream --filter lanczos3` = 360ms
 
