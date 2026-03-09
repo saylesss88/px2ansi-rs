@@ -162,17 +162,15 @@ filter) and High-Fidelity (high resolution/complex filters).
 The following measurements reflect the performance of the tool in a real-world
 environment using a release build (`opt-level = 3`).
 
-- `px2ansi-rs show tests/test.png`: Latency = 2ms
-
-- `px2ansi-rs convert tests/test.png`: Latency = 3ms
-
-- `px2ansi-rs index <dir>` = 5ms
-
-- `px2ansi-rs convert tests/scream.png --filter nearest` = 15ms
-
-- `px2ansi-rs convert tests/scream.png --filter lanczos3` = 17ms
-
-- `px2ansi-rs show scream --filter lanczos3` = 360ms
+| Operation         | Target Asset        | Filter   | Latency |
+| ----------------- | ------------------- | -------- | ------- |
+| Convert           | `test.png`          | Nearest  | 3ms     |
+| Convert           | `scream.png`(Hi-Fi) | Lanczos3 | 15ms    |
+| Convert           | `scream.png`(Hi-Fi) | Nearest  | 9ms     |
+| Summon(`show`)    | `test`(96x96)       | Nearest  | 2ms     |
+| Summon(`show`)    | `test`(Unicode)     | Nearest  | 0ms     |
+| Summon(`show`)    | `scream`            | Nearest  | 12ms    |
+| Manifest(`index`) | 2-Asset Test        | N/A      | 7ms     |
 
 > Note: While Lanczos3 provides the highest visual quality, it is mathematically
 > intensive. For shell greetings, using the show command with pre-indexed
