@@ -28,6 +28,9 @@ pub enum Commands {
         #[arg(short, long, default_value = "ansi")]
         mode: String,
 
+        #[arg(long)]
+        full: bool,
+
         /// Force a specific width
         #[arg(long)]
         width: Option<u32>,
@@ -55,6 +58,11 @@ pub enum Commands {
         /// Output mode (ansi, unicode)
         #[arg(short, long, default_value = "ansi")]
         mode: String,
+
+        /// Use double-width full blocks (██) for a retro, square look
+        #[arg(long)]
+        full: bool,
+
         #[arg(short, long, value_enum, default_value_t = ResizeFilter::Nearest)]
         filter: ResizeFilter,
     },
