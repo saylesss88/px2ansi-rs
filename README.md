@@ -16,6 +16,12 @@ a single, static binary.
 (Output)
 ![screenshot2](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pikaclean.png)
 
+(Input Hi-Fi)
+![scream](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/scream.png)
+
+(Output Hi-Fi)
+![scream](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/scream-demo.png)
+
 > If you see horizontal lines or gaps in the image, check your terminal's Line
 > Height or Vertical Offset settings. For the best experience, set line-height
 > to 1.0 and use a "Mono" spaced font. Terminals like foot, kitty, and wezterm
