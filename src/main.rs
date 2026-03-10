@@ -15,6 +15,7 @@ use terminal_size::{Height, Width, terminal_size};
 
 use px2ansi_rs::{OutputMode, write_ansi_art};
 
+#[allow(clippy::too_many_lines)]
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
