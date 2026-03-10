@@ -238,6 +238,37 @@ px2ansi -s show random
 px2ansi convert <file> --silent
 ```
 
+### Testing with the PokéSprite index
+
+```bash
+# Clone the repository (approx. 50MB)
+git clone https://github.com/msikma/pokesprite.git
+
+# Navigate to the Gen 8 sprites (the most modern and consistent)
+cd pokesprite/pokemon-gen8/regular
+
+# Create an Index of 1334 .png files
+px2ansi-rs index . -o index.json
+Index created successfully in 31ms!
+```
+
+```bash
+px2ansi-rs show random
+Finished in 0ms
+```
+
+Let's try the shiny set:
+
+```bash
+cd ~/pokesprite/pokemon-gen8/shiny/
+px2ansi-rs index . -o shiny-index.json
+Index created successfully in 30ms!
+
+px2ansi-rs show gengar --filter nearest
+Finished in 0ms
+```
+
+
 ---
 
 ## Resize Filters (`--filter`)
