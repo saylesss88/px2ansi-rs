@@ -137,6 +137,7 @@ px2ansi-rs convert tests/test.png --filter nearest
 px2ansi-rs index tests -o index.json
 px2ansi-rs show random
 px2ansi-rs show scream --filter lanczos3
+px2ansi-rs show scream --filter triangle --width 50
 ```
 
 ---
