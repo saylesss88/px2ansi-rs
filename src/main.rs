@@ -5,14 +5,15 @@ use crate::cli::{Cli, Commands};
 use anyhow::Result;
 use clap::Parser;
 use colored::Colorize;
-use px2ansi_rs::OutputMode;
+use fuzzy_matcher::FuzzyMatcher;
+use fuzzy_matcher::skim::SkimMatcherV2;
 use rand::prelude::IndexedRandom;
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use std::time::Instant;
 use terminal_size::{Height, Width, terminal_size};
 
-use px2ansi_rs::write_ansi_art;
+use px2ansi_rs::{OutputMode, write_ansi_art};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -63,7 +64,7 @@ fn main() -> Result<()> {
             }
         }
 
-        // Build a JSON index of an image directory for quick retrieval
+        // Build a JSON index
         Commands::Index { dir, output } => {
             let json = crate::indexer::build_index(&dir)?;
             std::fs::write(output, json)?;
@@ -77,13 +78,37 @@ fn main() -> Result<()> {
             }
         }
 
-        // Retrieve and display an image from a previously generated index
+        Commands::List { index, count } => {
+            let index_data = std::fs::read_to_string(&index)?;
+            let entries: Vec<crate::indexer::ImageEntry> = serde_json::from_str(&index_data)?;
+
+            let total = entries.len();
+            let limit = count.unwrap_or(total);
+
+            println!(
+                "{} Showing {} of {} entries:",
+                "Index:".magenta().bold(),
+                limit.min(total),
+                total
+            );
+
+            for entry in entries.iter().take(limit) {
+                println!(
+                    "  • {:<20} {}x{}px",
+                    entry.name.cyan(),
+                    entry.dimensions.0.to_string().dimmed(),
+                    entry.dimensions.1.to_string().dimmed()
+                );
+            }
+        }
+        // Retrieve and display an image
         Commands::Show {
             name,
             index,
             mode,
             filter,
             full,
+            interactive,
         } => {
             let output_mode = if mode == "unicode" {
                 OutputMode::Unicode
@@ -91,30 +116,74 @@ fn main() -> Result<()> {
                 OutputMode::Ansi
             };
 
-            // Parse the JSON index into a list of image entries
             let index_data = std::fs::read_to_string(&index)?;
             let entries: Vec<crate::indexer::ImageEntry> = serde_json::from_str(&index_data)?;
 
             if entries.is_empty() {
-                anyhow::bail!("The index file is empty. Run 'index' first.");
+                anyhow::bail!("Index is empty.");
             }
 
-            // Handle the 'random' keyword or search for a specific filename (file stem)
-            let entry = if name.to_lowercase() == "random" {
-                entries.choose(&mut rand::rng()).ok_or_else(|| {
-                    anyhow::anyhow!("Failed to pick a random entry (index is empty?)")
-                })?
+            // 1. Determine which entry to show (Interactive vs CLI)
+            let entry = if interactive {
+                // Interactive TUI selection
+                let items: Vec<&String> = entries.iter().map(|e| &e.name).collect();
+                let selection =
+                    dialoguer::FuzzySelect::with_theme(&dialoguer::theme::ColorfulTheme::default())
+                        .with_prompt("Search for a sprite")
+                        .items(&items)
+                        .interact_opt()?;
+
+                match selection {
+                    Some(idx) => &entries[idx],
+                    None => return Ok(()), // User pressed Esc
+                }
             } else {
-                entries.iter().find(|e| e.name == name).ok_or_else(|| {
-                    anyhow::anyhow!("Could not find entry '{name}' in index {index}")
-                })?
+                // Standard CLI logic: Random -> Exact -> Fuzzy
+                if name.to_lowercase() == "random" {
+                    entries.choose(&mut rand::rng()).unwrap()
+                } else if let Some(e) = entries.iter().find(|e| e.name == name) {
+                    e
+                } else {
+                    let matcher = SkimMatcherV2::default();
+                    let best = entries
+                        .iter()
+                        .filter_map(|e| matcher.fuzzy_match(&e.name, &name).map(|score| (score, e)))
+                        .max_by_key(|(score, _)| *score);
+
+                    match best {
+                        Some((score, e)) if score > 30 => {
+                            println!(
+                                "{} No exact match for '{}'. Showing: {} {} {}",
+                                "Fuzzy:".yellow(),
+                                name,
+                                e.name.cyan(),
+                                "score:".dimmed(),
+                                score.to_string().magenta()
+                            );
+                            e
+                        }
+                        Some((score, e)) => {
+                            anyhow::bail!(
+                                "Best match was '{}' but score ({}) was too low. Try being more specific.",
+                                e.name,
+                                score
+                            );
+                        }
+                        None => anyhow::bail!("No match foun for '{name}'"),
+                    }
+                }
             };
 
+            // 2. Rener the chosen entry
             let img = image::ImageReader::open(&entry.path)?.decode()?;
-            println!("Showing: {}", entry.name);
 
-            // Default to Nearest filter for 'Show' to keep pixel art crisp
+            // If in interactive mode, we might want to print the name since user didn't type it
+            if interactive {
+                println!("Showing: {}", entry.name.cyan().bold());
+            }
+
             process_and_render(img, output_mode, None, filter.into(), full)?;
+
             if !cli.silent {
                 let duration = start.elapsed();
                 eprintln!(
@@ -127,8 +196,6 @@ fn main() -> Result<()> {
     }
     Ok(())
 }
-
-/// Handles the logic for scaling an image to fit the terminal and writing it to stdout.
 ///
 /// This function automatically detects the terminal size to prevent line-wrapping,
 /// which is often the cause of horizontal gaps/lines in the rendered art.
