@@ -1,10 +1,11 @@
-# px2ansi
+# px2ansi-rs
 
 A high-performance Rust port of [px2ansi](https://github.com/Nellousan/px2ansi).
 
-**px2ansi** converts pixel art images into ANSI escape codes for display in
-modern terminals. It supports both ANSI half-blocks for high-density rendering
-and Unicode full-blocks for a retro, "colorscript" style.
+`px2ansi-rs` is a high-performance image-to-ANSI converter written in Rust.
+While inspired by the original Python px2ansi project, this is a complete
+reimagining built from the ground up for speed, featuring a dedicated indexing
+system, advanced resampling filters, Unicode support and more.
 
 It is significantly faster than the original Python implementation and ships as
 a single, static binary.
@@ -59,10 +60,12 @@ cargo install px2ansi-rs
 ### Command Table
 
 | Command                                | Render Mode | Pixel Type      | Best For...                                                    |
-| :------------------------------------- | :---------- | :-------------- | :------------------------------------------------------------- |
+| :------------------------------------- | :---------- | :-------------- | :------------------------------------------------------------- | --- |
 | `px2ansi-rs ... --mode ansi`           | ANSI        | Half-block (▀)  | **Maximum Compatibility:** Standard 2-pixel vertical packing.  |
 | `px2ansi-rs ... --mode unicode`        | Unicode     | Half-block (▀)  | **HD Unicode:** High-fidelity detail using modern symbol sets. |
 | `px2ansi-rs ... --mode unicode --full` | Unicode     | Full-block (██) | **Retro Square:** 1:1 "pixel-perfect" square aesthetic.        |
+| `px2ansi-rs index <dir>`               | Either      | N/A             | Creating a manifest                                            |
+| `px2ansi-rs show random`               | Either      | Context aware   | Automation: Terminal greeting/random asset rotation            |     |
 
 - The `--full` toggle is specifically optimized for **Unicode mode** to achieve
   a "pixel-perfect" square look.
