@@ -28,6 +28,7 @@ fn main() -> Result<()> {
             mode,
             width,
             filter,
+            full,
         } => {
             let output_mode = if mode == "unicode" {
                 OutputMode::Unicode
@@ -41,10 +42,16 @@ fn main() -> Result<()> {
             if let Some(path) = output {
                 let file = File::create(path)?;
                 let mut writer = BufWriter::new(file);
-                write_ansi_art(&img, &mut writer, output_mode)?;
+                let output_mode = if mode == "unicode" {
+                    OutputMode::Unicode
+                } else {
+                    OutputMode::Ansi
+                };
+
+                write_ansi_art(&img, &mut writer, output_mode, full)?;
             } else {
                 // If printing to stdout, we use the helper to fit the image to the current window
-                process_and_render(img, output_mode, width, filter.into())?;
+                process_and_render(img, output_mode, width, filter.into(), full)?;
             }
             if !cli.silent {
                 let duration = start.elapsed();
@@ -76,6 +83,7 @@ fn main() -> Result<()> {
             index,
             mode,
             filter,
+            full,
         } => {
             let output_mode = if mode == "unicode" {
                 OutputMode::Unicode
@@ -106,7 +114,7 @@ fn main() -> Result<()> {
             println!("Showing: {}", entry.name);
 
             // Default to Nearest filter for 'Show' to keep pixel art crisp
-            process_and_render(img, output_mode, None, filter.into())?;
+            process_and_render(img, output_mode, None, filter.into(), full)?;
             if !cli.silent {
                 let duration = start.elapsed();
                 eprintln!(
@@ -131,6 +139,7 @@ fn process_and_render(
     output_mode: OutputMode,
     target_width: Option<u32>,
     filter: image::imageops::FilterType,
+    full: bool,
 ) -> Result<()> {
     // Determine the best width for the image based on user input or terminal dimensions
     let final_width = target_width
@@ -139,23 +148,20 @@ fn process_and_render(
                 let term_w = u32::from(tw);
                 let term_h = u32::from(th);
 
-                // In Unicode mode, pixels are 2 characters wide (██), so we halve the max width.
-                let max_w = if output_mode == OutputMode::Unicode {
+                let max_w = if output_mode == OutputMode::Unicode && full {
                     term_w / 2
                 } else {
                     term_w
                 }
-                .saturating_sub(2); // Leave a small buffer for borders/padding
+                .saturating_sub(2);
 
-                // In Ansi mode, pixels are packed 2-per-character (half-blocks), doubling vertical resolution.
-                let max_h = if output_mode == OutputMode::Unicode {
+                let max_h = if output_mode == OutputMode::Unicode && full {
                     term_h
                 } else {
                     term_h * 2
                 }
                 .saturating_sub(2);
 
-                // Calculate the scale factor while maintaining the original aspect ratio
                 if img.width() > max_w || img.height() > max_h {
                     let scale = (f64::from(max_w) / f64::from(img.width()))
                         .min(f64::from(max_h) / f64::from(img.height()));
@@ -166,19 +172,18 @@ fn process_and_render(
                 }
             })
         })
-        .unwrap_or(80); // Default to 80 chars if size detection fails
+        .unwrap_or(80);
 
     let safe_w = final_width.max(1);
     let aspect_ratio = f64::from(img.height()) / f64::from(img.width());
     let new_height = (f64::from(safe_w) * aspect_ratio) as u32;
 
-    // Perform the actual resize using the selected resampling filter
     img = img.resize(safe_w, new_height, filter);
 
-    // Stream the ANSI codes to stdout using a buffered writer for performance
     let stdout = io::stdout();
     let mut writer = BufWriter::new(stdout.lock());
-    write_ansi_art(&img, &mut writer, output_mode)?;
+
+    write_ansi_art(&img, &mut writer, output_mode, full)?;
     writer.flush()?;
     Ok(())
 }
