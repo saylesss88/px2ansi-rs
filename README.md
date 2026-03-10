@@ -19,7 +19,7 @@ a single, static binary.
 (Input Hi-Fi)
 ![scream](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/scream.png)
 
-(Output Hi-Fi)
+(Output Hi-Fi source: pngegg.com)
 ![scream](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/scream-demo.png)
 
 > If you see horizontal lines or gaps in the image, check your terminal's Line
