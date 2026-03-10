@@ -2,10 +2,11 @@
 
 A high-performance Rust port of [px2ansi](https://github.com/Nellousan/px2ansi).
 
-`px2ansi-rs` is a high-performance image-to-ANSI converter written in Rust.
-While inspired by the original Python px2ansi project, this is a complete
-reimagining built from the ground up for speed, featuring a dedicated indexing
-system, advanced resampling filters, Unicode support and more.
+`px2ansi-rs` is a high-performance image-to-ANSI/image-to-Unicode converter
+written in Rust. While inspired by the original Python px2ansi project, this is
+a complete reimagining built from the ground up for speed, featuring a dedicated
+indexing system, advanced resampling filters, Unicode support, fuzzy search and
+more.
 
 It is significantly faster than the original Python implementation and ships as
 a single, static binary.
@@ -31,16 +32,22 @@ a single, static binary.
 
 - 🚀 **Fast**: Written in Rust, optimized for speed (~25x faster than Python).
 
+- **Fuzzy Search**: Don't remember the exact name? `show pika` finds Pikachu.
+
+- **Interactive Mode**: Browse your entire collection with a live-filtered TUI.
+
+- **Multiple Modes**: Support for high-detail `ansi` or retro `unicode` blocks.
+
 - 🎨 **Truecolor**: Supports full 24-bit RGB colors.
 
-- 📐 Smart Resizing: Automatically detects terminal width and resizes large
+- 📐 **Smart Resizing**: Automatically detects terminal width and resizes large
   images to fit.
 
-- 📂 JSON Indexing: Built-in tool to scan directories and generate a searchable
-  manifest of your art library.
+- 📂 **JSON Indexing**: Built-in tool to scan directories and generate a
+  searchable manifest of your art library.
 
-- 🖼️ Flexible Filtering: Use `nearest` for sharp pixel art or `lanczos3` for
-  fmooth photos.
+- 🖼️ **Flexible Filtering**: Use `nearest` for sharp pixel art or `lanczos3` for
+  smooth photos.
 
 - 🧩 Transparency: Correctly handles alpha channels (rendering transparent
   pixels as terminal background).
@@ -71,15 +78,19 @@ cargo install px2ansi-rs
 | `px2ansi-rs ... --mode unicode`        | Unicode     | Half-block (▀)  | **HD Unicode:** High-fidelity detail using modern symbol sets. |
 | `px2ansi-rs ... --mode unicode --full` | Unicode     | Full-block (██) | **Retro Square:** 1:1 "pixel-perfect" square aesthetic.        |
 | `px2ansi-rs index <dir>`               | Either      | N/A             | Creating a manifest                                            |
+| `px2ansi-rs show -i`                   | Either      | Either          | Interactive fuzzy search                                       |
 | `px2ansi-rs show random`               | Either      | Context aware   | Automation: Terminal greeting/random asset rotation            |
+| `px2ansi-rs show chariz`               | Either      | Either          | Fuzzy Match e.g, 'chariz' opens Charizard                      |
+| `px2ansi-rs list`                      | Either      | Either          | List all assets                                                |
+| `px2ansi-rs list --count 10`           | Either      | Either          | List 10 assets                                                 |
 
 - The `--full` toggle is specifically optimized for **Unicode mode** to achieve
   a "pixel-perfect" square look.
 
 ### Usage
 
-`px2ansi-rs` now uses a subcommand-based interface: `convert`, `index`, and
-`show`
+`px2ansi-rs` now uses a subcommand-based interface: `convert`, `index`, `show`,
+and `list`
 
 1. Convert an Image
 
@@ -133,6 +144,48 @@ px2ansi-rs show random --mode unicode
 px2ansi-rs show random --mode ansi --filter nearest
 ```
 
+The Quick Way (Supports fuzzy matching)
+
+```bash
+# Matches names similar to the actual name showing a match score
+# This will open bulbasaur
+px2ansi-rs show bul <ENTER>
+```
+
+**Interactive Search (The "Browser" Mode)**
+
+Don't want to type names? Open the interactive fuzzy-finder to scroll through
+your entire index:
+
+```bash
+px2ansi-rs show -i
+```
+
+4. List Assets
+
+**List All**
+
+```bash
+px2ansi-rs list
+```
+
+**List 10**
+
+```bash
+px2ansi-rs list --count 10
+Index: Showing 10 of 1333 entries:
+  • abomasnow            68x56px
+  • abomasnow-mega       68x56px
+  • abra                 68x56px
+  • absol                68x56px
+  • absol-mega           68x56px
+  • accelgor             68x56px
+  • aegislash            68x56px
+  • aegislash-blade      68x56px
+  • aerodactyl           68x56px
+  • aerodactyl-mega      68x56px
+```
+
 If you clone the repo, I've included some test `.png` files:
 
 ```bash
@@ -184,7 +237,7 @@ can convert images on the fly, it is optimized for a "Build Once, Show Many"
 workflow.
 
 By default, the latency timer is visible. To suppress it for a cleaner output,
-use the `-s` or `--silent` flag. **The Indexing Advantage**
+use the `-s` or `--silent` flag.
 
 ### The Indexing Advantage
 
@@ -238,7 +291,7 @@ px2ansi -s show random
 px2ansi convert <file> --silent
 ```
 
-### Testing with the PokéSprite index
+### Testing with the PokéSprite index over 1,300 entries
 
 ```bash
 # Clone the repository (approx. 50MB)
@@ -268,7 +321,6 @@ px2ansi-rs show gengar --filter nearest
 Finished in 0ms
 ```
 
-
 ---
 
 ## Resize Filters (`--filter`)
@@ -284,3 +336,20 @@ Finished in 0ms
 ## Project build with px2ansi-rs
 
 - [slasher-horrorscripts](https://crates.io/crates/slasher-horrorscripts)
+
+## ⚠️ Troubleshooting & Errors
+
+`px2ansi-rs` uses robust error handling via `anyhow`. Here are common scenarios:
+
+- **Broken Pipe**: Occurs if you pipe output into a tool that closes early
+  (e.g., `px2ansi-rs show random | head -n 1`). This is normal CLI behavior.
+- **Index Missing**: If `show` fails, ensure your `index.json` is in the current
+  directory or specify it with `--index <PATH>`.
+- **Fuzzy Score Threshold**: If a search returns no result, the "match score"
+  was likely too low (below 30). Try a more specific search term or use `-i`.
+- **Terminal Gaps**: If you see horizontal lines, your terminal's line-height is
+  likely > 1.0.
+
+## License
+
+[GNU General Public License 3.0](https://github.com/saylesss88/px2ansi-rs/blob/main/LICENSE)
