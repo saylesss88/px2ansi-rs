@@ -17,6 +17,7 @@ pub fn write_ansi_art<W: Write>(
     img: &DynamicImage,
     out: &mut W,
     mode: OutputMode,
+    full_block: bool,
 ) -> std::io::Result<()> {
     let (width, height) = img.dimensions();
 
@@ -39,14 +40,30 @@ pub fn write_ansi_art<W: Write>(
             }
         }
         OutputMode::Unicode => {
-            // Unicode mode treats every pixel as a distinct "square" by printing
-            // two full-block characters side-by-side.
-            for y in 0..height {
-                for x in 0..width {
-                    let px = img.get_pixel(x, y);
-                    write_full_block(out, px)?;
+            if full_block {
+                // The "Pokemon-Colorscripts" look: 1 pixel = 2 wide characters
+                for y in 0..height {
+                    for x in 0..width {
+                        let px = img.get_pixel(x, y);
+                        write_full_block(out, px)?;
+                    }
+                    writeln!(out, "\x1b[0m")?;
                 }
-                writeln!(out, "\x1b[0m")?;
+            } else {
+                // The "Crisp Unicode" look: Uses half-blocks but on
+                // a per-row basis or specialized logic
+                for y in (0..height).step_by(2) {
+                    for x in 0..width {
+                        let top = img.get_pixel(x, y);
+                        let bot = if y + 1 < height {
+                            img.get_pixel(x, y + 1)
+                        } else {
+                            Rgba([0, 0, 0, 0])
+                        };
+                        write_half_block(out, top, bot)?;
+                    }
+                    writeln!(out, "\x1b[0m")?;
+                }
             }
         }
     }
