@@ -66,6 +66,15 @@ pub enum Commands {
         #[arg(short, long, value_enum, default_value_t = ResizeFilter::Nearest)]
         filter: ResizeFilter,
     },
+    List {
+        /// Path to the JSON index file
+        #[arg(short, long, default_value = "index.json")]
+        index: String,
+
+        /// Number of entries to show (omit to show all)
+        #[arg(short, long)]
+        count: Option<usize>,
+    },
 }
 // 1. Define an Enum for the CLI argument
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Parser)]
