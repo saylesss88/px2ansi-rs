@@ -50,13 +50,24 @@ cd px2ansi-rs
 cargo install --path .
 ```
 
-`crates.io`
+### From `crates.io`
 
 ```bash
 cargo install px2ansi-rs
 ```
 
-## Usage
+### Command Table
+
+| Command                                | Render Mode | Pixel Type      | Best For...                                                    |
+| :------------------------------------- | :---------- | :-------------- | :------------------------------------------------------------- |
+| `px2ansi-rs ... --mode ansi`           | ANSI        | Half-block (▀)  | **Maximum Compatibility:** Standard 2-pixel vertical packing.  |
+| `px2ansi-rs ... --mode unicode`        | Unicode     | Half-block (▀)  | **HD Unicode:** High-fidelity detail using modern symbol sets. |
+| `px2ansi-rs ... --mode unicode --full` | Unicode     | Full-block (██) | **Retro Square:** 1:1 "pixel-perfect" square aesthetic.        |
+
+- The `--full` toggle is specifically optimized for **Unicode mode** to achieve
+  a "pixel-perfect" square look.
+
+### Usage
 
 `px2ansi-rs` now uses a subcommand-based interface: `convert`, `index`, and
 `show`
@@ -67,6 +78,8 @@ Basic conversion to stdout (auto-resizes to fit your terminal):
 
 ```Bash
 px2ansi-rs convert image.png
+# These basically look the same for both modes
+px2ansi-rs convert image.png --mode unicode
 ```
 
 **Unicode Mode** (Retro Style)
@@ -74,7 +87,7 @@ px2ansi-rs convert image.png
 To get the chunky "Pokemon Colorscript" look:
 
 ```Bash
-px2ansi-rs convert image.png --mode unicode --filter nearest
+px2ansi-rs convert image.png --mode unicode --full --filter nearest
 ```
 
 **Force Width & Filtering**
@@ -122,6 +135,35 @@ px2ansi-rs index tests -o index.json
 px2ansi-rs show random
 px2ansi-rs show scream --filter lanczos3
 ```
+
+---
+
+### 🎨 Rendering Modes
+
+`px2ansi-rs` supports multiple ways to bring your sprites to life. Whether you
+want crisp modern detail or chunky retro vibes, we've got you covered.
+
+| Mode         | Command Flag     | Description                    | Best For                               |
+| ------------ | ---------------- | ------------------------------ | -------------------------------------- |
+| ANSI         | `--mode ansi`    | Standard 2-pixels-per-row      | Maximum compatibility & speed          |
+| HD Unicode   | `--mode unicode` | Hi-Def Unicode half-blocks 1:1 | High-Fidelity assets                   |
+| Retro Square | `--full`         | 1 pixel is a solid ██ square   | 8-bit/16-bit pixel art & retro styling |
+
+By default, both ANSI and Unicode modes now utilize a "vertical packing"
+technique to maximize resolution.
+
+- **The Technique**: Instead of using one character for one pixel, both modes
+  fit two vertical pixels into a single character cell. This is achieved by
+  using the Unicode half-block (▀) and manipulating the foreground and
+  background colors simultaneously.
+
+- **The Result**: Without `--full`: Both modes provide the same high-density
+  detail and use the full terminal width. They look identical because they are
+  using the same underlying pixel-packing logic to maintain 1:1 scaling.
+  - With `--full`: The logic switches from "packing" to "square-blocking," where
+    each individual pixel is rendered as a double-wide full block (██). This
+    creates the distinct chunky, retro aesthetic and causes the two modes to
+    diverge visually.
 
 ---
 
@@ -198,6 +240,6 @@ px2ansi convert <file> --silent
 
 - [guide.encode.moe resampling](https://guide.encode.moe/encoding/resampling.html)
 
-## Example Project build with px2ansi-rs
+## Project build with px2ansi-rs
 
 - [slasher-horrorscripts](https://crates.io/crates/slasher-horrorscripts)
