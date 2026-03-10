@@ -50,10 +50,10 @@ pub enum Commands {
 
     Show {
         /// The name of the image to show. Use 'random' to pick a surprise sprite!
-        #[arg(help = "The name of the image (e.g., 'charizard') or 'random'")]
+        #[arg(default_value = "random")]
         name: String,
         /// Path to the index.json file
-        #[arg(short, long, default_value = "index.json")]
+        #[arg(long, default_value = "index.json")]
         index: String,
         /// Output mode (ansi, unicode)
         #[arg(short, long, default_value = "ansi")]
@@ -65,10 +65,13 @@ pub enum Commands {
 
         #[arg(short, long, value_enum, default_value_t = ResizeFilter::Nearest)]
         filter: ResizeFilter,
+
+        #[arg(short = 'i', long)]
+        interactive: bool,
     },
     List {
         /// Path to the JSON index file
-        #[arg(short, long, default_value = "index.json")]
+        #[arg(long, default_value = "index.json")]
         index: String,
 
         /// Number of entries to show (omit to show all)
