@@ -34,6 +34,9 @@ a single, static binary.
 
 - **Fuzzy Search**: Don't remember the exact name? `show pika` finds Pikachu.
 
+- **Shell Completions**: `px2ansi-rs` can automatically generate the completion
+  scripts for Bash, Zsh, Fish, and PowerShell.
+
 - **Interactive Mode**: Browse your entire collection with a live-filtered TUI.
 
 - **Multiple Modes**: Support for high-detail `ansi` or retro `unicode` blocks.
@@ -74,6 +77,8 @@ cargo install px2ansi-rs
 
 | Command                                | Render Mode | Pixel Type      | Best For...                                                    |
 | :------------------------------------- | :---------- | :-------------- | :------------------------------------------------------------- |
+| `px2ansi-rs --help`                    | N/A         | N/A             | Listing command syntax                                         |
+| `px2ansi-rs <TAB>`                     | N/A         | N/A             | Shell Completion, if you sourced it for your shell             |
 | `px2ansi-rs ... --mode ansi`           | ANSI        | Half-block (▀)  | **Maximum Compatibility:** Standard 2-pixel vertical packing.  |
 | `px2ansi-rs ... --mode unicode`        | Unicode     | Half-block (▀)  | **HD Unicode:** High-fidelity detail using modern symbol sets. |
 | `px2ansi-rs ... --mode unicode --full` | Unicode     | Full-block (██) | **Retro Square:** 1:1 "pixel-perfect" square aesthetic.        |
@@ -153,6 +158,8 @@ The Quick Way (Supports fuzzy matching)
 px2ansi-rs show bul <ENTER>
 ```
 
+![screenshot3](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/bul.png)
+
 **Interactive Search (The "Browser" Mode)**
 
 Don't want to type names? Open the interactive fuzzy-finder to scroll through
@@ -198,6 +205,60 @@ px2ansi-rs index tests -o index.json
 px2ansi-rs show random
 px2ansi-rs show scream --filter lanczos3
 px2ansi-rs show scream --filter triangle --width 50
+```
+
+---
+
+### 🐚 Shell Completions
+
+`px2ansi-rs` can automatically generate completion scripts for Bash, Zsh, Fish,
+and PowerShell. This ensures that all subcommands (convert, show, index, list)
+and flags are available via the TAB key.
+
+**Quick Setup (Recommended)**
+
+The fastest way to enable completions is to source them directly from the binary
+in your shell configuration file.
+
+**Zsh**
+
+Add this to your `~/.zshrc` (or your NixOS Zsh module):
+
+```bash
+source <(px2ansi-rs completions zsh)
+```
+
+**Bash**
+
+Add this to your `~/.bashrc`:
+
+```bash
+source <(px2ansi-rs completions bash)
+```
+
+**Fish**
+
+Add this to `~/.config/fish/config.fish`:
+
+```fish
+px2ansi-rs completions fish | source
+```
+
+❄️ **NixOS Configuration**
+
+For NixOS users developing locally, you can use Home Manager to ensure
+completions are always active. Add the following to your Zsh module:
+
+```nix
+programs.zsh.initContent = ''
+  # Ensure your local build is in the PATH
+  export PATH="$HOME/projects/px2ansi-rs/target/debug:$PATH"
+
+  # Inject completions dynamically if the binary exists
+  if command -v px2ansi-rs >/dev/null; then
+    source <(px2ansi-rs completions zsh)
+  fi
+'';
 ```
 
 ---
