@@ -35,6 +35,14 @@ fn main() -> Result<()> {
             // Indexing is simple enough to keep inline: scan a dir, save the JSON.
             let json = crate::indexer::build_index(&dir)?;
             std::fs::write(output, json)?;
+
+            // This part should always show unless you add a --quiet flag later
+            println!("{} created successfully!", "Index".cyan().bold());
+
+            // Only show the speed flex if they asked for --latency
+            if cli.latency {
+                print_summary(start);
+            }
         }
         Commands::List { index, count } => handle_list(index, count)?,
         Commands::Show {
