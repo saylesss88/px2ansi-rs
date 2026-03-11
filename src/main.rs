@@ -3,7 +3,7 @@ mod cli;
 mod indexer;
 use crate::cli::{Cli, Commands};
 use anyhow::Result;
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use colored::Colorize;
 use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
@@ -54,6 +54,11 @@ fn main() -> Result<()> {
             interactive,
         } => {
             handle_show(&name, index, &mode, filter, full, interactive)?;
+        }
+        Commands::Completions { shell } => {
+            let mut cmd = cli::Cli::command();
+            clap_complete::generate(shell, &mut cmd, "px2ansi-rs", &mut std::io::stdout());
+            return Ok(()); // Important: exit early so we don't run the engine logic
         }
     }
 
