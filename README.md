@@ -83,6 +83,7 @@ cargo install px2ansi-rs
 | `px2ansi-rs show chariz`               | Either      | Either          | Fuzzy Match e.g, 'chariz' opens Charizard                      |
 | `px2ansi-rs list`                      | Either      | Either          | List all assets                                                |
 | `px2ansi-rs list --count 10`           | Either      | Either          | List 10 assets                                                 |
+| `px2ansi-rs ... ... -l`                | Either      | Either          | Opt-in for performance metrics                                 |
 
 - The `--full` toggle is specifically optimized for **Unicode mode** to achieve
   a "pixel-perfect" square look.
@@ -236,8 +237,8 @@ technique to maximize resolution.
 can convert images on the fly, it is optimized for a "Build Once, Show Many"
 workflow.
 
-By default, the latency timer is visible. To suppress it for a cleaner output,
-use the `-s` or `--silent` flag.
+By default, the latency timer is not visible. To add performance metrics add the
+`-l` `--latency` flag.
 
 ### The Indexing Advantage
 
@@ -247,9 +248,7 @@ sequences every time they are run. `px2ansi-rs` separates these concerns:
 1. `index`: Scans your asset directory and creates a JSON manifest. This avoids
    slow recursive directory walks during daily use.
 
-2. `show`: Uses the index to jump directly to the file. When combined with the
-   `--silent` flag, this provides an "instant-on" experience suitable for shell
-   startup scripts (`.zshrc`, `config.nu`).
+2. `show`: Uses the index to jump directly to the file.
 
 **Benchmarking**
 
@@ -281,14 +280,12 @@ environment using a release build (`opt-level = 3`).
 > intensive. For shell greetings, using the show command with pre-indexed
 > sprites is recommended for a sub-10ms "instant" feel.
 
-Silent Mode For use in automation or terminal greetings, use the `-s` or
-`--silent` flag to suppress performance metrics and output only the raw ANSI
-art:
+Performance metrics are now opt-in:
 
 ```Bash
-# Don't show latency on screen
-px2ansi -s show random
-px2ansi convert <file> --silent
+# Show latency on screen
+px2ansi -l show random
+px2ansi convert <file> --latency
 ```
 
 ### Testing with the PokéSprite index over 1,300 entries
@@ -301,12 +298,12 @@ git clone https://github.com/msikma/pokesprite.git
 cd pokesprite/pokemon-gen8/regular
 
 # Create an Index of 1334 .png files
-px2ansi-rs index . -o index.json
+px2ansi-rs index . -o index.json -l
 Index created successfully in 31ms!
 ```
 
 ```bash
-px2ansi-rs show random
+px2ansi-rs show random -l
 Finished in 0ms
 ```
 
@@ -314,7 +311,7 @@ Let's try the shiny set:
 
 ```bash
 cd ~/pokesprite/pokemon-gen8/shiny/
-px2ansi-rs index . -o shiny-index.json
+px2ansi-rs index . -o shiny-index.json -l
 Index created successfully in 30ms!
 
 px2ansi-rs show gengar --filter nearest
