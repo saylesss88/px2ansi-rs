@@ -79,6 +79,14 @@ pub fn write_ansi_art<W: Write>(
     Ok(())
 }
 
+/// A low-level helper that squashes two vertical pixels into a single terminal character cell.
+///
+/// It uses the 'upper half block' character (▀) and clever color manipulation:
+/// - The **foreground** color is set to the `top` pixel.
+/// - The **background** color is set to the `bot` pixel.
+///
+/// If one of the pixels is transparent (alpha = 0), it switches to a half-block
+/// or space with a transparent background to let the terminal's own theme show through.
 fn write_half_block<W: Write>(out: &mut W, top: Rgba<u8>, bot: Rgba<u8>) -> std::io::Result<()> {
     match (top[3] > 0, bot[3] > 0) {
         (true, true) => write!(
@@ -92,7 +100,13 @@ fn write_half_block<W: Write>(out: &mut W, top: Rgba<u8>, bot: Rgba<u8>) -> std:
     }
 }
 
-// Emulating the "solid" look of some scripts
+/// Renders a single pixel as a wide, solid block using two 'full block' characters (██).
+///
+/// Since terminal character cells are usually twice as tall as they are wide,
+/// printing two characters for every one pixel preserves a square aspect ratio.
+/// This is the technique used by tools like `pokemon-colorscripts`.
+///
+/// If the pixel is transparent, it simply prints two spaces.
 fn write_full_block<W: Write>(out: &mut W, px: Rgba<u8>) -> std::io::Result<()> {
     if px[3] > 0 {
         // Print TWO blocks for every ONE pixel
