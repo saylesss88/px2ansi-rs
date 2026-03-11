@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use image::imageops::FilterType;
 
 #[derive(Parser)]
-#[command(name = "px2ansi", version, about = "Pixel art tools")]
+#[command(name = "px2ansi-rs", version, about = "Pixel art tools")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
