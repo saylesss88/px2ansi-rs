@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand, ValueEnum};
+use clap_complete;
 use image::imageops::FilterType;
 
 #[derive(Parser)]
@@ -77,6 +78,11 @@ pub enum Commands {
         /// Number of entries to show (omit to show all)
         #[arg(short, long)]
         count: Option<usize>,
+    },
+    Completions {
+        /// The shell to generate completions for
+        #[arg(value_enum)]
+        shell: clap_complete::Shell,
     },
 }
 // 1. Define an Enum for the CLI argument
