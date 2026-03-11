@@ -40,9 +40,9 @@ fn main() -> Result<()> {
             println!("{} created successfully!", "Index".cyan().bold());
 
             // Only show the speed flex if they asked for --latency
-            if cli.latency {
-                print_summary(start);
-            }
+            // if cli.latency {
+            //     print_summary(start);
+            // }
         }
         Commands::List { index, count } => handle_list(index, count)?,
         Commands::Show {
