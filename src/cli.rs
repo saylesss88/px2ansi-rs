@@ -7,9 +7,9 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
 
-    /// Suppress performance metrics and status messages
-    #[arg(short, long, global = true)]
-    pub silent: bool,
+    /// Show timing and execution metadata
+    #[arg(short = 'l', long = "latency", global = true)] // Added global = true here
+    pub latency: bool,
 }
 #[derive(Subcommand)]
 pub enum Commands {
@@ -24,7 +24,7 @@ pub enum Commands {
 
         /// Output mode:
         /// - 'ansi': Highest detail. Uses half-blocks to fit 2 pixels per cell.
-        /// - 'unicode': Retro look. Uses '██' to represent 1 pixel as a square.
+        /// - 'unicode': Uses half-blocks by default, opt-in for full block mode `--full`
         #[arg(short, long, default_value = "ansi")]
         mode: String,
 
