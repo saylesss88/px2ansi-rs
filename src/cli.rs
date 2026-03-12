@@ -9,8 +9,11 @@ pub struct Cli {
     pub command: Commands,
 
     /// Show timing and execution metadata
-    #[arg(short = 'l', long = "latency", global = true)] // Added global = true here
+    #[arg(short = 'l', long = "latency", global = true)]
     pub latency: bool,
+
+    #[arg(short = 'I', long = "index", global = true)]
+    pub index: Option<String>,
 }
 #[derive(Subcommand)]
 pub enum Commands {
@@ -51,18 +54,17 @@ pub enum Commands {
         /// Directory to scan
         dir: String,
         /// Path to save the JSON index
-        #[arg(short, long, default_value = "index.json")]
-        output: String,
+        #[arg(short, long)]
+        output: Option<String>,
     },
-
     Show {
         /// The name of the image to show. Use 'random' to pick a surprise sprite!
         #[arg(default_value = "random")]
         name: String,
         /// Path to the index.json file
         // #[arg(short, long, default_value = "index.json")]
-        #[arg(short, long)]
-        index: Option<String>,
+        // #[arg(short = 'I', long)]
+        // index: Option<String>,
         /// Output mode (ansi, unicode)
         #[arg(short, long)]
         mode: Option<String>,
@@ -78,10 +80,9 @@ pub enum Commands {
         interactive: bool,
     },
     List {
-        /// Path to the JSON index file
-        #[arg(long, default_value = "index.json")]
-        index: String,
-
+        // /// Path to the JSON index file
+        // #[arg(short = 'I', long, default_value = "index.json")]
+        // index: String,
         /// Number of entries to show (omit to show all)
         #[arg(short, long)]
         count: Option<usize>,
@@ -93,7 +94,6 @@ pub enum Commands {
     },
 }
 // 1. Define an Enum for the CLI argument
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")] // For the config file (TOML)
 #[clap(rename_all = "kebab-case")] // For the CLI flags
