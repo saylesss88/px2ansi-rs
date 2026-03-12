@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use clap_complete;
 use image::imageops::FilterType;
+use serde::{Deserialize, Serialize};
 
 #[derive(Parser)]
 #[command(name = "px2ansi-rs", version, about = "Pixel art tools")]
@@ -26,19 +26,25 @@ pub enum Commands {
         /// Output mode:
         /// - 'ansi': Highest detail. Uses half-blocks to fit 2 pixels per cell.
         /// - 'unicode': Uses half-blocks by default, opt-in for full block mode `--full`
-        #[arg(short, long, default_value = "ansi")]
-        mode: String,
+        #[arg(short, long)]
+        mode: Option<String>,
 
         #[arg(long)]
-        full: bool,
+        full: Option<bool>,
 
         /// Force a specific width
         #[arg(long)]
         width: Option<u32>,
 
         /// Resize filter
-        #[arg(long, value_enum, default_value_t = ResizeFilter::Lanczos3)]
-        filter: ResizeFilter,
+        #[arg(
+            short,
+            long,
+            value_enum,
+            help = "The resampling filter to use",
+            long_help = "Nearest is best for pixel art. Lanczos3 is best for high-resolution images."
+        )]
+        filter: Option<ResizeFilter>,
     },
     /// Create a JSON index of a directory
     Index {
@@ -54,18 +60,19 @@ pub enum Commands {
         #[arg(default_value = "random")]
         name: String,
         /// Path to the index.json file
-        #[arg(long, default_value = "index.json")]
-        index: String,
+        // #[arg(short, long, default_value = "index.json")]
+        #[arg(short, long)]
+        index: Option<String>,
         /// Output mode (ansi, unicode)
-        #[arg(short, long, default_value = "ansi")]
-        mode: String,
+        #[arg(short, long)]
+        mode: Option<String>,
 
         /// Use double-width full blocks (██) for a retro, square look
         #[arg(long)]
-        full: bool,
+        full: Option<bool>,
 
-        #[arg(short, long, value_enum, default_value_t = ResizeFilter::Nearest)]
-        filter: ResizeFilter,
+        #[arg(short, long, value_enum)]
+        filter: Option<ResizeFilter>,
 
         #[arg(short = 'i', long)]
         interactive: bool,
@@ -86,12 +93,20 @@ pub enum Commands {
     },
 }
 // 1. Define an Enum for the CLI argument
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Parser)]
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")] // For the config file (TOML)
+#[clap(rename_all = "kebab-case")] // For the CLI flags
 pub enum ResizeFilter {
+    /// Nearest Neighbor (Best for pixel art)
     Nearest,
+    /// Linear interpolation
     Triangle,
+    /// Sharp cubic filter
     CatmullRom,
+    /// Blurry cubic filter
     Gaussian,
+    /// High-quality resampling (Slowest)
     Lanczos3,
 }
 
