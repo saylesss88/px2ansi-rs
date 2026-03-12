@@ -2,7 +2,7 @@
 mod cli;
 mod config;
 mod indexer;
-use crate::cli::{Cli, Commands, ResizeFilter};
+use crate::cli::{Cli, Commands};
 use crate::config::AppConfig;
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
@@ -24,12 +24,20 @@ fn main() -> Result<()> {
     // 1. Load config from ~/.config/px2ansi-rs/default-config.toml
     let cfg: AppConfig = confy::load("px2ansi-rs", None)?;
 
+    // // Normalize cfg.index to an absolute path once
+    // let index_path = PathBuf::from(&cfg.index);
+    // if index_path.is_relative() {
+    //     // choose whatever base dir you like; current_dir is the simplest
+    //     let abs = std::env::current_dir()?.join(index_path);
+    //     cfg.index = abs.to_string_lossy().into_owned();
+    // }
     // 2. Parse CLI args
     let cli = Cli::parse();
 
+    let active_index = cli.index.as_deref().unwrap_or(&cfg.index);
     // 3. Apply Overrides
     // If the user didn't specify a mode on CLI, use the config mode
-    let active_latency = if cli.latency { true } else { cfg.latency };
+    let active_latency = cli.latency || cfg.latency;
 
     match cli.command {
         Commands::Convert {
@@ -55,50 +63,64 @@ fn main() -> Result<()> {
             )?;
         }
         Commands::Index { dir, output } => {
-            // Indexing is simple enough to keep inline: scan a dir, save the JSON.
-            let json = crate::indexer::build_index(&dir)?;
-            std::fs::write(output, json)?;
+            // Priority: --output flag > global -I flag > config.toml
+            let save_path = output.as_deref().unwrap_or(active_index);
 
-            // This part should always show unless you add a --quiet flag later
-            println!("{} created successfully!", "Index".cyan().bold());
+            handle_index(&dir, save_path)?;
 
-            // Only show the speed flex if they asked for --latency
-            // if cli.latency {
-            //     print_summary(start);
-            // }
+            println!("✅ Created index of {dir} at {save_path}");
         }
-        Commands::List { index, count } => handle_list(index, count)?,
+        // Commands::Index { dir, output } => {
+        //     // Indexing is simple enough to keep inline: scan a dir, save the JSON.
+        //     // For creating an index, use -o if provided, otherwise the global active_index
+        //     let save_path = output.as_deref().unwrap_or(active_index);
+        //     handle_index(&dir, save_path)?;
+        //     println!("Index successfully created at: {}", save_path);
+
+        //     // Only show the speed flex if they asked for --latency
+        //     // if cli.latency {
+        //     //     print_summary(start);
+        //     // }
+        // }
+        Commands::List { count } => handle_list(active_index.to_string(), count)?,
         Commands::Show {
             name,
-            index,
             mode,
-            filter,
             full,
+            filter,
             interactive,
         } => {
-            // 1. Resolve the values
-            let active_mode = mode.unwrap_or_else(|| cfg.mode.clone());
-            let active_full = full.unwrap_or(cfg.full);
-            let active_filter = filter.unwrap_or(ResizeFilter::Nearest);
-            let active_index = index.unwrap_or(cfg.index);
+            let mode_val = mode.unwrap_or(cfg.mode);
+            // let filter_val = cfg.filter;
+            let full_val = full.unwrap_or(cfg.full);
+            let active_filter = filter.unwrap_or(cfg.filter);
 
-            // 2. Pass the resolved values
+            if !std::path::Path::new(active_index).exists() {
+                anyhow::bail!(
+                    "Index file not found at: {active_index}\n\n\
+    💡 Tip: You need to create an index before you can 'show' images.\n\
+    Try running: px2ansi-rs index <folder_with_images> -o {active_index}"
+                );
+            }
+
             handle_show(
                 &name,
-                active_index,
-                &active_mode,
+                active_index.to_string(), // This refers to the variable from the top of main()
+                &mode_val,
                 active_filter,
-                active_full,
+                // filter_val,
+                full_val,
                 interactive,
+                active_latency,
             )?;
         }
+
         Commands::Completions { shell } => {
             let mut cmd = cli::Cli::command();
             clap_complete::generate(shell, &mut cmd, "px2ansi-rs", &mut std::io::stdout());
             return Ok(()); // Important: exit early so we don't run the engine logic
         }
     }
-
     if active_latency {
         print_summary(start);
     }
@@ -136,6 +158,8 @@ fn handle_convert(
 /// We cap the output by `count` so we don't accidentally flood the
 /// terminal if the index contains thousands of images.
 fn handle_list(index_path: String, count: Option<usize>) -> Result<()> {
+    // eprintln!("DEBUG index path: {index_path}");
+
     let entries: Vec<crate::indexer::ImageEntry> =
         serde_json::from_str(&std::fs::read_to_string(index_path)?)?;
     let limit = count.unwrap_or(entries.len()).min(entries.len());
@@ -170,7 +194,11 @@ fn handle_show(
     filter: crate::cli::ResizeFilter,
     full: bool,
     interactive: bool,
+    latency: bool,
 ) -> Result<()> {
+    // eprintln!("DEBUG index path: {index}");
+    // Start the timer
+    let start_time = std::time::Instant::now();
     let entries: Vec<crate::indexer::ImageEntry> =
         serde_json::from_str(&std::fs::read_to_string(index)?)?;
     if entries.is_empty() {
@@ -191,6 +219,12 @@ fn handle_show(
 
         let img = image::ImageReader::open(&e.path)?.decode()?;
         process_and_render(img, parse_mode(mode), None, filter.into(), full)?;
+    }
+
+    if latency {
+        let duration = start_time.elapsed();
+        println!("\n--- Metadata ---");
+        println!("Render latency: {duration:?}");
     }
 
     Ok(())
@@ -331,5 +365,10 @@ fn process_and_render(
 
     write_ansi_art(&img, &mut writer, output_mode, full)?;
     writer.flush()?;
+    Ok(())
+}
+
+fn handle_index(dir: &str, output: &str) -> Result<()> {
+    crate::indexer::build_index(dir, output)?;
     Ok(())
 }

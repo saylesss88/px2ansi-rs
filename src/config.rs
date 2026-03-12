@@ -2,6 +2,7 @@ use crate::cli::ResizeFilter;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(default)]
 pub struct AppConfig {
     pub mode: String,
     pub latency: bool,
