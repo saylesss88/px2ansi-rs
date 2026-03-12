@@ -1,10 +1,13 @@
 #![allow(clippy::multiple_crate_versions)]
 mod cli;
+mod config;
 mod indexer;
-use crate::cli::{Cli, Commands};
+use crate::cli::{Cli, Commands, ResizeFilter};
+use crate::config::AppConfig;
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use colored::Colorize;
+use core::option::Option::None;
 use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use rand::prelude::IndexedRandom;
@@ -17,8 +20,16 @@ use px2ansi_rs::{OutputMode, write_ansi_art};
 /// The main entry point. We parse the CLI args, start a stopwatch for the "speed"
 /// flex at the end, and route the command to its specific handler.
 fn main() -> Result<()> {
-    let cli = Cli::parse();
     let start = Instant::now();
+    // 1. Load config from ~/.config/px2ansi-rs/default-config.toml
+    let cfg: AppConfig = confy::load("px2ansi-rs", None)?;
+
+    // 2. Parse CLI args
+    let cli = Cli::parse();
+
+    // 3. Apply Overrides
+    // If the user didn't specify a mode on CLI, use the config mode
+    let active_latency = if cli.latency { true } else { cfg.latency };
 
     match cli.command {
         Commands::Convert {
@@ -29,7 +40,19 @@ fn main() -> Result<()> {
             filter,
             full,
         } => {
-            handle_convert(filename, output, &mode, width, filter, full)?;
+            // MERGE LOGIC: CLI wins, then Config, then Hardcoded Default
+            let active_mode = mode.unwrap_or_else(|| cfg.mode.clone());
+            let active_full = full.unwrap_or(cfg.full);
+            let active_filter = filter.unwrap_or(cfg.filter);
+
+            handle_convert(
+                filename,
+                output,
+                &active_mode,
+                width,
+                active_filter,
+                active_full,
+            )?;
         }
         Commands::Index { dir, output } => {
             // Indexing is simple enough to keep inline: scan a dir, save the JSON.
@@ -53,7 +76,21 @@ fn main() -> Result<()> {
             full,
             interactive,
         } => {
-            handle_show(&name, index, &mode, filter, full, interactive)?;
+            // 1. Resolve the values
+            let active_mode = mode.unwrap_or_else(|| cfg.mode.clone());
+            let active_full = full.unwrap_or(cfg.full);
+            let active_filter = filter.unwrap_or(ResizeFilter::Nearest);
+            let active_index = index.unwrap_or(cfg.index);
+
+            // 2. Pass the resolved values
+            handle_show(
+                &name,
+                active_index,
+                &active_mode,
+                active_filter,
+                active_full,
+                interactive,
+            )?;
         }
         Commands::Completions { shell } => {
             let mut cmd = cli::Cli::command();
@@ -62,9 +99,10 @@ fn main() -> Result<()> {
         }
     }
 
-    if cli.latency {
+    if active_latency {
         print_summary(start);
     }
+
     Ok(())
 }
 
