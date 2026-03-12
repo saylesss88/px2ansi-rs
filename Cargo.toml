@@ -1,6 +1,6 @@
 [package]
 name = "px2ansi-rs"
-version = "0.3.11"
+version = "0.3.12"
 edition = "2024"
 authors = ["T. Sawyer <saylesss87@proton.me>", "Nell Fauveau <nellousan@hotmail.fr> (original Python version)"]
 license = "GPL-3.0"
@@ -24,6 +24,7 @@ fuzzy-matcher = "0.3.7"
 walkdir = "2.5.0"
 dialoguer = { version = "0.12.0", features = ["fuzzy-select"] }
 clap_complete = "4.5.66"
+confy = "2.0.0"
 
 [[bin]]
 name = "px2ansi-rs"

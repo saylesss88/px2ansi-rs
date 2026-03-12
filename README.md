@@ -73,6 +73,52 @@ cargo install --path .
 cargo install px2ansi-rs
 ```
 
+### ⚙️ Configuration
+
+`px2ansi-rs` supports a configuration file to save your preferred defaults. This
+is especially useful on systems like NixOS or for keeping a consistent look
+without typing flags.
+
+**File Location**
+
+The config is stored in your standard system config directory:
+
+- **Linux**: `~/.config/px2ansi-rs/default-config.toml`
+
+- **macOS**: `~/Library/Application Support/px2ansi-rs/default-config.toml`
+
+- **Windows**: `%AppData%\px2ansi-rs\config\default-config.toml`
+
+**Example** `default-config.toml`
+
+You can create this file manually to override the engine's built-in defaults:
+
+```toml
+# Output mode: "ansi" (2 pixels per cell) or "unicode"
+mode = "ansi"
+
+# Always show execution timing metadata
+latency = true
+
+# Default filter: "nearest", "triangle", "catmull-rom", "gaussian", "lanczos3"
+filter = "lanczos3"
+
+# Use double-width full blocks (██) for square pixels
+full = false
+```
+
+**Hierarchy of Truth**
+
+The engine resolves settings in this order:
+
+1. **CLI Flags** (e.g., `--mode unicode`) — always wins.
+
+2. **Config File** (`default-config.toml`) — used if no flag is provided.
+
+3. **Hardcoded Defaults** — used if the config file is missing.
+
+---
+
 ### Command Table
 
 | Command                                | Render Mode | Pixel Type      | Best For...                                                    |
@@ -382,6 +428,9 @@ Finished in 0ms
 ---
 
 ## Resize Filters (`--filter`)
+
+You can specify a filter via the `--filter` flag or in your
+`default-config.toml`.
 
 - `nearest` — Nearest-neighbor. Fastest; best for pixel art / hard edges.
 - `triangle` — Linear filter (bilinear).
