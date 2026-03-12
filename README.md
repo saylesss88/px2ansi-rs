@@ -103,38 +103,49 @@ latency = true
 # Default filter: "nearest", "triangle", "catmull-rom", "gaussian", "lanczos3"
 filter = "lanczos3"
 
+# Index file name to target (absolute path)
+index = "/home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json"
+
 # Use double-width full blocks (██) for square pixels
 full = false
 ```
+
+You can now use an index in a separate directory from where you're at by either
+adding the `index` path like we did above, or you can pass it from the cli with
+`px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json`
+
+> Note: Any field omitted from the `.toml` file will automatically fall back to
+> the engine's built-in defaults.
 
 **Hierarchy of Truth**
 
 The engine resolves settings in this order:
 
-1. **CLI Flags** (e.g., `--mode unicode`) — always wins.
+1. **CLI Flags** (e.g., `--mode unicode`) always wins.
 
-2. **Config File** (`default-config.toml`) — used if no flag is provided.
+2. **Config File** (`default-config.toml`) used if no flag is provided.
 
-3. **Hardcoded Defaults** — used if the config file is missing.
+3. **Hardcoded Defaults** used if the config file is missing.
 
 ---
 
 ### Command Table
 
-| Command                                | Render Mode | Pixel Type      | Best For...                                                    |
-| :------------------------------------- | :---------- | :-------------- | :------------------------------------------------------------- |
-| `px2ansi-rs --help`                    | N/A         | N/A             | Listing command syntax                                         |
-| `px2ansi-rs <TAB>`                     | N/A         | N/A             | Shell Completion, if you sourced it for your shell             |
-| `px2ansi-rs ... --mode ansi`           | ANSI        | Half-block (▀)  | **Maximum Compatibility:** Standard 2-pixel vertical packing.  |
-| `px2ansi-rs ... --mode unicode`        | Unicode     | Half-block (▀)  | **HD Unicode:** High-fidelity detail using modern symbol sets. |
-| `px2ansi-rs ... --mode unicode --full` | Unicode     | Full-block (██) | **Retro Square:** 1:1 "pixel-perfect" square aesthetic.        |
-| `px2ansi-rs index <dir>`               | Either      | N/A             | Creating a manifest                                            |
-| `px2ansi-rs show -i`                   | Either      | Either          | Interactive fuzzy search                                       |
-| `px2ansi-rs show random`               | Either      | Context aware   | Automation: Terminal greeting/random asset rotation            |
-| `px2ansi-rs show chariz`               | Either      | Either          | Fuzzy Match e.g, 'chariz' opens Charizard                      |
-| `px2ansi-rs list`                      | Either      | Either          | List all assets                                                |
-| `px2ansi-rs list --count 10`           | Either      | Either          | List 10 assets                                                 |
-| `px2ansi-rs ... ... -l`                | Either      | Either          | Opt-in for performance metrics                                 |
+| Command                                     | Render Mode | Pixel Type      | Best For...                                                    |
+| :------------------------------------------ | :---------- | :-------------- | :------------------------------------------------------------- |
+| `px2ansi-rs --help`                         | N/A         | N/A             | Listing command syntax                                         |
+| `px2ansi-rs <TAB>`                          | N/A         | N/A             | Shell Completion, if you sourced it for your shell             |
+| `px2ansi-rs ... --mode ansi`                | ANSI        | Half-block (▀)  | **Maximum Compatibility:** Standard 2-pixel vertical packing.  |
+| `px2ansi-rs ... --mode unicode`             | Unicode     | Half-block (▀)  | **HD Unicode:** High-fidelity detail using modern symbol sets. |
+| `px2ansi-rs ... --mode unicode --full`      | Unicode     | Full-block (██) | **Retro Square:** 1:1 "pixel-perfect" square aesthetic.        |
+| `px2ansi-rs index <dir>`                    | Either      | N/A             | Creating a manifest                                            |
+| `px2ansi-rs show -i`                        | Either      | Either          | Interactive fuzzy search, (requires index)                                       |
+| `px2ansi-rs show random`                    | Either      | Context aware   | Automation: Terminal greeting/random asset rotation            |
+| `px2ansi-rs show chariz`                    | Either      | Either          | Fuzzy Match e.g, 'chariz' opens Charizard                      |
+| `px2ansi-rs list`                           | Either      | Either          | List all assets                                                |
+| `px2ansi-rs list --count 10`                | Either      | Either          | List 10 assets                                                 |
+| `px2ansi-rs ... ... -l`                     | Either      | Either          | Opt-in for performance metrics                                 |
+| `px2ansi-rs -I /path/shiny-index.json show` | Either      | Either          | show a random sprite from $PATH                                |
 
 - The `--full` toggle is specifically optimized for **Unicode mode** to achieve
   a "pixel-perfect" square look.
@@ -195,6 +206,9 @@ px2ansi-rs show random
 px2ansi-rs show random --mode unicode
 px2ansi-rs show random --mode ansi --filter nearest
 ```
+
+- By default, `px2ansi-rs show` shows a random sprite from the `index.json` in
+  the current folder.
 
 The Quick Way (Supports fuzzy matching)
 

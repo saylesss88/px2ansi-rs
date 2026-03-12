@@ -33,3 +33,10 @@ path = "src/main.rs"
 [lib]
 name = "px2ansi_rs"
 path = "src/lib.rs"
+
+[profile.release]
+opt-level = 3     # Maximum optimization
+lto = true        # Link Time Optimization (smaller/faster binary)
+codegen-units = 1 # Better optimization at the cost of slower compile time
+panic = 'abort'   # Remove stack unwinding (smaller binary)
+strip = true      # Automatically strip symbols (significantly smaller file)
