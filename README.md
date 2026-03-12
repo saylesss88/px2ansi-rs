@@ -55,6 +55,9 @@ a single, static binary.
 - 🧩 Transparency: Correctly handles alpha channels (rendering transparent
   pixels as terminal background).
 
+- **Optional Config File**: `px2ansi-rs` now supports a config file for common
+  options: `~/.config/px2ansi-rs/default-config.toml`.
+
 ---
 
 ## Installation
@@ -72,6 +75,8 @@ cargo install --path .
 ```bash
 cargo install px2ansi-rs
 ```
+
+---
 
 ### ⚙️ Configuration
 
@@ -139,7 +144,7 @@ The engine resolves settings in this order:
 | `px2ansi-rs ... --mode unicode`             | Unicode     | Half-block (▀)  | **HD Unicode:** High-fidelity detail using modern symbol sets. |
 | `px2ansi-rs ... --mode unicode --full`      | Unicode     | Full-block (██) | **Retro Square:** 1:1 "pixel-perfect" square aesthetic.        |
 | `px2ansi-rs index <dir>`                    | Either      | N/A             | Creating a manifest                                            |
-| `px2ansi-rs show -i`                        | Either      | Either          | Interactive fuzzy search, (requires index)                                       |
+| `px2ansi-rs show -i`                        | Either      | Either          | Interactive fuzzy search, (requires index)                     |
 | `px2ansi-rs show random`                    | Either      | Context aware   | Automation: Terminal greeting/random asset rotation            |
 | `px2ansi-rs show chariz`                    | Either      | Either          | Fuzzy Match e.g, 'chariz' opens Charizard                      |
 | `px2ansi-rs list`                           | Either      | Either          | List all assets                                                |
