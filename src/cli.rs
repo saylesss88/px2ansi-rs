@@ -61,10 +61,6 @@ pub enum Commands {
         /// The name of the image to show. Use 'random' to pick a surprise sprite!
         #[arg(default_value = "random")]
         name: String,
-        /// Path to the index.json file
-        // #[arg(short, long, default_value = "index.json")]
-        // #[arg(short = 'I', long)]
-        // index: Option<String>,
         /// Output mode (ansi, unicode)
         #[arg(short, long)]
         mode: Option<String>,
@@ -80,9 +76,6 @@ pub enum Commands {
         interactive: bool,
     },
     List {
-        // /// Path to the JSON index file
-        // #[arg(short = 'I', long, default_value = "index.json")]
-        // index: String,
         /// Number of entries to show (omit to show all)
         #[arg(short, long)]
         count: Option<usize>,

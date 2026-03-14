@@ -39,7 +39,6 @@ impl Default for AppConfig {
             latency: false,
             filter: ResizeFilter::Lanczos3,
             full: false,
-            // Defaulting to a local file, though we discussed using a home-dir path earlier
             index: "index.json".into(),
         }
     }
