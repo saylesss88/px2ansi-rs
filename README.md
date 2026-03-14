@@ -6,6 +6,8 @@ Rust. While inspired by the original Python
 reimplementation (~25x faster) with indexing, fuzzy search, TUI browsing, and
 advanced filters.
 
+![px2ansi-rs demo](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi_demo.gif)
+
 ---
 
 ## Features
@@ -156,6 +158,7 @@ Index: Showing 10 of 1333 entries:
   • aerodactyl           68x56px
   • aerodactyl-mega      68x56px
 ```
+
 ---
 
 ### ⚙️ Configuration
