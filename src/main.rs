@@ -10,6 +10,7 @@ use colored::Colorize;
 use core::option::Option::None;
 use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
+use image::imageops::FilterType;
 use rand::prelude::IndexedRandom;
 use std::io::{self, BufWriter, Write};
 use std::time::Instant;
@@ -24,13 +25,6 @@ fn main() -> Result<()> {
     // 1. Load config from ~/.config/px2ansi-rs/default-config.toml
     let cfg: AppConfig = confy::load("px2ansi-rs", None)?;
 
-    // // Normalize cfg.index to an absolute path once
-    // let index_path = PathBuf::from(&cfg.index);
-    // if index_path.is_relative() {
-    //     // choose whatever base dir you like; current_dir is the simplest
-    //     let abs = std::env::current_dir()?.join(index_path);
-    //     cfg.index = abs.to_string_lossy().into_owned();
-    // }
     // 2. Parse CLI args
     let cli = Cli::parse();
 
@@ -70,18 +64,6 @@ fn main() -> Result<()> {
 
             println!("✅ Created index of {dir} at {save_path}");
         }
-        // Commands::Index { dir, output } => {
-        //     // Indexing is simple enough to keep inline: scan a dir, save the JSON.
-        //     // For creating an index, use -o if provided, otherwise the global active_index
-        //     let save_path = output.as_deref().unwrap_or(active_index);
-        //     handle_index(&dir, save_path)?;
-        //     println!("Index successfully created at: {}", save_path);
-
-        //     // Only show the speed flex if they asked for --latency
-        //     // if cli.latency {
-        //     //     print_summary(start);
-        //     // }
-        // }
         Commands::List { count } => handle_list(active_index.to_string(), count)?,
         Commands::Show {
             name,
@@ -318,46 +300,63 @@ fn process_and_render(
     mut img: image::DynamicImage,
     output_mode: OutputMode,
     target_width: Option<u32>,
-    filter: image::imageops::FilterType,
+    filter: FilterType,
     full: bool,
 ) -> Result<()> {
-    let final_width = target_width
-        .or_else(|| {
-            terminal_size().map(|(Width(tw), Height(th))| {
-                // Your existing sizing logic (keep it!)
-                let term_w = u32::from(tw);
-                let term_h = u32::from(th);
-                let max_w = if output_mode == OutputMode::Unicode && full {
-                    term_w / 2
-                } else {
-                    term_w
-                }
-                .saturating_sub(2);
+    let term_dims = terminal_size().map(|(Width(tw), Height(th))| (u32::from(tw), u32::from(th)));
 
-                let max_h = if output_mode == OutputMode::Unicode && full {
-                    term_h
-                } else {
-                    term_h * 2
-                }
-                .saturating_sub(2);
+    let (max_w, max_h) = if let Some((tw, th)) = term_dims {
+        let mw = if output_mode == OutputMode::Unicode && full {
+            tw / 2
+        } else {
+            tw
+        }
+        .saturating_sub(2);
+        let mh = if output_mode == OutputMode::Unicode && full {
+            th
+        } else {
+            th * 2
+        }
+        .saturating_sub(2);
+        (mw, mh)
+    } else {
+        (80, 40)
+    };
 
-                if img.width() > max_w || img.height() > max_h {
-                    let scale = (f64::from(max_w) / f64::from(img.width()))
-                        .min(f64::from(max_h) / f64::from(img.height()));
-                    (f64::from(img.width()) * scale).round() as u32
-                } else {
-                    img.width() // Native size for sprites ✓
-                }
-            })
-        })
-        .unwrap_or(80);
+    let orig_w = img.width();
+    let orig_h = img.height();
 
-    let safe_w = final_width.max(1);
-    let aspect_ratio = f64::from(img.height()) / f64::from(img.width());
-    let new_height = (f64::from(safe_w) * aspect_ratio).round() as u32;
+    let (render_w, render_h) = target_width.map_or_else(
+        || {
+            if filter == FilterType::Nearest && orig_w < 120 {
+                // --- CRISP SPRITE LOGIC ---
+                // Find the largest WHOLE NUMBER scale that fits the terminal
+                let scale_w = (f64::from(max_w) / f64::from(orig_w)).floor();
+                let scale_h = (f64::from(max_h) / f64::from(orig_h)).floor();
 
-    // CRITICAL FIX: ALWAYS RESIZE (even 1x) → FILTER ALWAYS APPLIES
-    img = img.resize_exact(safe_w, new_height, filter);
+                // Use a scale of at least 1, but prefer a whole number like 2.0 or 3.0
+                let scale = scale_w.min(scale_h).max(1.0);
+
+                let rw = (f64::from(orig_w) * scale) as u32;
+                let rh = (f64::from(orig_h) * scale) as u32;
+                (rw, rh)
+            } else {
+                // --- NORMAL MODE ---
+                let scale = (f64::from(max_w) / f64::from(orig_w))
+                    .min(f64::from(max_h) / f64::from(orig_h));
+                (
+                    (f64::from(orig_w) * scale).round() as u32,
+                    (f64::from(orig_h) * scale).round() as u32,
+                )
+            }
+        },
+        |tw| {
+            let aspect = f64::from(orig_h) / f64::from(orig_w);
+            (tw, (f64::from(tw) * aspect).round() as u32)
+        },
+    );
+    // Use resize_exact with Nearest to prevent sub-pixel shifting
+    img = img.resize_exact(render_w.max(1), render_h.max(1), filter);
 
     let stdout = io::stdout();
     let mut writer = BufWriter::new(stdout.lock());
@@ -365,86 +364,6 @@ fn process_and_render(
     writer.flush()?;
     Ok(())
 }
-// fn process_and_render(
-//     mut img: image::DynamicImage,
-//     output_mode: OutputMode,
-//     target_width: Option<u32>,
-//     filter: image::imageops::FilterType,
-//     full: bool,
-// ) -> Result<()> {
-//     // Determine the best width for the image based on user input or terminal dimensions
-//     let final_width = target_width
-//         .or_else(|| {
-//             //     terminal_size().map(|(Width(tw), Height(th))| {
-//             //         let term_w = u32::from(tw);
-//             //         let term_h = u32::from(th);
-
-//             //         // Define the bounding box of the terminal
-//             //         let max_w = if output_mode == OutputMode::Unicode && full {
-//             //             term_w / 2
-//             //         } else {
-//             //             term_w
-//             //         }
-//             //         .saturating_sub(2);
-
-//             //         let max_h = if output_mode == OutputMode::Unicode && full {
-//             //             term_h
-//             //         } else {
-//             //             term_h * 2
-//             //         }
-//             //         .saturating_sub(2);
-
-//             //         // Calculate scale to fit the bounding box (upscale or downscale)
-//             //         let scale = (f64::from(max_w) / f64::from(img.width()))
-//             //             .min(f64::from(max_h) / f64::from(img.height()));
-
-//             //         (f64::from(img.width()) * scale).round() as u32
-//             //     })
-//             // })
-//             // .unwrap_or(80);
-//             terminal_size().map(|(Width(tw), Height(th))| {
-//                 let term_w = u32::from(tw);
-//                 let term_h = u32::from(th);
-
-//                 let max_w = if output_mode == OutputMode::Unicode && full {
-//                     term_w / 2
-//                 } else {
-//                     term_w
-//                 }
-//                 .saturating_sub(2);
-
-//                 let max_h = if output_mode == OutputMode::Unicode && full {
-//                     term_h
-//                 } else {
-//                     term_h * 2
-//                 }
-//                 .saturating_sub(2);
-
-//                 if img.width() > max_w || img.height() > max_h {
-//                     let scale = (f64::from(max_w) / f64::from(img.width()))
-//                         .min(f64::from(max_h) / f64::from(img.height()));
-
-//                     (f64::from(img.width()) * scale).round() as u32
-//                 } else {
-//                     img.width()
-//                 }
-//             })
-//         })
-//         .unwrap_or(80);
-
-//     let safe_w = final_width.max(1);
-//     let aspect_ratio = f64::from(img.height()) / f64::from(img.width());
-//     let new_height = (f64::from(safe_w) * aspect_ratio) as u32;
-
-//     img = img.resize(safe_w, new_height, filter);
-
-//     let stdout = io::stdout();
-//     let mut writer = BufWriter::new(stdout.lock());
-
-//     write_ansi_art(&img, &mut writer, output_mode, full)?;
-//     writer.flush()?;
-//     Ok(())
-// }
 
 fn handle_index(dir: &str, output: &str) -> Result<()> {
     crate::indexer::build_index(dir, output)?;
