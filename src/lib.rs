@@ -1,13 +1,41 @@
 #![allow(clippy::multiple_crate_versions)]
 use image::{DynamicImage, GenericImageView, Rgba};
 use std::io::Write;
+use std::str::FromStr;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum OutputMode {
-    Ansi,    // Standard half-blocks
+    #[default]
+    Ansi, // Standard half-blocks
     Unicode, // Full blocks or specialized chars (like pokemon-colorscripts)
 }
 
+impl FromStr for OutputMode {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "unicode" => Ok(Self::Unicode),
+            "ansi" | "block" => Ok(Self::Ansi),
+            _ => anyhow::bail!("Invalid output mode '{s}'. Use 'ansi' or 'unicode'"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct AnsiArtOptions {
+    pub mode: OutputMode,
+    pub full_block: bool,
+}
+
+impl Default for AnsiArtOptions {
+    fn default() -> Self {
+        Self {
+            mode: OutputMode::Ansi,
+            full_block: false,
+        }
+    }
+}
 /// Renders an image into the terminal using ANSI escape sequences.
 ///
 /// Depending on the `mode`, this will either:
@@ -24,17 +52,13 @@ pub enum OutputMode {
 /// on the writer's capability.
 pub fn write_ansi_art<W: Write>(
     img: &DynamicImage,
-    out: &mut W,
-    mode: OutputMode,
-    full_block: bool,
+    writer: &mut W,
+    options: AnsiArtOptions, // 👈 Single parameter!
 ) -> std::io::Result<()> {
     let (width, height) = img.dimensions();
 
-    match mode {
+    match options.mode {
         OutputMode::Ansi => {
-            // Ansi mode uses a "vertical pairing" trick to double the effective resolution.
-            // By using the foreground for the top pixel and background for the bottom,
-            // we can fit two pixels into a single character's space.
             for y in (0..height).step_by(2) {
                 for x in 0..width {
                     let top = img.get_pixel(x, y);
@@ -43,24 +67,21 @@ pub fn write_ansi_art<W: Write>(
                     } else {
                         Rgba([0, 0, 0, 0])
                     };
-                    write_half_block(out, top, bot)?;
+                    write_half_block(writer, top, bot)?;
                 }
-                writeln!(out, "\x1b[0m")?;
+                writeln!(writer, "\x1b[0m")?;
             }
         }
         OutputMode::Unicode => {
-            if full_block {
-                // The "Pokemon-Colorscripts" look: 1 pixel = 2 wide characters
+            if options.full_block {
                 for y in 0..height {
                     for x in 0..width {
                         let px = img.get_pixel(x, y);
-                        write_full_block(out, px)?;
+                        write_full_block(writer, px)?;
                     }
-                    writeln!(out, "\x1b[0m")?;
+                    writeln!(writer, "\x1b[0m")?;
                 }
             } else {
-                // The "Crisp Unicode" look: Uses half-blocks but on
-                // a per-row basis or specialized logic
                 for y in (0..height).step_by(2) {
                     for x in 0..width {
                         let top = img.get_pixel(x, y);
@@ -69,15 +90,71 @@ pub fn write_ansi_art<W: Write>(
                         } else {
                             Rgba([0, 0, 0, 0])
                         };
-                        write_half_block(out, top, bot)?;
+                        write_half_block(writer, top, bot)?;
                     }
-                    writeln!(out, "\x1b[0m")?;
+                    writeln!(writer, "\x1b[0m")?;
                 }
             }
         }
     }
     Ok(())
 }
+// pub fn write_ansi_art<W: Write>(
+//     img: &DynamicImage,
+//     out: &mut W,
+//     mode: OutputMode,
+//     full_block: bool,
+// ) -> std::io::Result<()> {
+//     let (width, height) = img.dimensions();
+
+//     match mode {
+//         OutputMode::Ansi => {
+//             // Ansi mode uses a "vertical pairing" trick to double the effective resolution.
+//             // By using the foreground for the top pixel and background for the bottom,
+//             // we can fit two pixels into a single character's space.
+//             for y in (0..height).step_by(2) {
+//                 for x in 0..width {
+//                     let top = img.get_pixel(x, y);
+//                     let bot = if y + 1 < height {
+//                         img.get_pixel(x, y + 1)
+//                     } else {
+//                         Rgba([0, 0, 0, 0])
+//                     };
+//                     write_half_block(out, top, bot)?;
+//                 }
+//                 writeln!(out, "\x1b[0m")?;
+//             }
+//         }
+//         OutputMode::Unicode => {
+//             if full_block {
+//                 // The "Pokemon-Colorscripts" look: 1 pixel = 2 wide characters
+//                 for y in 0..height {
+//                     for x in 0..width {
+//                         let px = img.get_pixel(x, y);
+//                         write_full_block(out, px)?;
+//                     }
+//                     writeln!(out, "\x1b[0m")?;
+//                 }
+//             } else {
+//                 // The "Crisp Unicode" look: Uses half-blocks but on
+//                 // a per-row basis or specialized logic
+//                 for y in (0..height).step_by(2) {
+//                     for x in 0..width {
+//                         let top = img.get_pixel(x, y);
+//                         let bot = if y + 1 < height {
+//                             img.get_pixel(x, y + 1)
+//                         } else {
+//                             Rgba([0, 0, 0, 0])
+//                         };
+//                         write_half_block(out, top, bot)?;
+//                     }
+//                     writeln!(out, "\x1b[0m")?;
+//                 }
+//             }
+//         }
+//     }
+//     Ok(())
+// }
 
 /// A low-level helper that squashes two vertical pixels into a single terminal character cell.
 ///
