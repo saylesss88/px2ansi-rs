@@ -7,7 +7,6 @@ use crate::config::AppConfig;
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use colored::Colorize;
-use core::option::Option::None;
 use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use image::imageops::FilterType;
@@ -27,11 +26,11 @@ fn main() -> Result<()> {
 
     // 2. Parse CLI args
     let cli = Cli::parse();
+    let active_latency = cli.latency || cfg.latency;
 
     let active_index = cli.index.as_deref().unwrap_or(&cfg.index);
     // 3. Apply Overrides
     // If the user didn't specify a mode on CLI, use the config mode
-    let active_latency = cli.latency || cfg.latency;
 
     match cli.command {
         Commands::Convert {
@@ -62,12 +61,23 @@ fn main() -> Result<()> {
         Commands::Index { dir, output } => {
             // Priority: --output flag > global -I flag > config.toml
             let save_path = output.as_deref().unwrap_or(active_index);
+            let params = IndexParams {
+                dir: &dir,
+                output: save_path,
+            };
 
-            handle_index(&dir, save_path)?;
+            handle_index(&params)?;
 
             println!("✅ Created index of {dir} at {save_path}");
         }
-        Commands::List { count } => handle_list(active_index.to_string(), count)?,
+        Commands::List { count } => {
+            let params = ListParams {
+                index_path: active_index,
+                count,
+            };
+            handle_list(&params)?;
+        }
+
         Commands::Show {
             name,
             mode,
@@ -111,9 +121,8 @@ fn main() -> Result<()> {
         }
     }
     if active_latency {
-        print_summary(start);
+        print_summary(start.elapsed());
     }
-
     Ok(())
 }
 
@@ -130,16 +139,16 @@ pub struct ConvertParams<'a> {
     pub render: RenderOptions,
 }
 
-impl<'a> ConvertParams<'a> {
-    #[must_use]
-    pub fn new(path: &'a str) -> Self {
-        Self {
-            path,
-            output: None,
-            render: RenderOptions::default(),
-        }
-    }
-}
+// impl<'a> ConvertParams<'a> {
+//     #[must_use]
+//     pub fn new(path: &'a str) -> Self {
+//         Self {
+//             path,
+//             output: None,
+//             render: RenderOptions::default(),
+//         }
+//     }
+// }
 
 /// Orchestrates the conversion of a standalone image.
 ///
@@ -166,15 +175,20 @@ fn handle_convert(params: &ConvertParams<'_>) -> Result<()> {
     Ok(())
 }
 
+#[derive(Debug)]
+struct ListParams<'a> {
+    index_path: &'a str,
+    count: Option<usize>,
+}
 /// Reads the generated index file and displays the "sprite" entries.
 /// We cap the output by `count` so we don't accidentally flood the
 /// terminal if the index contains thousands of images.
-fn handle_list(index_path: String, count: Option<usize>) -> Result<()> {
+fn handle_list(params: &ListParams<'_>) -> Result<()> {
     // eprintln!("DEBUG index path: {index_path}");
 
     let entries: Vec<crate::indexer::ImageEntry> =
-        serde_json::from_str(&std::fs::read_to_string(index_path)?)?;
-    let limit = count.unwrap_or(entries.len()).min(entries.len());
+        serde_json::from_str(&std::fs::read_to_string(params.index_path)?)?;
+    let limit = params.count.unwrap_or(entries.len()).min(entries.len());
 
     println!(
         "{} Showing {} of {} entries:",
@@ -252,16 +266,13 @@ fn handle_show(params: &ShowParams<'_>) -> Result<()> {
 }
 
 // --- Helpers ---
-/// Prints execution metadata if the user opted in via --latency.
-fn print_summary(start: Instant) {
-    let duration = start.elapsed();
+fn print_summary(duration: std::time::Duration) {
     eprintln!(
         "\n{} took {}ms",
         "Execution".bright_blue().bold(),
         duration.as_millis()
     );
 }
-
 /// Searches the index for an image entry based on the provided name.
 ///
 /// It follows a prioritized search strategy:
@@ -352,6 +363,14 @@ impl Default for RenderOptions {
     }
 }
 
+impl From<RenderOptions> for AnsiArtOptions {
+    fn from(opts: RenderOptions) -> Self {
+        Self {
+            mode: opts.output_mode,
+            full_block: opts.full,
+        }
+    }
+}
 /// The engine room of the crate. This function calculates the optimal scale
 /// for the image before it hits the ANSI writer.
 ///
@@ -436,26 +455,22 @@ fn process_and_render(mut img: image::DynamicImage, options: RenderOptions) -> R
         );
     }
 
-    img = img.resize_exact(render_w, render_h, options.filter);
-
     // Use resize_exact with Nearest to prevent sub-pixel shifting
-    // img = img.resize_exact(render_w.max(1), render_h.max(1), filter);
+    img = img.resize_exact(render_w, render_h, options.filter);
 
     let stdout = io::stdout();
     let mut writer = BufWriter::new(stdout.lock());
-    write_ansi_art(
-        &img,
-        &mut writer,
-        AnsiArtOptions {
-            mode: options.output_mode,
-            full_block: options.full,
-        },
-    )?;
+    write_ansi_art(&img, &mut writer, options.into())?;
     writer.flush()?;
     Ok(())
 }
 
-fn handle_index(dir: &str, output: &str) -> Result<()> {
-    crate::indexer::build_index(dir, output)?;
+struct IndexParams<'a> {
+    dir: &'a str,
+    output: &'a str,
+}
+
+fn handle_index(params: &IndexParams<'_>) -> Result<()> {
+    crate::indexer::build_index(params.dir, params.output)?;
     Ok(())
 }
