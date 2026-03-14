@@ -257,11 +257,8 @@ fn handle_show(params: &ShowParams<'_>) -> Result<()> {
     }
 
     if params.latency {
-        let duration = start_time.elapsed();
-        println!("\n--- Metadata ---");
-        println!("Render latency: {duration:?}");
+        print_summary(start_time.elapsed());
     }
-
     Ok(())
 }
 
