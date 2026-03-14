@@ -303,6 +303,7 @@ fn process_and_render(
     filter: FilterType,
     full: bool,
 ) -> Result<()> {
+    const MAX_SAFE: u32 = 16384;
     let term_dims = terminal_size().map(|(Width(tw), Height(th))| (u32::from(tw), u32::from(th)));
 
     let (max_w, max_h) = if let Some((tw, th)) = term_dims {
@@ -355,8 +356,28 @@ fn process_and_render(
             (tw, (f64::from(tw) * aspect).round() as u32)
         },
     );
+
+    // SAFETY: Clamp to a reasonable max for terminal art / image crate
+    let render_w = render_w.clamp(1, MAX_SAFE);
+    let render_h = render_h.clamp(1, MAX_SAFE);
+
+    if render_w == MAX_SAFE || render_h == MAX_SAFE {
+        let clamped_dims = if render_w == MAX_SAFE && render_h == MAX_SAFE {
+            format!("{MAX_SAFE}x{MAX_SAFE}")
+        } else if render_w == MAX_SAFE {
+            format!("{MAX_SAFE}x{render_h}")
+        } else {
+            format!("{render_w}x{MAX_SAFE}")
+        };
+        eprintln!(
+            "Warning: image dimensions clamped to {clamped_dims} to avoid excessive memory usage"
+        );
+    }
+
+    img = img.resize_exact(render_w, render_h, filter);
+
     // Use resize_exact with Nearest to prevent sub-pixel shifting
-    img = img.resize_exact(render_w.max(1), render_h.max(1), filter);
+    // img = img.resize_exact(render_w.max(1), render_h.max(1), filter);
 
     let stdout = io::stdout();
     let mut writer = BufWriter::new(stdout.lock());
