@@ -384,3 +384,5 @@ You can specify a filter via the `--filter` flag or in your
 ## License
 
 [GNU General Public License 3.0](https://github.com/saylesss88/px2ansi-rs/blob/main/LICENSE)
+
+Testing Git Hook
