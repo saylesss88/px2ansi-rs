@@ -321,13 +321,12 @@ fn process_and_render(
     filter: image::imageops::FilterType,
     full: bool,
 ) -> Result<()> {
-    // Determine the best width for the image based on user input or terminal dimensions
     let final_width = target_width
         .or_else(|| {
             terminal_size().map(|(Width(tw), Height(th))| {
+                // Your existing sizing logic (keep it!)
                 let term_w = u32::from(tw);
                 let term_h = u32::from(th);
-
                 let max_w = if output_mode == OutputMode::Unicode && full {
                     term_w / 2
                 } else {
@@ -345,10 +344,9 @@ fn process_and_render(
                 if img.width() > max_w || img.height() > max_h {
                     let scale = (f64::from(max_w) / f64::from(img.width()))
                         .min(f64::from(max_h) / f64::from(img.height()));
-
                     (f64::from(img.width()) * scale).round() as u32
                 } else {
-                    img.width()
+                    img.width() // Native size for sprites ✓
                 }
             })
         })
@@ -356,17 +354,97 @@ fn process_and_render(
 
     let safe_w = final_width.max(1);
     let aspect_ratio = f64::from(img.height()) / f64::from(img.width());
-    let new_height = (f64::from(safe_w) * aspect_ratio) as u32;
+    let new_height = (f64::from(safe_w) * aspect_ratio).round() as u32;
 
-    img = img.resize(safe_w, new_height, filter);
+    // CRITICAL FIX: ALWAYS RESIZE (even 1x) → FILTER ALWAYS APPLIES
+    img = img.resize_exact(safe_w, new_height, filter);
 
     let stdout = io::stdout();
     let mut writer = BufWriter::new(stdout.lock());
-
     write_ansi_art(&img, &mut writer, output_mode, full)?;
     writer.flush()?;
     Ok(())
 }
+// fn process_and_render(
+//     mut img: image::DynamicImage,
+//     output_mode: OutputMode,
+//     target_width: Option<u32>,
+//     filter: image::imageops::FilterType,
+//     full: bool,
+// ) -> Result<()> {
+//     // Determine the best width for the image based on user input or terminal dimensions
+//     let final_width = target_width
+//         .or_else(|| {
+//             //     terminal_size().map(|(Width(tw), Height(th))| {
+//             //         let term_w = u32::from(tw);
+//             //         let term_h = u32::from(th);
+
+//             //         // Define the bounding box of the terminal
+//             //         let max_w = if output_mode == OutputMode::Unicode && full {
+//             //             term_w / 2
+//             //         } else {
+//             //             term_w
+//             //         }
+//             //         .saturating_sub(2);
+
+//             //         let max_h = if output_mode == OutputMode::Unicode && full {
+//             //             term_h
+//             //         } else {
+//             //             term_h * 2
+//             //         }
+//             //         .saturating_sub(2);
+
+//             //         // Calculate scale to fit the bounding box (upscale or downscale)
+//             //         let scale = (f64::from(max_w) / f64::from(img.width()))
+//             //             .min(f64::from(max_h) / f64::from(img.height()));
+
+//             //         (f64::from(img.width()) * scale).round() as u32
+//             //     })
+//             // })
+//             // .unwrap_or(80);
+//             terminal_size().map(|(Width(tw), Height(th))| {
+//                 let term_w = u32::from(tw);
+//                 let term_h = u32::from(th);
+
+//                 let max_w = if output_mode == OutputMode::Unicode && full {
+//                     term_w / 2
+//                 } else {
+//                     term_w
+//                 }
+//                 .saturating_sub(2);
+
+//                 let max_h = if output_mode == OutputMode::Unicode && full {
+//                     term_h
+//                 } else {
+//                     term_h * 2
+//                 }
+//                 .saturating_sub(2);
+
+//                 if img.width() > max_w || img.height() > max_h {
+//                     let scale = (f64::from(max_w) / f64::from(img.width()))
+//                         .min(f64::from(max_h) / f64::from(img.height()));
+
+//                     (f64::from(img.width()) * scale).round() as u32
+//                 } else {
+//                     img.width()
+//                 }
+//             })
+//         })
+//         .unwrap_or(80);
+
+//     let safe_w = final_width.max(1);
+//     let aspect_ratio = f64::from(img.height()) / f64::from(img.width());
+//     let new_height = (f64::from(safe_w) * aspect_ratio) as u32;
+
+//     img = img.resize(safe_w, new_height, filter);
+
+//     let stdout = io::stdout();
+//     let mut writer = BufWriter::new(stdout.lock());
+
+//     write_ansi_art(&img, &mut writer, output_mode, full)?;
+//     writer.flush()?;
+//     Ok(())
+// }
 
 fn handle_index(dir: &str, output: &str) -> Result<()> {
     crate::indexer::build_index(dir, output)?;

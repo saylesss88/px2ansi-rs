@@ -1,20 +1,62 @@
 # px2ansi-rs
 
-`px2ansi-rs` is a high-performance image-to-ANSI/Unicode toolkit written in
-Rust. While inspired by the original Python
-[px2ansi](https://github.com/Nellousan/px2ansi) project, this is a complete
-reimplementation (~25x faster) with indexing, fuzzy search, TUI browsing, and
-advanced filters.
+A high-performance Rust port of [px2ansi](https://github.com/Nellousan/px2ansi).
 
----
+`px2ansi-rs` is a high-performance image-to-ANSI/image-to-Unicode converter
+written in Rust. While inspired by the original Python px2ansi project, this is
+a complete reimagining built from the ground up for speed, featuring a dedicated
+indexing system, advanced resampling filters, Unicode support, fuzzy search and
+more.
+
+It is significantly faster than the original Python implementation and ships as
+a single, static binary.
+
+(Input)
+![screenshot1](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pik1.png)
+
+(Output)
+![screenshot2](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pikaclean.png)
+
+(Input Hi-Fi)
+![scream](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/scream.png)
+
+(Output Hi-Fi source: pngegg.com)
+![scream](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/scream-demo.png)
+
+> If you see horizontal lines or gaps in the image, check your terminal's Line
+> Height or Vertical Offset settings. For the best experience, set line-height
+> to 1.0 and use a "Mono" spaced font. Terminals like foot, kitty, and wezterm
+> generally provide the best results out of the box.
 
 ## Features
 
-- **Fuzzy Search** — `show pika` → Pikachu
-- **Interactive TUI** — `show -i` to browse
-- **Truecolor + Transparency** — Full 24-bit RGB + alpha
-- **Smart Resize** — Auto-fits terminal width
-- **5 Filters** — `nearest` (pixel art) to `lanczos3` (photos)
+- 🚀 **Fast**: Written in Rust, optimized for speed (~25x faster than Python).
+
+- **Fuzzy Search**: Don't remember the exact name? `show pika` finds Pikachu.
+
+- **Shell Completions**: `px2ansi-rs` can automatically generate the completion
+  scripts for Bash, Zsh, Fish, and PowerShell.
+
+- **Interactive Mode**: Browse your entire collection with a live-filtered TUI.
+
+- **Multiple Modes**: Support for high-detail `ansi` or retro `unicode` blocks.
+
+- 🎨 **Truecolor**: Supports full 24-bit RGB colors.
+
+- 📐 **Smart Resizing**: Automatically detects terminal width and resizes large
+  images to fit.
+
+- 📂 **JSON Indexing**: Built-in tool to scan directories and generate a
+  searchable manifest of your art library.
+
+- 🖼️ **Flexible Filtering**: Use `nearest` for sharp pixel art or `lanczos3` for
+  smooth photos.
+
+- 🧩 Transparency: Correctly handles alpha channels (rendering transparent
+  pixels as terminal background).
+
+- **Optional Config File**: `px2ansi-rs` now supports a config file for common
+  options: `~/.config/px2ansi-rs/default-config.toml`.
 
 ---
 
@@ -36,19 +78,79 @@ cargo install px2ansi-rs
 
 ---
 
-## Quick Reference
+### ⚙️ Configuration
 
-| Use Case        | Command                                              | Mode    | Style | Notes                |
-| --------------- | ---------------------------------------------------- | ------- | ----- | -------------------- |
-| **Convert**     | `px2ansi-rs convert image.png`                       | auto    | ▀     | Terminal width       |
-| **ANSI**        | `px2ansi-rs convert image.png --mode ansi`           | ANSI    | ▀     | Max compatibility    |
-| **Unicode**     | `px2ansi-rs convert image.png --mode unicode`        | Unicode | ▀     | High detail          |
-| **Retro**       | `px2ansi-rs convert image.png --mode unicode --full` | Unicode | ██    | Pixel perfect        |
-| **Index**       | `px2ansi-rs index <dir> -o index.json`               | N/A     | N/A   | Creates `index.json` |
-| **Interactive** | `px2ansi-rs show -i`                                 | auto    | auto  | Fuzzy TUI browser    |
-| **Fuzzy**       | `px2ansi-rs show chariz`                             | auto    | auto  | → Charizard          |
-| **Random**      | `px2ansi-rs show random`                             | auto    | auto  | Terminal greeting    |
-| **List**        | `px2ansi-rs list --count 10`                         | N/A     | N/A   | First 10 assets      |
+`px2ansi-rs` supports a configuration file to save your preferred defaults. This
+is especially useful on systems like NixOS or for keeping a consistent look
+without typing flags.
+
+**File Location**
+
+The config is stored in your standard system config directory:
+
+- **Linux**: `~/.config/px2ansi-rs/default-config.toml`
+
+- **macOS**: `~/Library/Application Support/px2ansi-rs/default-config.toml`
+
+- **Windows**: `%AppData%\px2ansi-rs\config\default-config.toml`
+
+**Example** `default-config.toml`
+
+You can create this file manually to override the engine's built-in defaults:
+
+```toml
+# Output mode: "ansi" (2 pixels per cell) or "unicode"
+mode = "ansi"
+
+# Always show execution timing metadata
+latency = true
+
+# Default filter: "nearest", "triangle", "catmull-rom", "gaussian", "lanczos3"
+filter = "lanczos3"
+
+# Index file name to target (absolute path)
+index = "/home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json"
+
+# Use double-width full blocks (██) for square pixels
+full = false
+```
+
+You can now use an index in a separate directory from where you're at by either
+adding the `index` path like we did above, or you can pass it from the cli with
+`px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json`
+
+> Note: Any field omitted from the `.toml` file will automatically fall back to
+> the engine's built-in defaults.
+
+**Hierarchy of Truth**
+
+The engine resolves settings in this order:
+
+1. **CLI Flags** (e.g., `--mode unicode`) always wins.
+
+2. **Config File** (`default-config.toml`) used if no flag is provided.
+
+3. **Hardcoded Defaults** used if the config file is missing.
+
+---
+
+### Command Table
+
+| Command                                     | Render Mode | Pixel Type      | Best For...                                                    |
+| :------------------------------------------ | :---------- | :-------------- | :------------------------------------------------------------- |
+| `px2ansi-rs --help`                         | N/A         | N/A             | Listing command syntax                                         |
+| `px2ansi-rs <TAB>`                          | N/A         | N/A             | Shell Completion, if you sourced it for your shell             |
+| `px2ansi-rs ... --mode ansi`                | ANSI        | Half-block (▀)  | **Maximum Compatibility:** Standard 2-pixel vertical packing.  |
+| `px2ansi-rs ... --mode unicode`             | Unicode     | Half-block (▀)  | **HD Unicode:** High-fidelity detail using modern symbol sets. |
+| `px2ansi-rs ... --mode unicode --full`      | Unicode     | Full-block (██) | **Retro Square:** 1:1 "pixel-perfect" square aesthetic.        |
+| `px2ansi-rs index <dir>`                    | Either      | N/A             | Creating a manifest                                            |
+| `px2ansi-rs show -i`                        | Either      | Either          | Interactive fuzzy search, (requires index)                     |
+| `px2ansi-rs show random`                    | Either      | Context aware   | Automation: Terminal greeting/random asset rotation            |
+| `px2ansi-rs show chariz`                    | Either      | Either          | Fuzzy Match e.g, 'chariz' opens Charizard                      |
+| `px2ansi-rs list`                           | Either      | Either          | List all assets                                                |
+| `px2ansi-rs list --count 10`                | Either      | Either          | List 10 assets                                                 |
+| `px2ansi-rs ... ... -l`                     | Either      | Either          | Opt-in for performance metrics                                 |
+| `px2ansi-rs -I /path/shiny-index.json show` | Either      | Either          | show a random sprite from $PATH                                |
 
 - The `--full` toggle is specifically optimized for **Unicode mode** to achieve
   a "pixel-perfect" square look.
@@ -156,53 +258,19 @@ Index: Showing 10 of 1333 entries:
   • aerodactyl           68x56px
   • aerodactyl-mega      68x56px
 ```
----
 
-### ⚙️ Configuration
+If you clone the repo, I've included some test `.png` files:
 
-`px2ansi-rs` supports a configuration file to save your preferred defaults.
-
-**File Location**
-
-The config is stored in your standard system config directory:
-
-- **Linux**: `~/.config/px2ansi-rs/default-config.toml`
-- **macOS**: `~/Library/Application Support/px2ansi-rs/default-config.toml`
-- **Windows**: `%AppData%\px2ansi-rs\config\default-config.toml`
-
-**Example** `default-config.toml`
-
-You can create this file manually to override the engine's built-in defaults:
-
-```toml
-# Output mode: "ansi" (2 pixels per cell) or "unicode"
-mode = "ansi"
-# Always show execution timing metadata
-latency = true
-# Default filter: "nearest", "triangle", "catmull-rom", "gaussian", "lanczos3"
-filter = "lanczos3"
-# Index file name to target (absolute path)
-index = "/home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json"
-# Use double-width full blocks (██) for square pixels
-full = false
+```bash
+git clone https://github.com/saylesss88/px2ansi-rs
+cd px2ansi-rs
+px2ansi-rs convert tests/test.png --filter nearest
+# Create an index
+px2ansi-rs index tests -o index.json
+px2ansi-rs show random
+px2ansi-rs show scream --filter lanczos3
+px2ansi-rs show scream --filter triangle --width 50
 ```
-
-You can call your index from anywhere in your filesystem by using the `-I` flag,
-or adding the `index` path like we did above, or you can pass it from the cli
-`px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json`
-
-> Note: Any field omitted from the `.toml` file will automatically fall back to
-> the engine's built-in defaults.
-
-**Hierarchy of Truth**
-
-The engine resolves settings in this order:
-
-1. **CLI Flags** (e.g., `--mode unicode`) always wins.
-
-2. **Config File** (`default-config.toml`) used if no flag is provided.
-
-3. **Hardcoded Defaults** used if the config file is missing.
 
 ---
 
@@ -307,6 +375,36 @@ sequences every time they are run. `px2ansi-rs` separates these concerns:
    slow recursive directory walks during daily use.
 
 2. `show`: Uses the index to jump directly to the file.
+
+**Benchmarking**
+
+System: AMD AM06 Pro (Ryzen) | OS: NixOS
+
+**Benchmarking Targets:**
+
+- **Sprite (test.png):** 96x96 (~9k pixels) -> 2ms (Nearest)
+- **High-Fi (scream.png):** 700x909 (~636k pixels) -> 15ms (Nearest) / 17ms
+  (Lanczos3)
+
+Performance is divided into two categories: Sprites (low resolution/nearest
+filter) and High-Fidelity (high resolution/complex filters).
+
+The following measurements reflect the performance of the tool in a real-world
+environment using a release build (`opt-level = 3`).
+
+| Operation         | Target Asset        | Filter   | Latency |
+| ----------------- | ------------------- | -------- | ------- |
+| Convert           | `test.png`          | Nearest  | 3ms     |
+| Convert           | `scream.png`(Hi-Fi) | Lanczos3 | 15ms    |
+| Convert           | `scream.png`(Hi-Fi) | Nearest  | 9ms     |
+| Summon(`show`)    | `test`(96x96)       | Nearest  | 2ms     |
+| Summon(`show`)    | `test`(Unicode)     | Nearest  | 0ms     |
+| Summon(`show`)    | `scream`            | Nearest  | 12ms    |
+| Manifest(`index`) | 2-Asset Test        | N/A      | 7ms     |
+
+> Note: While Lanczos3 provides the highest visual quality, it is mathematically
+> intensive. For shell greetings, using the show command with pre-indexed
+> sprites is recommended for a sub-10ms "instant" feel.
 
 Performance metrics are now opt-in:
 
