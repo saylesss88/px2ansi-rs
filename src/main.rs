@@ -16,7 +16,7 @@ use std::io::{self, BufWriter, Write};
 use std::time::Instant;
 use terminal_size::{Height, Width, terminal_size};
 
-use px2ansi_rs::{OutputMode, write_ansi_art};
+use px2ansi_rs::{AnsiArtOptions, OutputMode, write_ansi_art};
 
 /// The main entry point. We parse the CLI args, start a stopwatch for the "speed"
 /// flex at the end, and route the command to its specific handler.
@@ -42,19 +42,22 @@ fn main() -> Result<()> {
             filter,
             full,
         } => {
-            // MERGE LOGIC: CLI wins, then Config, then Hardcoded Default
-            let active_mode = mode.unwrap_or_else(|| cfg.mode.clone());
-            let active_full = full.unwrap_or(cfg.full);
-            let active_filter = filter.unwrap_or(cfg.filter);
+            let render_opts = RenderOptions {
+                output_mode: mode
+                    .unwrap_or_else(|| cfg.mode.clone())
+                    .parse()
+                    .unwrap_or(OutputMode::Ansi),
+                target_width: width,
+                filter: filter.unwrap_or(cfg.filter).into(),
+                full: full.unwrap_or(cfg.full),
+            };
 
-            handle_convert(
-                filename,
-                output,
-                &active_mode,
-                width,
-                active_filter,
-                active_full,
-            )?;
+            let params = ConvertParams {
+                path: &filename,
+                output: output.as_deref(),
+                render: render_opts,
+            };
+            handle_convert(&params)?;
         }
         Commands::Index { dir, output } => {
             // Priority: --output flag > global -I flag > config.toml
@@ -72,11 +75,7 @@ fn main() -> Result<()> {
             filter,
             interactive,
         } => {
-            let mode_val = mode.unwrap_or(cfg.mode);
-            // let filter_val = cfg.filter;
-            let full_val = full.unwrap_or(cfg.full);
-            let active_filter = filter.unwrap_or(cfg.filter);
-
+            // Index file check
             if !std::path::Path::new(active_index).exists() {
                 anyhow::bail!(
                     "Index file not found at: {active_index}\n\n\
@@ -85,16 +84,24 @@ fn main() -> Result<()> {
                 );
             }
 
-            handle_show(
-                &name,
-                active_index.to_string(), // This refers to the variable from the top of main()
-                &mode_val,
-                active_filter,
-                // filter_val,
-                full_val,
+            let render_opts = RenderOptions {
+                output_mode: mode
+                    .unwrap_or_else(|| cfg.mode.clone())
+                    .parse()
+                    .unwrap_or_default(),
+                target_width: None,
+                filter: filter.unwrap_or(cfg.filter).into(),
+                full: full.unwrap_or(cfg.full),
+            };
+
+            let params = ShowParams {
+                name: &name,
+                index_path: active_index, // &str, not .to_string()
+                render: render_opts,
                 interactive,
-                active_latency,
-            )?;
+                latency: active_latency,
+            };
+            handle_show(&params)?;
         }
 
         Commands::Completions { shell } => {
@@ -110,28 +117,51 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// Takes a single image file and turns it into ANSI art.
+/// Parameters for converting a local file into terminal art.
 ///
-/// If an output path is provided, it saves the raw text to a file.
-/// Otherwise, it scales the image to fit your current terminal window
-/// and dumps it to stdout.
-fn handle_convert(
-    path: String,
-    out: Option<String>,
-    mode: &str,
-    w: Option<u32>,
-    f: crate::cli::ResizeFilter,
-    full: bool,
-) -> Result<()> {
-    let output_mode = parse_mode(mode);
-    let img = image::ImageReader::open(path)?.decode()?;
+/// This struct borrows data from the CLI parser to avoid unnecessary string
+/// allocations during the conversion hand-off.
+pub struct ConvertParams<'a> {
+    /// The path to the source image file.
+    pub path: &'a str,
+    /// An optional file path to save the output. If `None`, prints to stdout.
+    pub output: Option<&'a str>,
+    /// Visual preferences for the final render.
+    pub render: RenderOptions,
+}
 
-    if let Some(output_path) = out {
+impl<'a> ConvertParams<'a> {
+    #[must_use]
+    pub fn new(path: &'a str) -> Self {
+        Self {
+            path,
+            output: None,
+            render: RenderOptions::default(),
+        }
+    }
+}
+
+/// Orchestrates the conversion of a standalone image.
+///
+/// It handles the high-level flow: opening the file, deciding between
+/// file-save or terminal-render, and ensuring the image is decoded properly.
+fn handle_convert(params: &ConvertParams<'_>) -> Result<()> {
+    let output_mode = params.render.output_mode;
+    let img = image::ImageReader::open(params.path)?.decode()?;
+
+    if let Some(output_path) = params.output {
         let file = std::fs::File::create(output_path)?;
         let mut writer = BufWriter::new(file);
-        write_ansi_art(&img, &mut writer, output_mode, full)?;
+        write_ansi_art(
+            &img,
+            &mut writer,
+            AnsiArtOptions {
+                mode: output_mode,
+                full_block: params.render.full,
+            },
+        )?;
     } else {
-        process_and_render(img, output_mode, w, f.into(), full)?;
+        process_and_render(img, params.render)?;
     }
     Ok(())
 }
@@ -163,47 +193,56 @@ fn handle_list(index_path: String, count: Option<usize>) -> Result<()> {
     Ok(())
 }
 
-/// The "main event" command. It looks for a specific image in the index.
+/// Parameters for retrieving and displaying an image from the pre-built index.
+pub struct ShowParams<'a> {
+    /// The name of the image to look up (supports exact or fuzzy matching).
+    pub name: &'a str,
+    /// Path to the JSON index file generated by the `index` command.
+    pub index_path: &'a str,
+    /// Visual preferences for the final render.
+    pub render: RenderOptions,
+    /// If true, launches a fuzzy-finder TUI instead of using the `name` field.
+    pub interactive: bool,
+    /// If true, prints performance metrics (latency) after rendering.
+    pub latency: bool,
+}
+
+/// Locates and renders an image from a managed index.
+///
+/// This is the primary way users interact with the tool. It manages the
+/// search-and-display logic, including fuzzy matching and random selection.
 ///
 /// It supports:
 /// 1. `interactive`: A fuzzy-search TUI for when you don't know the exact name.
 /// 2. `random`: For when you're feeling adventurous.
 /// 3. `name`: Tries an exact match, then falls back to a fuzzy search.
-fn handle_show(
-    name: &str,
-    index: String,
-    mode: &str,
-    filter: crate::cli::ResizeFilter,
-    full: bool,
-    interactive: bool,
-    latency: bool,
-) -> Result<()> {
+fn handle_show(params: &ShowParams<'_>) -> Result<()> {
     // eprintln!("DEBUG index path: {index}");
     // Start the timer
     let start_time = std::time::Instant::now();
     let entries: Vec<crate::indexer::ImageEntry> =
-        serde_json::from_str(&std::fs::read_to_string(index)?)?;
+        serde_json::from_str(&std::fs::read_to_string(params.index_path)?)?;
     if entries.is_empty() {
         anyhow::bail!("Index is empty.");
     }
 
-    let entry_opt = if interactive {
+    let entry_opt = if params.interactive {
         select_interactive(&entries)?
     } else {
-        find_entry(&entries, name)?
+        find_entry(&entries, params.name)?
     };
 
     // Ensure 'img' is created only if an entry was found
     if let Some(e) = entry_opt {
-        if interactive {
+        if params.interactive {
             println!("Showing: {}", e.name.cyan().bold());
         }
 
         let img = image::ImageReader::open(&e.path)?.decode()?;
-        process_and_render(img, parse_mode(mode), None, filter.into(), full)?;
+        process_and_render(img, params.render)?;
     }
 
-    if latency {
+    if params.latency {
         let duration = start_time.elapsed();
         println!("\n--- Metadata ---");
         println!("Render latency: {duration:?}");
@@ -213,16 +252,6 @@ fn handle_show(
 }
 
 // --- Helpers ---
-/// A little helper to translate a string into our `OutputMode` enum.
-/// Defaults to ANSI if it doesn't recognize the string.
-fn parse_mode(mode: &str) -> OutputMode {
-    if mode == "unicode" {
-        OutputMode::Unicode
-    } else {
-        OutputMode::Ansi
-    }
-}
-
 /// Prints execution metadata if the user opted in via --latency.
 fn print_summary(start: Instant) {
     let duration = start.elapsed();
@@ -292,28 +321,61 @@ fn select_interactive(
         .interact_opt()?;
     Ok(selection.map(|idx| &entries[idx]))
 }
-/// This function automatically detects the terminal size to prevent line-wrapping,
-/// which is often the cause of horizontal gaps/lines in the rendered art.
+
+/// Configuration for how an image should be processed and rendered to the terminal.
+///
+/// This handles the "look and feel" of the output, including the character set
+/// (ANSI vs Unicode), scaling filters, and whether to use half-block positioning.#
+#[derive(Clone, Copy, Debug)]
+pub struct RenderOptions {
+    // Determines the character set used for rendering (e.g., ASCII/ANSI or Unicode)
+    pub output_mode: OutputMode,
+    /// An optional fixed width. If `None`, the renderer will calculate the best fit
+    /// based on the current terminal size.
+    pub target_width: Option<u32>,
+
+    /// The algorithm used for resizing. `Nearest` is best for pixel art,
+    /// while `Lanczos3` provides the best results for high-res photos.
+    pub filter: FilterType,
+    /// If true, uses the full color/pixel density available for the chosen mode.
+    pub full: bool,
+}
+
+impl Default for RenderOptions {
+    fn default() -> Self {
+        Self {
+            output_mode: OutputMode::Ansi,
+            target_width: None,
+            filter: FilterType::Lanczos3, // Reasonable default
+            full: false,
+        }
+    }
+}
+
+/// The engine room of the crate. This function calculates the optimal scale
+/// for the image before it hits the ANSI writer.
+///
+/// It accounts for the "Terminal Aspect Ratio Problem": standard terminal
+/// characters are roughly 1:2 (twice as tall as they are wide).
+///
+/// If `options.full` is enabled (Unicode mode), we effectively double our
+/// vertical resolution because we can color the top and bottom of a character
+/// cell independently. This function adjusts the target height accordingly
+/// to ensure the image doesn't look "squashed" or "stretched."
 #[allow(clippy::cast_possible_truncation)]
 #[allow(clippy::cast_sign_loss)]
-fn process_and_render(
-    mut img: image::DynamicImage,
-    output_mode: OutputMode,
-    target_width: Option<u32>,
-    filter: FilterType,
-    full: bool,
-) -> Result<()> {
+fn process_and_render(mut img: image::DynamicImage, options: RenderOptions) -> Result<()> {
     const MAX_SAFE: u32 = 16384;
     let term_dims = terminal_size().map(|(Width(tw), Height(th))| (u32::from(tw), u32::from(th)));
 
     let (max_w, max_h) = if let Some((tw, th)) = term_dims {
-        let mw = if output_mode == OutputMode::Unicode && full {
+        let mw = if options.output_mode == OutputMode::Unicode && options.full {
             tw / 2
         } else {
             tw
         }
         .saturating_sub(2);
-        let mh = if output_mode == OutputMode::Unicode && full {
+        let mh = if options.output_mode == OutputMode::Unicode && options.full {
             th
         } else {
             th * 2
@@ -327,9 +389,9 @@ fn process_and_render(
     let orig_w = img.width();
     let orig_h = img.height();
 
-    let (render_w, render_h) = target_width.map_or_else(
+    let (render_w, render_h) = options.target_width.map_or_else(
         || {
-            if filter == FilterType::Nearest && orig_w < 120 {
+            if options.filter == FilterType::Nearest && orig_w < 120 {
                 // --- CRISP SPRITE LOGIC ---
                 // Find the largest WHOLE NUMBER scale that fits the terminal
                 let scale_w = (f64::from(max_w) / f64::from(orig_w)).floor();
@@ -374,14 +436,21 @@ fn process_and_render(
         );
     }
 
-    img = img.resize_exact(render_w, render_h, filter);
+    img = img.resize_exact(render_w, render_h, options.filter);
 
     // Use resize_exact with Nearest to prevent sub-pixel shifting
     // img = img.resize_exact(render_w.max(1), render_h.max(1), filter);
 
     let stdout = io::stdout();
     let mut writer = BufWriter::new(stdout.lock());
-    write_ansi_art(&img, &mut writer, output_mode, full)?;
+    write_ansi_art(
+        &img,
+        &mut writer,
+        AnsiArtOptions {
+            mode: options.output_mode,
+            full_block: options.full,
+        },
+    )?;
     writer.flush()?;
     Ok(())
 }
