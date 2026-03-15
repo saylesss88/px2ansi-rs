@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// override the hardcoded defaults.
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(default)]
-pub struct AppConfig {
+pub struct Config {
     /// The rendering mode to use.
     /// Supported values: "ansi" (standard packing) or "unicode" (high-definition symbols).
     pub mode: String,
@@ -30,8 +30,13 @@ pub struct AppConfig {
     /// regardless of your current working directory.
     pub index: String,
 }
+impl Config {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
 
-impl Default for AppConfig {
+impl Default for Config {
     /// Provides the fallback defaults used when no config file is found.
     fn default() -> Self {
         Self {
