@@ -99,62 +99,6 @@ pub fn write_ansi_art<W: Write>(
     }
     Ok(())
 }
-// pub fn write_ansi_art<W: Write>(
-//     img: &DynamicImage,
-//     out: &mut W,
-//     mode: OutputMode,
-//     full_block: bool,
-// ) -> std::io::Result<()> {
-//     let (width, height) = img.dimensions();
-
-//     match mode {
-//         OutputMode::Ansi => {
-//             // Ansi mode uses a "vertical pairing" trick to double the effective resolution.
-//             // By using the foreground for the top pixel and background for the bottom,
-//             // we can fit two pixels into a single character's space.
-//             for y in (0..height).step_by(2) {
-//                 for x in 0..width {
-//                     let top = img.get_pixel(x, y);
-//                     let bot = if y + 1 < height {
-//                         img.get_pixel(x, y + 1)
-//                     } else {
-//                         Rgba([0, 0, 0, 0])
-//                     };
-//                     write_half_block(out, top, bot)?;
-//                 }
-//                 writeln!(out, "\x1b[0m")?;
-//             }
-//         }
-//         OutputMode::Unicode => {
-//             if full_block {
-//                 // The "Pokemon-Colorscripts" look: 1 pixel = 2 wide characters
-//                 for y in 0..height {
-//                     for x in 0..width {
-//                         let px = img.get_pixel(x, y);
-//                         write_full_block(out, px)?;
-//                     }
-//                     writeln!(out, "\x1b[0m")?;
-//                 }
-//             } else {
-//                 // The "Crisp Unicode" look: Uses half-blocks but on
-//                 // a per-row basis or specialized logic
-//                 for y in (0..height).step_by(2) {
-//                     for x in 0..width {
-//                         let top = img.get_pixel(x, y);
-//                         let bot = if y + 1 < height {
-//                             img.get_pixel(x, y + 1)
-//                         } else {
-//                             Rgba([0, 0, 0, 0])
-//                         };
-//                         write_half_block(out, top, bot)?;
-//                     }
-//                     writeln!(out, "\x1b[0m")?;
-//                 }
-//             }
-//         }
-//     }
-//     Ok(())
-// }
 
 /// A low-level helper that squashes two vertical pixels into a single terminal character cell.
 ///
