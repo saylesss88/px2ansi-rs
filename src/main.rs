@@ -3,7 +3,7 @@ mod cli;
 mod config;
 mod indexer;
 use crate::cli::{Cli, Commands};
-use crate::config::AppConfig;
+use crate::config::Config;
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use colored::Colorize;
@@ -15,14 +15,14 @@ use std::io::{self, BufWriter, Write};
 use std::time::Instant;
 use terminal_size::{Height, Width, terminal_size};
 
-use px2ansi_rs::{AnsiArtOptions, OutputMode, write_ansi_art};
+use px2ansi_rs::{AnsiArtOptions, OutputMode, RenderOptions, write_ansi_art};
 
 /// The main entry point. We parse the CLI args, start a stopwatch for the "speed"
 /// flex at the end, and route the command to its specific handler.
 fn main() -> Result<()> {
     let start = Instant::now();
     // 1. Load config from ~/.config/px2ansi-rs/default-config.toml
-    let cfg: AppConfig = confy::load("px2ansi-rs", None)?;
+    let cfg: Config = confy::load("px2ansi-rs", None)?;
 
     // 2. Parse CLI args
     let cli = Cli::parse();
@@ -56,7 +56,7 @@ fn main() -> Result<()> {
                 output: output.as_deref(),
                 render: render_opts,
             };
-            handle_convert(&params)?;
+            convert_image(&params)?;
         }
         Commands::Index { dir, output } => {
             // Priority: --output flag > global -I flag > config.toml
@@ -66,7 +66,7 @@ fn main() -> Result<()> {
                 output: save_path,
             };
 
-            handle_index(&params)?;
+            create_index(&params)?;
 
             println!("✅ Created index of {dir} at {save_path}");
         }
@@ -75,7 +75,7 @@ fn main() -> Result<()> {
                 index_path: active_index,
                 count,
             };
-            handle_list(&params)?;
+            list_index_entries(&params)?;
         }
 
         Commands::Show {
@@ -111,7 +111,7 @@ fn main() -> Result<()> {
                 interactive,
                 latency: active_latency,
             };
-            handle_show(&params)?;
+            show_index_entry(&params)?;
         }
 
         Commands::Completions { shell } => {
@@ -154,7 +154,7 @@ pub struct ConvertParams<'a> {
 ///
 /// It handles the high-level flow: opening the file, deciding between
 /// file-save or terminal-render, and ensuring the image is decoded properly.
-fn handle_convert(params: &ConvertParams<'_>) -> Result<()> {
+fn convert_image(params: &ConvertParams<'_>) -> Result<()> {
     let output_mode = params.render.output_mode;
     let img = image::ImageReader::open(params.path)?.decode()?;
 
@@ -183,7 +183,7 @@ struct ListParams<'a> {
 /// Reads the generated index file and displays the "sprite" entries.
 /// We cap the output by `count` so we don't accidentally flood the
 /// terminal if the index contains thousands of images.
-fn handle_list(params: &ListParams<'_>) -> Result<()> {
+fn list_index_entries(params: &ListParams<'_>) -> Result<()> {
     // eprintln!("DEBUG index path: {index_path}");
 
     let entries: Vec<crate::indexer::ImageEntry> =
@@ -230,7 +230,7 @@ pub struct ShowParams<'a> {
 /// 1. `interactive`: A fuzzy-search TUI for when you don't know the exact name.
 /// 2. `random`: For when you're feeling adventurous.
 /// 3. `name`: Tries an exact match, then falls back to a fuzzy search.
-fn handle_show(params: &ShowParams<'_>) -> Result<()> {
+fn show_index_entry(params: &ShowParams<'_>) -> Result<()> {
     // eprintln!("DEBUG index path: {index}");
     // Start the timer
     let start_time = std::time::Instant::now();
@@ -241,9 +241,9 @@ fn handle_show(params: &ShowParams<'_>) -> Result<()> {
     }
 
     let entry_opt = if params.interactive {
-        select_interactive(&entries)?
+        prompt_search(&entries)?
     } else {
-        find_entry(&entries, params.name)?
+        search_index(&entries, params.name)?
     };
 
     // Ensure 'img' is created only if an entry was found
@@ -279,7 +279,7 @@ fn print_summary(duration: std::time::Duration) {
 ///
 /// If the fuzzy score is too low (30 or below), it errors out to avoid showing
 /// something completely unrelated.
-fn find_entry<'a>(
+fn search_index<'a>(
     entries: &'a [crate::indexer::ImageEntry],
     name: &str,
 ) -> Result<Option<&'a crate::indexer::ImageEntry>> {
@@ -319,7 +319,7 @@ fn find_entry<'a>(
 /// can't remember the exact filename.
 ///
 /// Returns `Ok(None)` if the user cancels the selection (e.g., by pressing Esc).
-fn select_interactive(
+fn prompt_search(
     entries: &[crate::indexer::ImageEntry],
 ) -> Result<Option<&crate::indexer::ImageEntry>> {
     let items: Vec<&String> = entries.iter().map(|e| &e.name).collect();
@@ -330,44 +330,6 @@ fn select_interactive(
     Ok(selection.map(|idx| &entries[idx]))
 }
 
-/// Configuration for how an image should be processed and rendered to the terminal.
-///
-/// This handles the "look and feel" of the output, including the character set
-/// (ANSI vs Unicode), scaling filters, and whether to use half-block positioning.#
-#[derive(Clone, Copy, Debug)]
-pub struct RenderOptions {
-    // Determines the character set used for rendering (e.g., ASCII/ANSI or Unicode)
-    pub output_mode: OutputMode,
-    /// An optional fixed width. If `None`, the renderer will calculate the best fit
-    /// based on the current terminal size.
-    pub target_width: Option<u32>,
-
-    /// The algorithm used for resizing. `Nearest` is best for pixel art,
-    /// while `Lanczos3` provides the best results for high-res photos.
-    pub filter: FilterType,
-    /// If true, uses the full color/pixel density available for the chosen mode.
-    pub full: bool,
-}
-
-impl Default for RenderOptions {
-    fn default() -> Self {
-        Self {
-            output_mode: OutputMode::Ansi,
-            target_width: None,
-            filter: FilterType::Lanczos3, // Reasonable default
-            full: false,
-        }
-    }
-}
-
-impl From<RenderOptions> for AnsiArtOptions {
-    fn from(opts: RenderOptions) -> Self {
-        Self {
-            mode: opts.output_mode,
-            full_block: opts.full,
-        }
-    }
-}
 /// The engine room of the crate. This function calculates the optimal scale
 /// for the image before it hits the ANSI writer.
 ///
@@ -467,7 +429,7 @@ struct IndexParams<'a> {
     output: &'a str,
 }
 
-fn handle_index(params: &IndexParams<'_>) -> Result<()> {
+fn create_index(params: &IndexParams<'_>) -> Result<()> {
     crate::indexer::build_index(params.dir, params.output)?;
     Ok(())
 }
