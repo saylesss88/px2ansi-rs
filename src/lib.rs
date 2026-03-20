@@ -1,7 +1,9 @@
 #![allow(clippy::multiple_crate_versions)]
+use image::imageops::FilterType;
 use image::{DynamicImage, GenericImageView, Rgba};
 use std::io::Write;
 use std::str::FromStr;
+use terminal_size::{Height, Width, terminal_size};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum OutputMode {
@@ -36,6 +38,125 @@ impl Default for AnsiArtOptions {
         }
     }
 }
+
+/// Configuration for how an image should be processed and rendered to the terminal.
+///
+/// This handles the "look and feel" of the output, including the character set
+/// (ANSI vs Unicode), scaling filters, and whether to use half-block positioning.#
+#[derive(Clone, Copy, Debug)]
+pub struct RenderOptions {
+    // Determines the character set used for rendering (e.g., ASCII/ANSI or Unicode)
+    pub output_mode: OutputMode,
+    /// An optional fixed width. If `None`, the renderer will calculate the best fit
+    /// based on the current terminal size.
+    pub target_width: Option<u32>,
+
+    /// The algorithm used for resizing. `Nearest` is best for pixel art,
+    /// while `Lanczos3` provides the best results for high-res photos.
+    pub filter: FilterType,
+    /// If true, uses the full color/pixel density available for the chosen mode.
+    pub full: bool,
+}
+
+impl Default for RenderOptions {
+    fn default() -> Self {
+        Self {
+            output_mode: OutputMode::Ansi,
+            target_width: None,
+            filter: FilterType::Lanczos3, // Reasonable default
+            full: false,
+        }
+    }
+}
+
+impl From<RenderOptions> for AnsiArtOptions {
+    fn from(opts: RenderOptions) -> Self {
+        Self {
+            mode: opts.output_mode,
+            full_block: opts.full,
+        }
+    }
+}
+impl RenderOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    /// Resizes a DynamicImage based on the current options and terminal constraints.
+    pub fn prepare_image(&self, img: DynamicImage) -> DynamicImage {
+        let (width, height) = self.calculate_dimensions(img.width(), img.height());
+        img.resize_exact(width, height, self.filter)
+    }
+
+    /// The "math" part of your old process_and_render
+    pub fn calculate_dimensions(&self, orig_w: u32, orig_h: u32) -> (u32, u32) {
+        const MAX_SAFE: u32 = 16384;
+
+        // 1. Determine the "canvas" size (Terminal or Default)
+        let term_dims =
+            terminal_size().map(|(Width(tw), Height(th))| (u32::from(tw), u32::from(th)));
+
+        let (max_w, max_h) = if let Some((tw, th)) = term_dims {
+            // Adjust constraints based on rendering mode
+            let mw = if self.output_mode == OutputMode::Unicode && self.full {
+                tw / 2
+            } else {
+                tw
+            }
+            .saturating_sub(2);
+
+            let mh = if self.output_mode == OutputMode::Unicode && self.full {
+                th
+            } else {
+                th * 2
+            }
+            .saturating_sub(2);
+
+            (mw, mh)
+        } else {
+            (80, 40) // Fallback for piped output or non-tty
+        };
+
+        // 2. Run the scaling logic
+        let (render_w, render_h) = self.target_width.map_or_else(
+            || {
+                if self.filter == FilterType::Nearest && orig_w < 120 {
+                    // --- CRISP SPRITE LOGIC ---
+                    let scale_w = (f64::from(max_w) / f64::from(orig_w)).floor();
+                    let scale_h = (f64::from(max_h) / f64::from(orig_h)).floor();
+                    let scale = scale_w.min(scale_h).max(1.0);
+
+                    (
+                        (f64::from(orig_w) * scale) as u32,
+                        (f64::from(orig_h) * scale) as u32,
+                    )
+                } else {
+                    // --- NORMAL MODE ---
+                    let scale = (f64::from(max_w) / f64::from(orig_w))
+                        .min(f64::from(max_h) / f64::from(orig_h));
+                    (
+                        (f64::from(orig_w) * scale).round() as u32,
+                        (f64::from(orig_h) * scale).round() as u32,
+                    )
+                }
+            },
+            |tw| {
+                let aspect = f64::from(orig_h) / f64::from(orig_w);
+                (tw, (f64::from(tw) * aspect).round() as u32)
+            },
+        );
+
+        // 3. Clamp and return
+        (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE))
+    }
+
+    /// High-level method to render directly to a writer
+    pub fn render<W: Write>(&self, img: DynamicImage, writer: &mut W) -> anyhow::Result<()> {
+        let prepared = self.prepare_image(img);
+        let ansi_opts = AnsiArtOptions::from(*self);
+        write_ansi_art(&prepared, writer, ansi_opts)?;
+        Ok(())
+    }
+}
 /// Renders an image into the terminal using ANSI escape sequences.
 ///
 /// Depending on the `mode`, this will either:
@@ -53,7 +174,7 @@ impl Default for AnsiArtOptions {
 pub fn write_ansi_art<W: Write>(
     img: &DynamicImage,
     writer: &mut W,
-    options: AnsiArtOptions, // 👈 Single parameter!
+    options: AnsiArtOptions,
 ) -> std::io::Result<()> {
     let (width, height) = img.dimensions();
 
