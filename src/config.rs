@@ -30,11 +30,11 @@ pub struct Config {
     /// regardless of your current working directory.
     pub index: String,
 }
-impl Config {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
+// impl Config {
+//     pub fn new() -> Self {
+//         Self::default()
+//     }
+// }
 
 impl Default for Config {
     /// Provides the fallback defaults used when no config file is found.
