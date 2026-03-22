@@ -9,13 +9,11 @@ use clap::{CommandFactory, Parser};
 use colored::Colorize;
 use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
-use image::imageops::FilterType;
 use rand::prelude::IndexedRandom;
-use std::io::{self, BufWriter, Write};
+use std::io::{self, BufWriter};
 use std::time::Instant;
-use terminal_size::{Height, Width, terminal_size};
 
-use px2ansi_rs::{AnsiArtOptions, OutputMode, RenderOptions, write_ansi_art};
+use px2ansi_rs::{OutputMode, RenderOptions};
 
 /// The main entry point. We parse the CLI args, start a stopwatch for the "speed"
 /// flex at the end, and route the command to its specific handler.
@@ -155,22 +153,18 @@ pub struct ConvertParams<'a> {
 /// It handles the high-level flow: opening the file, deciding between
 /// file-save or terminal-render, and ensuring the image is decoded properly.
 fn convert_image(params: &ConvertParams<'_>) -> Result<()> {
-    let output_mode = params.render.output_mode;
     let img = image::ImageReader::open(params.path)?.decode()?;
 
     if let Some(output_path) = params.output {
+        // File output: use RenderOptions::render directly
         let file = std::fs::File::create(output_path)?;
         let mut writer = BufWriter::new(file);
-        write_ansi_art(
-            &img,
-            &mut writer,
-            AnsiArtOptions {
-                mode: output_mode,
-                full_block: params.render.full,
-            },
-        )?;
+        params.render.render(&img, &mut writer)?;
     } else {
-        process_and_render(img, params.render)?;
+        // Terminal output: use RenderOptions::render to stdout
+        let stdout = io::stdout();
+        let mut writer = BufWriter::new(stdout.lock());
+        params.render.render(&img, &mut writer)?;
     }
     Ok(())
 }
@@ -231,8 +225,6 @@ pub struct ShowParams<'a> {
 /// 2. `random`: For when you're feeling adventurous.
 /// 3. `name`: Tries an exact match, then falls back to a fuzzy search.
 fn show_index_entry(params: &ShowParams<'_>) -> Result<()> {
-    // eprintln!("DEBUG index path: {index}");
-    // Start the timer
     let start_time = std::time::Instant::now();
     let entries: Vec<crate::indexer::ImageEntry> =
         serde_json::from_str(&std::fs::read_to_string(params.index_path)?)?;
@@ -246,14 +238,16 @@ fn show_index_entry(params: &ShowParams<'_>) -> Result<()> {
         search_index(&entries, params.name)?
     };
 
-    // Ensure 'img' is created only if an entry was found
     if let Some(e) = entry_opt {
         if params.interactive {
             println!("Showing: {}", e.name.cyan().bold());
         }
 
         let img = image::ImageReader::open(&e.path)?.decode()?;
-        process_and_render(img, params.render)?;
+        // Terminal output only for show command
+        let stdout = io::stdout();
+        let mut writer = BufWriter::new(stdout.lock());
+        params.render.render(&img, &mut writer)?;
     }
 
     if params.latency {
@@ -328,100 +322,6 @@ fn prompt_search(
         .items(&items)
         .interact_opt()?;
     Ok(selection.map(|idx| &entries[idx]))
-}
-
-/// The engine room of the crate. This function calculates the optimal scale
-/// for the image before it hits the ANSI writer.
-///
-/// It accounts for the "Terminal Aspect Ratio Problem": standard terminal
-/// characters are roughly 1:2 (twice as tall as they are wide).
-///
-/// If `options.full` is enabled (Unicode mode), we effectively double our
-/// vertical resolution because we can color the top and bottom of a character
-/// cell independently. This function adjusts the target height accordingly
-/// to ensure the image doesn't look "squashed" or "stretched."
-#[allow(clippy::cast_possible_truncation)]
-#[allow(clippy::cast_sign_loss)]
-fn process_and_render(mut img: image::DynamicImage, options: RenderOptions) -> Result<()> {
-    const MAX_SAFE: u32 = 16384;
-    let term_dims = terminal_size().map(|(Width(tw), Height(th))| (u32::from(tw), u32::from(th)));
-
-    let (max_w, max_h) = if let Some((tw, th)) = term_dims {
-        let mw = if options.output_mode == OutputMode::Unicode && options.full {
-            tw / 2
-        } else {
-            tw
-        }
-        .saturating_sub(2);
-        let mh = if options.output_mode == OutputMode::Unicode && options.full {
-            th
-        } else {
-            th * 2
-        }
-        .saturating_sub(2);
-        (mw, mh)
-    } else {
-        (80, 40)
-    };
-
-    let orig_w = img.width();
-    let orig_h = img.height();
-
-    let (render_w, render_h) = options.target_width.map_or_else(
-        || {
-            if options.filter == FilterType::Nearest && orig_w < 120 {
-                // --- CRISP SPRITE LOGIC ---
-                // Find the largest WHOLE NUMBER scale that fits the terminal
-                let scale_w = (f64::from(max_w) / f64::from(orig_w)).floor();
-                let scale_h = (f64::from(max_h) / f64::from(orig_h)).floor();
-
-                // Use a scale of at least 1, but prefer a whole number like 2.0 or 3.0
-                let scale = scale_w.min(scale_h).max(1.0);
-
-                let rw = (f64::from(orig_w) * scale) as u32;
-                let rh = (f64::from(orig_h) * scale) as u32;
-                (rw, rh)
-            } else {
-                // --- NORMAL MODE ---
-                let scale = (f64::from(max_w) / f64::from(orig_w))
-                    .min(f64::from(max_h) / f64::from(orig_h));
-                (
-                    (f64::from(orig_w) * scale).round() as u32,
-                    (f64::from(orig_h) * scale).round() as u32,
-                )
-            }
-        },
-        |tw| {
-            let aspect = f64::from(orig_h) / f64::from(orig_w);
-            (tw, (f64::from(tw) * aspect).round() as u32)
-        },
-    );
-
-    // SAFETY: Clamp to a reasonable max for terminal art / image crate
-    let render_w = render_w.clamp(1, MAX_SAFE);
-    let render_h = render_h.clamp(1, MAX_SAFE);
-
-    if render_w == MAX_SAFE || render_h == MAX_SAFE {
-        let clamped_dims = if render_w == MAX_SAFE && render_h == MAX_SAFE {
-            format!("{MAX_SAFE}x{MAX_SAFE}")
-        } else if render_w == MAX_SAFE {
-            format!("{MAX_SAFE}x{render_h}")
-        } else {
-            format!("{render_w}x{MAX_SAFE}")
-        };
-        eprintln!(
-            "Warning: image dimensions clamped to {clamped_dims} to avoid excessive memory usage"
-        );
-    }
-
-    // Use resize_exact with Nearest to prevent sub-pixel shifting
-    img = img.resize_exact(render_w, render_h, options.filter);
-
-    let stdout = io::stdout();
-    let mut writer = BufWriter::new(stdout.lock());
-    write_ansi_art(&img, &mut writer, options.into())?;
-    writer.flush()?;
-    Ok(())
 }
 
 struct IndexParams<'a> {

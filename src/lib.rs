@@ -78,16 +78,18 @@ impl From<RenderOptions> for AnsiArtOptions {
     }
 }
 impl RenderOptions {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
-    /// Resizes a DynamicImage based on the current options and terminal constraints.
-    pub fn prepare_image(&self, img: DynamicImage) -> DynamicImage {
+    /// Resizes a `DynamicImage` based on the current options and terminal constraints.
+    #[must_use]
+    pub fn prepare_image(&self, img: &DynamicImage) -> DynamicImage {
         let (width, height) = self.calculate_dimensions(img.width(), img.height());
         img.resize_exact(width, height, self.filter)
     }
 
-    /// The "math" part of your old process_and_render
+    #[must_use]
     pub fn calculate_dimensions(&self, orig_w: u32, orig_h: u32) -> (u32, u32) {
         const MAX_SAFE: u32 = 16384;
 
@@ -117,6 +119,8 @@ impl RenderOptions {
         };
 
         // 2. Run the scaling logic
+        #[allow(clippy::cast_possible_truncation)]
+        #[allow(clippy::cast_sign_loss)]
         let (render_w, render_h) = self.target_width.map_or_else(
             || {
                 if self.filter == FilterType::Nearest && orig_w < 120 {
@@ -149,8 +153,18 @@ impl RenderOptions {
         (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE))
     }
 
-    /// High-level method to render directly to a writer
-    pub fn render<W: Write>(&self, img: DynamicImage, writer: &mut W) -> anyhow::Result<()> {
+    /// Renders a `DynamicImage` to the provided writer using ANSI escape codes.
+    ///
+    /// This method prepares the image according to the current configuration
+    /// (scaling, filtering, etc.) and writes the resulting pixel art to `writer`.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if:
+    /// * The image preparation or transformation fails (e.g., issues with resizing).
+    /// * Writing to the `writer` fails (e.g., a broken pipe or insufficient permissions).
+    /// * The underlying ANSI conversion encounters an invalid color or pixel format.
+    pub fn render<W: Write>(&self, img: &DynamicImage, writer: &mut W) -> anyhow::Result<()> {
         let prepared = self.prepare_image(img);
         let ansi_opts = AnsiArtOptions::from(*self);
         write_ansi_art(&prepared, writer, ansi_opts)?;
