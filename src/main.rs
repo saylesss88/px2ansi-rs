@@ -13,7 +13,7 @@ use rand::prelude::IndexedRandom;
 use std::io::{self, BufWriter};
 use std::time::Instant;
 
-use px2ansi_rs::{OutputMode, RenderOptions};
+use px2ansi_rs::RenderOptions;
 
 /// The main entry point. We parse the CLI args, start a stopwatch for the "speed"
 /// flex at the end, and route the command to its specific handler.

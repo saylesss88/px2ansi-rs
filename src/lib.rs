@@ -1,6 +1,8 @@
 #![allow(clippy::multiple_crate_versions)]
+use clap::ValueEnum;
 use image::imageops::FilterType;
 use image::{DynamicImage, GenericImageView, Rgba};
+use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::str::FromStr;
 use terminal_size::{Height, Width, terminal_size};
@@ -39,32 +41,81 @@ impl Default for AnsiArtOptions {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CharsetMode {
+    Ansi,    // half-block ▀/▄
+    Unicode, // full-block / half-block based on style.full
+    Braille,
+    Fade,
+    Ascii,
+}
+
+impl Default for CharsetMode {
+    fn default() -> Self {
+        CharsetMode::Ansi
+    }
+}
+
+impl FromStr for CharsetMode {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "ansi" | "block" => Ok(Self::Ansi),
+            "unicode" | "uni" => Ok(Self::Unicode),
+            "braille" | "brl" => Ok(Self::Braille),
+            "fade" | "grayscale" => Ok(Self::Fade),
+            "ascii" => Ok(Self::Ascii),
+            _ => anyhow::bail!("Invalid charset '{s}'. Use: ansi, unicode, braille, fade, ascii"),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub enum Density {
+    #[default]
+    Medium,
+    Light,
+    Heavy,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct RenderStyle {
+    pub full: bool,
+    pub density: Density,
+}
+
+impl Default for RenderStyle {
+    fn default() -> Self {
+        Self {
+            full: false,
+            density: Density::Medium,
+        }
+    }
+}
 /// Configuration for how an image should be processed and rendered to the terminal.
 ///
 /// This handles the "look and feel" of the output, including the character set
 /// (ANSI vs Unicode), scaling filters, and whether to use half-block positioning.#
 #[derive(Clone, Copy, Debug)]
 pub struct RenderOptions {
-    // Determines the character set used for rendering (e.g., ASCII/ANSI or Unicode)
-    pub output_mode: OutputMode,
-    /// An optional fixed width. If `None`, the renderer will calculate the best fit
-    /// based on the current terminal size.
+    pub output_mode: OutputMode, // keep old name for now if lots of call sites use it
     pub target_width: Option<u32>,
-
-    /// The algorithm used for resizing. `Nearest` is best for pixel art,
-    /// while `Lanczos3` provides the best results for high-res photos.
     pub filter: FilterType,
-    /// If true, uses the full color/pixel density available for the chosen mode.
-    pub full: bool,
+    pub full: bool, // deprecated, but keep until you fully migrate
+    pub charset: CharsetMode,
+    pub style: RenderStyle,
 }
 
 impl Default for RenderOptions {
     fn default() -> Self {
         Self {
-            output_mode: OutputMode::Ansi,
+            output_mode: OutputMode::Ansi, // existing enum
             target_width: None,
-            filter: FilterType::Lanczos3, // Reasonable default
+            filter: FilterType::Lanczos3,
             full: false,
+            charset: CharsetMode::Ansi,
+            style: RenderStyle::default(),
         }
     }
 }

@@ -1,7 +1,5 @@
-use clap::{Parser, Subcommand, ValueEnum};
-use image::imageops::FilterType;
-use serde::{Deserialize, Serialize};
-
+use clap::{Parser, Subcommand};
+use px2ansi_rs::{RenderStylePreset, ResizeFilter};
 #[derive(Parser)]
 #[command(name = "px2ansi-rs", version, about = "Pixel art tools")]
 pub struct Cli {
@@ -34,6 +32,9 @@ pub enum Commands {
 
         #[arg(long)]
         full: Option<bool>,
+
+        #[arg(long, value_enum)]
+        style: Option<RenderStylePreset>,
 
         /// Force a specific width
         #[arg(long)]
@@ -69,6 +70,9 @@ pub enum Commands {
         #[arg(long)]
         full: Option<bool>,
 
+        #[arg(long, value_enum)]
+        style: Option<RenderStylePreset>,
+
         #[arg(short, long, value_enum)]
         filter: Option<ResizeFilter>,
 
@@ -85,33 +89,4 @@ pub enum Commands {
         #[arg(value_enum)]
         shell: clap_complete::Shell,
     },
-}
-// 1. Define an Enum for the CLI argument
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")] // For the config file (TOML)
-#[clap(rename_all = "kebab-case")] // For the CLI flags
-pub enum ResizeFilter {
-    /// Nearest Neighbor (Best for pixel art)
-    Nearest,
-    /// Linear interpolation
-    Triangle,
-    /// Sharp cubic filter
-    CatmullRom,
-    /// Blurry cubic filter
-    Gaussian,
-    /// High-quality resampling (Slowest)
-    Lanczos3,
-}
-
-// 2. Add helper to convert CLI enum to image::FilterType
-impl From<ResizeFilter> for FilterType {
-    fn from(f: ResizeFilter) -> Self {
-        match f {
-            ResizeFilter::Nearest => Self::Nearest,
-            ResizeFilter::Triangle => Self::Triangle,
-            ResizeFilter::CatmullRom => Self::CatmullRom,
-            ResizeFilter::Gaussian => Self::Gaussian,
-            ResizeFilter::Lanczos3 => Self::Lanczos3,
-        }
-    }
 }
