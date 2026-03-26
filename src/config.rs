@@ -1,4 +1,4 @@
-use crate::cli::ResizeFilter;
+use px2ansi_rs::ResizeFilter;
 use serde::{Deserialize, Serialize};
 
 /// Global configuration for the px2ansi engine.
