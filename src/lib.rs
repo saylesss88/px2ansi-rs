@@ -140,6 +140,53 @@ impl RenderOptions {
         img.resize_exact(width, height, self.filter)
     }
 
+    pub fn from_cli(
+        mode: Option<String>,
+        full: Option<bool>,
+        style: Option<RenderStylePreset>,
+        width: Option<u32>,
+        filter: Option<ResizeFilter>,
+    ) -> anyhow::Result<Self> {
+        let mut opts = Self::default();
+
+        if let Some(mode) = mode {
+            opts.output_mode = mode.parse()?;
+        }
+
+        if let Some(full) = full {
+            opts.full = full;
+            opts.style.full = full;
+        }
+
+        if let Some(style) = style {
+            match style {
+                RenderStylePreset::Ansi => opts.charset = CharsetMode::Ansi,
+                RenderStylePreset::Unicode => opts.charset = CharsetMode::Unicode,
+                RenderStylePreset::Braille => opts.charset = CharsetMode::Braille,
+                RenderStylePreset::Fade => opts.charset = CharsetMode::Fade,
+                RenderStylePreset::Ascii => opts.charset = CharsetMode::Ascii,
+                RenderStylePreset::FullAnsi => {
+                    opts.charset = CharsetMode::Unicode;
+                    opts.style.full = true;
+                }
+                RenderStylePreset::Dense => {
+                    opts.charset = CharsetMode::Unicode;
+                    opts.style.full = false;
+                    opts.style.density = Density::Heavy;
+                }
+            }
+        }
+
+        if let Some(width) = width {
+            opts.target_width = Some(width);
+        }
+
+        if let Some(filter) = filter {
+            opts.filter = filter.into();
+        }
+
+        Ok(opts)
+    }
     #[must_use]
     pub fn calculate_dimensions(&self, orig_w: u32, orig_h: u32) -> (u32, u32) {
         const MAX_SAFE: u32 = 16384;
@@ -149,26 +196,15 @@ impl RenderOptions {
             terminal_size().map(|(Width(tw), Height(th))| (u32::from(tw), u32::from(th)));
 
         let (max_w, max_h) = if let Some((tw, th)) = term_dims {
-            // Adjust constraints based on rendering mode
-            let mw = if self.output_mode == OutputMode::Unicode && self.full {
-                tw / 2
-            } else {
-                tw
-            }
-            .saturating_sub(2);
-
-            let mh = if self.output_mode == OutputMode::Unicode && self.full {
-                th
-            } else {
-                th * 2
-            }
-            .saturating_sub(2);
-
+            let (mw, mh) = match self.charset {
+                CharsetMode::Braille => (tw / 4, th / 2), // 4x2 chars → 8x4 pixels
+                CharsetMode::Unicode if self.style.full => (tw / 2, th),
+                _ => (tw.saturating_sub(2), th * 2 / 3), // half-blocks
+            };
             (mw, mh)
         } else {
-            (80, 40) // Fallback for piped output or non-tty
+            (80, 40)
         };
-
         // 2. Run the scaling logic
         #[allow(clippy::cast_possible_truncation)]
         #[allow(clippy::cast_sign_loss)]
@@ -217,8 +253,7 @@ impl RenderOptions {
     /// * The underlying ANSI conversion encounters an invalid color or pixel format.
     pub fn render<W: Write>(&self, img: &DynamicImage, writer: &mut W) -> anyhow::Result<()> {
         let prepared = self.prepare_image(img);
-        let ansi_opts = AnsiArtOptions::from(*self);
-        write_ansi_art(&prepared, writer, ansi_opts)?;
+        write_ansi_art(&prepared, writer, *self)?; // ← *self, not AnsiArtOptions::from(*self)
         Ok(())
     }
 }
