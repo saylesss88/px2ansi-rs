@@ -41,19 +41,14 @@ impl Default for AnsiArtOptions {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CharsetMode {
-    Ansi,    // half-block ▀/▄
+    #[default]
+    Ansi, // half-block ▀/▄
     Unicode, // full-block / half-block based on style.full
     Braille,
     Fade,
     Ascii,
-}
-
-impl Default for CharsetMode {
-    fn default() -> Self {
-        CharsetMode::Ansi
-    }
 }
 
 impl FromStr for CharsetMode {
@@ -140,6 +135,20 @@ impl RenderOptions {
         img.resize_exact(width, height, self.filter)
     }
 
+    /// Constructs a new `RenderOptions` by merging optional CLI arguments into the defaults.
+    ///
+    /// This method applies a hierarchy of configuration: it starts with [`RenderOptions::default()`],
+    /// then overrides specific fields if the corresponding CLI argument is `Some`.
+    ///
+    /// Note that `style` presets (like `Dense` or `FullAnsi`) may modify multiple internal
+    /// fields (e.g., both `charset` and `style.full`) simultaneously.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error if:
+    /// * The `mode` string is provided but fails to parse into a valid [`OutputMode`].
+    ///   Valid values are typically "ansi", "block", or "unicode".
+    /// * Any internal parsing or conversion logic encountered via `anyhow` fails.
     pub fn from_cli(
         mode: Option<String>,
         full: Option<bool>,
@@ -325,56 +334,6 @@ fn write_unicode_blocks<W: Write>(
     }
     Ok(())
 }
-// on the writer's capability.
-// pub fn write_ansi_art<W: Write>(
-//     img: &DynamicImage,
-//     writer: &mut W,
-//     options: AnsiArtOptions,
-// ) -> std::io::Result<()> {
-//     let (width, height) = img.dimensions();
-
-//     match options.mode {
-//         OutputMode::Ansi => {
-//             for y in (0..height).step_by(2) {
-//                 for x in 0..width {
-//                     let top = img.get_pixel(x, y);
-//                     let bot = if y + 1 < height {
-//                         img.get_pixel(x, y + 1)
-//                     } else {
-//                         Rgba([0, 0, 0, 0])
-//                     };
-//                     write_half_block(writer, top, bot)?;
-//                 }
-//                 writeln!(writer, "\x1b[0m")?;
-//             }
-//         }
-//         OutputMode::Unicode => {
-//             if options.full_block {
-//                 for y in 0..height {
-//                     for x in 0..width {
-//                         let px = img.get_pixel(x, y);
-//                         write_full_block(writer, px)?;
-//                     }
-//                     writeln!(writer, "\x1b[0m")?;
-//                 }
-//             } else {
-//                 for y in (0..height).step_by(2) {
-//                     for x in 0..width {
-//                         let top = img.get_pixel(x, y);
-//                         let bot = if y + 1 < height {
-//                             img.get_pixel(x, y + 1)
-//                         } else {
-//                             Rgba([0, 0, 0, 0])
-//                         };
-//                         write_half_block(writer, top, bot)?;
-//                     }
-//                     writeln!(writer, "\x1b[0m")?;
-//                 }
-//             }
-//         }
-//     }
-//     Ok(())
-// }
 
 /// A low-level helper that squashes two vertical pixels into a single terminal character cell.
 ///
@@ -412,63 +371,6 @@ fn write_full_block<W: Write>(out: &mut W, px: Rgba<u8>) -> std::io::Result<()> 
         write!(out, "  ") // Two spaces
     }
 }
-/// Braille rendering (8x4 pixels → 1 char, ultra-dense)
-// fn write_braille<W: Write>(
-//     writer: &mut W,
-//     img: &image::DynamicImage,
-//     _options: RenderOptions,
-// ) -> std::io::Result<()> {
-//     let (width, height) = img.dimensions();
-//     // Braille cells are 2px wide by 4px tall
-//     for y in (0..height).step_by(4) {
-//         for x in (0..width).step_by(2) {
-//             let mut byte = 0u8;
-//             // Map 2x4 pixels to the Braille bitmask
-//             // Dot layout:
-//             // 1 4
-//             // 2 5
-//             // 3 6
-//             // 7 8
-//             let dots = [
-//                 (0, 0, 0x01),
-//                 (0, 1, 0x02),
-//                 (0, 2, 0x04),
-//                 (1, 0, 0x08),
-//                 (1, 1, 0x10),
-//                 (1, 2, 0x20),
-//                 (0, 3, 0x40),
-//                 (1, 3, 0x80),
-//             ];
-
-//             for (dx, dy, bit) in dots {
-//                 if x + dx < width && y + dy < height {
-//                     let px = img.get_pixel(x + dx, y + dy);
-//                     // If pixel is not transparent and not "black-ish"
-//                     if px[3] > 128
-//                         && (u32::from(px[0]) + u32::from(px[1]) + u32::from(px[2])) / 3 > 30
-//                     {
-//                         byte |= bit;
-//                     }
-//                 }
-//             }
-//             // Unicode Braille starts at U+2800
-//             let c = std::char::from_u32(0x2800 + u32::from(byte)).unwrap_or(' ');
-//             write!(writer, "{}", c)?;
-//         }
-//         writeln!(writer)?;
-//     }
-//     Ok(())
-// }
-
-/// Grayscale fade chars (.,:;i1tfLCG08@)
-// fn write_fade<W: Write>(
-//     writer: &mut W,
-//     img: &image::DynamicImage,
-//     _options: RenderOptions,
-// ) -> std::io::Result<()> {
-//     let charset = " .:-=+*#%@"; // Simple brightness ramp
-//     render_charset(writer, img, charset)
-// }
 
 /// Braille rendering — 2x4 pixels per cell, with per-cell foreground color
 fn write_braille<W: Write>(
@@ -514,14 +416,27 @@ fn write_braille<W: Write>(
 
                     if a > 128 {
                         // Perceptual luminance (Rec. 709 coefficients)
-                        let luma =
-                            (0.2126 * r as f32 + 0.7152 * g as f32 + 0.0722 * b as f32) as u32;
+                        #[allow(clippy::cast_possible_truncation)]
+                        #[allow(clippy::cast_sign_loss)]
+                        let luma = 0.2126f32
+                            // .mul_add(r as f32, 0.0722f32.mul_add(b as f32, 0.7152 * g as f32));
+                            // .mul_add(r as f32, 0.0722f32.mul_add(f32::from(b), 0.7152 * g as f32));
+                            .mul_add(
+                                f32::from(r),
+                                0.0722f32.mul_add(f32::from(b), 0.7152 * f32::from(g)),
+                            );
+                        // let luma = (0.2126 * f32::from(r)
+                        //     + 0.7152 * f32::from(g)
+                        //     + 0.0722 * f32::from(b)) as u32;
 
-                        if luma > 30 {
+                        if luma > 30.0 {
                             byte |= bit;
-                            r_sum += r as u32;
-                            g_sum += g as u32;
-                            b_sum += b as u32;
+                            // r_sum += r as u32;
+                            r_sum += u32::from(r);
+                            // g_sum += g as u32;
+                            g_sum += u32::from(g);
+                            b_sum += u32::from(b);
+                            // b_sum += b as u32;
                             lit_count += 1;
                         }
                     }
@@ -533,11 +448,16 @@ fn write_braille<W: Write>(
                 write!(writer, "\x1b[0m\u{2800}")?;
             } else {
                 // Average color of lit dots
-                let r = (r_sum / lit_count) as u8;
-                let g = (g_sum / lit_count) as u8;
-                let b = (b_sum / lit_count) as u8;
-                let c = char::from_u32(0x2800 + byte as u32).unwrap_or(' ');
-                write!(writer, "\x1b[38;2;{r};{g};{b}m{c}")?;
+                // let r = (r_sum / lit_count) as u8;
+                // let r = u8::try_from(r_sum / lit_count);
+                let red = u8::try_from(r_sum / lit_count).unwrap_or(0);
+                let green = u8::try_from(g_sum / lit_count).unwrap_or(0);
+                let blue = u8::try_from(b_sum / lit_count).unwrap_or(0);
+                // let g = (g_sum / lit_count) as u8;
+                // let b = (b_sum / lit_count) as u8;
+                // let c = char::from_u32(0x2800 + byte as u32).unwrap_or(' ');
+                let ch = char::from_u32(0x2800 + u32::from(byte)).unwrap_or(' ');
+                write!(writer, "\x1b[38;2;{red};{green};{blue}m{ch}")?;
             }
         }
         writeln!(writer, "\x1b[0m")?; // Reset at end of each row
@@ -554,7 +474,8 @@ fn write_fade<W: Write>(
 ) -> std::io::Result<()> {
     // 32-char ramp: much finer brightness gradation than 10 chars
     // Chosen for increasing visual density across common terminal fonts
-    let charset = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
+    // let charset = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
+    let charset = " ░▒▓█";
     render_charset_colored(writer, img, charset)
 }
 
@@ -568,25 +489,46 @@ fn render_charset_colored<W: Write>(
     let rgba = img.to_rgba8();
     let (width, height) = rgba.dimensions();
     let chars: Vec<char> = charset.chars().collect();
-    let n = chars.len();
+    let num_chars = chars.len();
 
     for y in 0..height {
         for x in 0..width {
             let px = rgba.get_pixel(x, y);
-            let [r, g, b, a] = px.0;
+            let [red, green, blue, alpha] = px.0;
 
-            if a < 128 {
+            if alpha < 128 {
                 write!(writer, "\x1b[0m ")?;
                 continue;
             }
 
             // Perceptual luminance → charset index
-            let luma = 0.2126 * r as f32 + 0.7152 * g as f32 + 0.0722 * b as f32;
-            let idx = ((luma / 255.0) * (n - 1) as f32).round() as usize;
-            let idx = idx.min(n - 1);
-            let c = chars[idx];
+            // let r_f = f32::from(red);
+            // let g_f = f32::from(green);
+            // let b_f = f32::from(blue);
 
-            write!(writer, "\x1b[38;2;{r};{g};{b}m{c}")?;
+            // mul_add calculation: (a * b) + c
+            let luma = 0.2126f32.mul_add(
+                f32::from(red),
+                0.0722f32.mul_add(f32::from(blue), 0.7152 * f32::from(green)),
+            );
+            // let luma = 0.7152f32
+            //     .mul_add(g_f, 0.2126f32 * r_f)
+            //     .mul_add(0.0722f32, b_f)
+            //     .clamp(0.0, 255.0);
+            // let luma = 0.2126 * f32::from(r) + 0.7152 * f32::from(g) + 0.0722 * f32::from(b);
+            // let luma = 0.2126f32.mul_add(
+            //     f32::from(red),
+            //     0.0722f32.mul_add(f32::from(blue), 0.7152 * f32::from(green)),
+            // );
+            // if luma > 30.0 {}
+            #[allow(clippy::cast_precision_loss)]
+            #[allow(clippy::cast_possible_truncation)]
+            #[allow(clippy::cast_sign_loss)]
+            let idx = ((luma / 255.0) * (num_chars - 1) as f32).round() as usize;
+            let idx = idx.min(num_chars - 1);
+            let ch = chars[idx];
+
+            write!(writer, "\x1b[38;2;{red};{green};{blue}m{ch}")?;
         }
         writeln!(writer, "\x1b[0m")?;
     }
@@ -610,35 +552,11 @@ fn write_ascii<W: Write>(
     let charset = " `.-':_,^=;><+!rc*/z?sLTv)J7(|Fi{C}fI31tlu[neoZ5Yxjya]2ESwqkP6h9d4VpOGbUAKXHm8RD#$Bg0MNWQ%&@";
     render_charset_colored(writer, img, charset)
 }
-// Helper to avoid repeating logic for ASCII/Fade
-fn render_charset<W: Write>(
-    writer: &mut W,
-    img: &image::DynamicImage,
-    charset: &str,
-) -> std::io::Result<()> {
-    let (width, height) = img.dimensions();
-    let chars: Vec<char> = charset.chars().collect();
-
-    for y in 0..height {
-        for x in 0..width {
-            let px = img.get_pixel(x, y);
-            if px[3] == 0 {
-                write!(writer, " ")?;
-                continue;
-            }
-            // Standard Luminance Formula
-            let avg =
-                (0.2126 * f64::from(px[0]) + 0.7152 * f64::from(px[1]) + 0.0722 * f64::from(px[2]))
-                    / 255.0;
-            let idx = (avg * (chars.len() - 1) as f64).round() as usize;
-            write!(writer, "{}", chars[idx])?;
-        }
-        writeln!(writer)?;
-    }
-    Ok(())
-}
-#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
+#[derive(
+    Copy, Clone, Debug, Default, PartialEq, Eq, ValueEnum, serde::Serialize, serde::Deserialize,
+)]
 pub enum RenderStylePreset {
+    #[default]
     Ansi,
     Unicode,
     Braille,
