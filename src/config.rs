@@ -1,4 +1,4 @@
-use px2ansi_rs::ResizeFilter;
+use px2ansi_rs::{RenderStylePreset, ResizeFilter};
 use serde::{Deserialize, Serialize};
 
 /// Global configuration for the px2ansi engine.
@@ -29,6 +29,8 @@ pub struct Config {
     /// **Note:** Using an absolute path is recommended so the tool works
     /// regardless of your current working directory.
     pub index: String,
+
+    pub style: RenderStylePreset,
 }
 // impl Config {
 //     pub fn new() -> Self {
@@ -45,6 +47,7 @@ impl Default for Config {
             filter: ResizeFilter::Lanczos3,
             full: false,
             index: "index.json".into(),
+            style: RenderStylePreset::Ansi,
         }
     }
 }

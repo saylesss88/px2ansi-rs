@@ -270,56 +270,111 @@ impl RenderOptions {
 ///
 /// Note: This function does not currently validate image dimensions; however,
 /// passing extremely large images may result in performance issues depending
-/// on the writer's capability.
+/// Main rendering dispatch - handles all charset modes
 pub fn write_ansi_art<W: Write>(
     img: &DynamicImage,
     writer: &mut W,
-    options: AnsiArtOptions,
+    options: RenderOptions, // note: RenderOptions, not AnsiArtOptions
 ) -> std::io::Result<()> {
+    eprintln!("DEBUG: using charset={:?}", options.charset);
+    match options.charset {
+        CharsetMode::Ansi => write_ansi_blocks(writer, img),
+        CharsetMode::Unicode => write_unicode_blocks(writer, img, options.style.full),
+        CharsetMode::Braille => write_braille(writer, img, options),
+        CharsetMode::Fade => write_fade(writer, img, options),
+        CharsetMode::Ascii => write_ascii(writer, img, options),
+    }
+}
+/// ANSI half-blocks (2px per cell) - your existing logic
+fn write_ansi_blocks<W: Write>(writer: &mut W, img: &DynamicImage) -> std::io::Result<()> {
     let (width, height) = img.dimensions();
-
-    match options.mode {
-        OutputMode::Ansi => {
-            for y in (0..height).step_by(2) {
-                for x in 0..width {
-                    let top = img.get_pixel(x, y);
-                    let bot = if y + 1 < height {
-                        img.get_pixel(x, y + 1)
-                    } else {
-                        Rgba([0, 0, 0, 0])
-                    };
-                    write_half_block(writer, top, bot)?;
-                }
-                writeln!(writer, "\x1b[0m")?;
-            }
-        }
-        OutputMode::Unicode => {
-            if options.full_block {
-                for y in 0..height {
-                    for x in 0..width {
-                        let px = img.get_pixel(x, y);
-                        write_full_block(writer, px)?;
-                    }
-                    writeln!(writer, "\x1b[0m")?;
-                }
+    for y in (0..height).step_by(2) {
+        for x in 0..width {
+            let top = img.get_pixel(x, y);
+            let bot = if y + 1 < height {
+                img.get_pixel(x, y + 1)
             } else {
-                for y in (0..height).step_by(2) {
-                    for x in 0..width {
-                        let top = img.get_pixel(x, y);
-                        let bot = if y + 1 < height {
-                            img.get_pixel(x, y + 1)
-                        } else {
-                            Rgba([0, 0, 0, 0])
-                        };
-                        write_half_block(writer, top, bot)?;
-                    }
-                    writeln!(writer, "\x1b[0m")?;
-                }
-            }
+                Rgba([0, 0, 0, 0])
+            };
+            write_half_block(writer, top, bot)?;
         }
+        writeln!(writer, "\x1b[0m")?;
     }
     Ok(())
 }
+
+/// Unicode blocks (full or half, based on `full` flag)
+fn write_unicode_blocks<W: Write>(
+    writer: &mut W,
+    img: &DynamicImage,
+    full_block: bool,
+) -> std::io::Result<()> {
+    let (width, height) = img.dimensions();
+    if full_block {
+        // Your existing full-block logic
+        for y in 0..height {
+            for x in 0..width {
+                let px = img.get_pixel(x, y);
+                write_full_block(writer, px)?;
+            }
+            writeln!(writer, "\x1b[0m")?;
+        }
+    } else {
+        // Fallback to ANSI half-blocks (your existing logic)
+        write_ansi_blocks(writer, img)?;
+    }
+    Ok(())
+}
+// on the writer's capability.
+// pub fn write_ansi_art<W: Write>(
+//     img: &DynamicImage,
+//     writer: &mut W,
+//     options: AnsiArtOptions,
+// ) -> std::io::Result<()> {
+//     let (width, height) = img.dimensions();
+
+//     match options.mode {
+//         OutputMode::Ansi => {
+//             for y in (0..height).step_by(2) {
+//                 for x in 0..width {
+//                     let top = img.get_pixel(x, y);
+//                     let bot = if y + 1 < height {
+//                         img.get_pixel(x, y + 1)
+//                     } else {
+//                         Rgba([0, 0, 0, 0])
+//                     };
+//                     write_half_block(writer, top, bot)?;
+//                 }
+//                 writeln!(writer, "\x1b[0m")?;
+//             }
+//         }
+//         OutputMode::Unicode => {
+//             if options.full_block {
+//                 for y in 0..height {
+//                     for x in 0..width {
+//                         let px = img.get_pixel(x, y);
+//                         write_full_block(writer, px)?;
+//                     }
+//                     writeln!(writer, "\x1b[0m")?;
+//                 }
+//             } else {
+//                 for y in (0..height).step_by(2) {
+//                     for x in 0..width {
+//                         let top = img.get_pixel(x, y);
+//                         let bot = if y + 1 < height {
+//                             img.get_pixel(x, y + 1)
+//                         } else {
+//                             Rgba([0, 0, 0, 0])
+//                         };
+//                         write_half_block(writer, top, bot)?;
+//                     }
+//                     writeln!(writer, "\x1b[0m")?;
+//                 }
+//             }
+//         }
+//     }
+//     Ok(())
+// }
 
 /// A low-level helper that squashes two vertical pixels into a single terminal character cell.
 ///
@@ -355,5 +410,269 @@ fn write_full_block<W: Write>(out: &mut W, px: Rgba<u8>) -> std::io::Result<()> 
         write!(out, "\x1b[38;2;{};{};{}m██", px[0], px[1], px[2])
     } else {
         write!(out, "  ") // Two spaces
+    }
+}
+/// Braille rendering (8x4 pixels → 1 char, ultra-dense)
+// fn write_braille<W: Write>(
+//     writer: &mut W,
+//     img: &image::DynamicImage,
+//     _options: RenderOptions,
+// ) -> std::io::Result<()> {
+//     let (width, height) = img.dimensions();
+//     // Braille cells are 2px wide by 4px tall
+//     for y in (0..height).step_by(4) {
+//         for x in (0..width).step_by(2) {
+//             let mut byte = 0u8;
+//             // Map 2x4 pixels to the Braille bitmask
+//             // Dot layout:
+//             // 1 4
+//             // 2 5
+//             // 3 6
+//             // 7 8
+//             let dots = [
+//                 (0, 0, 0x01),
+//                 (0, 1, 0x02),
+//                 (0, 2, 0x04),
+//                 (1, 0, 0x08),
+//                 (1, 1, 0x10),
+//                 (1, 2, 0x20),
+//                 (0, 3, 0x40),
+//                 (1, 3, 0x80),
+//             ];
+
+//             for (dx, dy, bit) in dots {
+//                 if x + dx < width && y + dy < height {
+//                     let px = img.get_pixel(x + dx, y + dy);
+//                     // If pixel is not transparent and not "black-ish"
+//                     if px[3] > 128
+//                         && (u32::from(px[0]) + u32::from(px[1]) + u32::from(px[2])) / 3 > 30
+//                     {
+//                         byte |= bit;
+//                     }
+//                 }
+//             }
+//             // Unicode Braille starts at U+2800
+//             let c = std::char::from_u32(0x2800 + u32::from(byte)).unwrap_or(' ');
+//             write!(writer, "{}", c)?;
+//         }
+//         writeln!(writer)?;
+//     }
+//     Ok(())
+// }
+
+/// Grayscale fade chars (.,:;i1tfLCG08@)
+// fn write_fade<W: Write>(
+//     writer: &mut W,
+//     img: &image::DynamicImage,
+//     _options: RenderOptions,
+// ) -> std::io::Result<()> {
+//     let charset = " .:-=+*#%@"; // Simple brightness ramp
+//     render_charset(writer, img, charset)
+// }
+
+/// Braille rendering — 2x4 pixels per cell, with per-cell foreground color
+fn write_braille<W: Write>(
+    writer: &mut W,
+    img: &image::DynamicImage,
+    _options: RenderOptions,
+) -> std::io::Result<()> {
+    let rgba = img.to_rgba8();
+    let (width, height) = rgba.dimensions();
+
+    // Braille dot layout (dx, dy, bitmask)
+    // Unicode Braille dot order:
+    // col0 col1
+    //  1    4   (dy=0)
+    //  2    5   (dy=1)
+    //  3    6   (dy=2)
+    //  7    8   (dy=3)
+    let dots: [(u32, u32, u8); 8] = [
+        (0, 0, 0x01),
+        (0, 1, 0x02),
+        (0, 2, 0x04),
+        (1, 0, 0x08),
+        (1, 1, 0x10),
+        (1, 2, 0x20),
+        (0, 3, 0x40),
+        (1, 3, 0x80),
+    ];
+
+    for y in (0..height).step_by(4) {
+        for x in (0..width).step_by(2) {
+            let mut byte = 0u8;
+            let mut r_sum = 0u32;
+            let mut g_sum = 0u32;
+            let mut b_sum = 0u32;
+            let mut lit_count = 0u32;
+
+            for (dx, dy, bit) in dots {
+                let px_x = x + dx;
+                let px_y = y + dy;
+                if px_x < width && px_y < height {
+                    let px = rgba.get_pixel(px_x, px_y);
+                    let [r, g, b, a] = px.0;
+
+                    if a > 128 {
+                        // Perceptual luminance (Rec. 709 coefficients)
+                        let luma =
+                            (0.2126 * r as f32 + 0.7152 * g as f32 + 0.0722 * b as f32) as u32;
+
+                        if luma > 30 {
+                            byte |= bit;
+                            r_sum += r as u32;
+                            g_sum += g as u32;
+                            b_sum += b as u32;
+                            lit_count += 1;
+                        }
+                    }
+                }
+            }
+
+            if byte == 0 || lit_count == 0 {
+                // Blank cell — reset color and print empty braille (U+2800)
+                write!(writer, "\x1b[0m\u{2800}")?;
+            } else {
+                // Average color of lit dots
+                let r = (r_sum / lit_count) as u8;
+                let g = (g_sum / lit_count) as u8;
+                let b = (b_sum / lit_count) as u8;
+                let c = char::from_u32(0x2800 + byte as u32).unwrap_or(' ');
+                write!(writer, "\x1b[38;2;{r};{g};{b}m{c}")?;
+            }
+        }
+        writeln!(writer, "\x1b[0m")?; // Reset at end of each row
+    }
+
+    Ok(())
+}
+
+/// Colored fade/density rendering using perceptual luminance + ANSI foreground color
+fn write_fade<W: Write>(
+    writer: &mut W,
+    img: &image::DynamicImage,
+    _options: RenderOptions,
+) -> std::io::Result<()> {
+    // 32-char ramp: much finer brightness gradation than 10 chars
+    // Chosen for increasing visual density across common terminal fonts
+    let charset = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
+    render_charset_colored(writer, img, charset)
+}
+
+/// Shared colored charset renderer — maps each pixel to a char by luminance,
+/// then colorizes it with the pixel's own RGB using ANSI truecolor.
+fn render_charset_colored<W: Write>(
+    writer: &mut W,
+    img: &image::DynamicImage,
+    charset: &str,
+) -> std::io::Result<()> {
+    let rgba = img.to_rgba8();
+    let (width, height) = rgba.dimensions();
+    let chars: Vec<char> = charset.chars().collect();
+    let n = chars.len();
+
+    for y in 0..height {
+        for x in 0..width {
+            let px = rgba.get_pixel(x, y);
+            let [r, g, b, a] = px.0;
+
+            if a < 128 {
+                write!(writer, "\x1b[0m ")?;
+                continue;
+            }
+
+            // Perceptual luminance → charset index
+            let luma = 0.2126 * r as f32 + 0.7152 * g as f32 + 0.0722 * b as f32;
+            let idx = ((luma / 255.0) * (n - 1) as f32).round() as usize;
+            let idx = idx.min(n - 1);
+            let c = chars[idx];
+
+            write!(writer, "\x1b[38;2;{r};{g};{b}m{c}")?;
+        }
+        writeln!(writer, "\x1b[0m")?;
+    }
+
+    Ok(())
+}
+
+/// Colored ASCII art rendering using perceptual luminance + ANSI foreground color.
+///
+/// The charset is ordered by increasing visual density/weight as rendered in a
+/// typical monospace terminal font. Finer granularity than the fade charset since
+/// ASCII chars have more varied shapes that don't form a clean linear ramp.
+fn write_ascii<W: Write>(
+    writer: &mut W,
+    img: &image::DynamicImage,
+    _options: RenderOptions,
+) -> std::io::Result<()> {
+    // Carefully ordered by increasing visual density in monospace fonts.
+    // Starts with true empty space, moves through punctuation and symbols,
+    // up to the heaviest glyphs (@, #, M, W) at the bright end.
+    let charset = " `.-':_,^=;><+!rc*/z?sLTv)J7(|Fi{C}fI31tlu[neoZ5Yxjya]2ESwqkP6h9d4VpOGbUAKXHm8RD#$Bg0MNWQ%&@";
+    render_charset_colored(writer, img, charset)
+}
+// Helper to avoid repeating logic for ASCII/Fade
+fn render_charset<W: Write>(
+    writer: &mut W,
+    img: &image::DynamicImage,
+    charset: &str,
+) -> std::io::Result<()> {
+    let (width, height) = img.dimensions();
+    let chars: Vec<char> = charset.chars().collect();
+
+    for y in 0..height {
+        for x in 0..width {
+            let px = img.get_pixel(x, y);
+            if px[3] == 0 {
+                write!(writer, " ")?;
+                continue;
+            }
+            // Standard Luminance Formula
+            let avg =
+                (0.2126 * f64::from(px[0]) + 0.7152 * f64::from(px[1]) + 0.0722 * f64::from(px[2]))
+                    / 255.0;
+            let idx = (avg * (chars.len() - 1) as f64).round() as usize;
+            write!(writer, "{}", chars[idx])?;
+        }
+        writeln!(writer)?;
+    }
+    Ok(())
+}
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
+pub enum RenderStylePreset {
+    Ansi,
+    Unicode,
+    Braille,
+    Fade,
+    Ascii,
+    FullAnsi,
+    Dense,
+}
+// 1. Define an Enum for the CLI argument
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")] // For the config file (TOML)
+#[clap(rename_all = "kebab-case")] // For the CLI flags
+pub enum ResizeFilter {
+    /// Nearest Neighbor (Best for pixel art)
+    Nearest,
+    /// Linear interpolation
+    Triangle,
+    /// Sharp cubic filter
+    CatmullRom,
+    /// Blurry cubic filter
+    Gaussian,
+    /// High-quality resampling (Slowest)
+    Lanczos3,
+}
+
+// 2. Add helper to convert CLI enum to image::FilterType
+impl From<ResizeFilter> for FilterType {
+    fn from(f: ResizeFilter) -> Self {
+        match f {
+            ResizeFilter::Nearest => Self::Nearest,
+            ResizeFilter::Triangle => Self::Triangle,
+            ResizeFilter::CatmullRom => Self::CatmullRom,
+            ResizeFilter::Gaussian => Self::Gaussian,
+            ResizeFilter::Lanczos3 => Self::Lanczos3,
+        }
     }
 }

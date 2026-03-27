@@ -38,16 +38,10 @@ fn main() -> Result<()> {
             width,
             filter,
             full,
+            style,
         } => {
-            let render_opts = RenderOptions {
-                output_mode: mode
-                    .unwrap_or_else(|| cfg.mode.clone())
-                    .parse()
-                    .unwrap_or(OutputMode::Ansi),
-                target_width: width,
-                filter: filter.unwrap_or(cfg.filter).into(),
-                full: full.unwrap_or(cfg.full),
-            };
+            let render_opts = RenderOptions::from_cli(mode, full, style, width, filter)?;
+            // let render_opts = RenderOptions::new();
 
             let params = ConvertParams {
                 path: &filename,
@@ -82,29 +76,15 @@ fn main() -> Result<()> {
             full,
             filter,
             interactive,
+            style,
         } => {
-            // Index file check
-            if !std::path::Path::new(active_index).exists() {
-                anyhow::bail!(
-                    "Index file not found at: {active_index}\n\n\
-    💡 Tip: You need to create an index before you can 'show' images.\n\
-    Try running: px2ansi-rs index <folder_with_images> -o {active_index}"
-                );
-            }
+            // let render_opts = RenderOptions::new();
 
-            let render_opts = RenderOptions {
-                output_mode: mode
-                    .unwrap_or_else(|| cfg.mode.clone())
-                    .parse()
-                    .unwrap_or_default(),
-                target_width: None,
-                filter: filter.unwrap_or(cfg.filter).into(),
-                full: full.unwrap_or(cfg.full),
-            };
+            let render_opts = RenderOptions::from_cli(mode, full, style, None, filter)?;
 
             let params = ShowParams {
                 name: &name,
-                index_path: active_index, // &str, not .to_string()
+                index_path: active_index,
                 render: render_opts,
                 interactive,
                 latency: active_latency,
