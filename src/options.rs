@@ -242,7 +242,7 @@ impl RenderOptions {
         let (term_w, term_h) = get_terminal_size();
         let (max_w, max_h) = if term_w > 0 && term_h > 0 {
             match self.charset {
-                CharsetMode::Braille => (term_w, term_h * 2),
+                CharsetMode::Braille => (term_w * 2, term_h * 4),
                 CharsetMode::Unicode if self.style.full => (term_w / 2, term_h),
                 // CharsetMode::Ascii | CharsetMode::Fade => (term_w.saturating_sub(2), term_h - 2),
                 _ => (term_w.saturating_sub(2), term_h * 2 / 3),
