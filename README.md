@@ -17,6 +17,7 @@ advanced filters.
 - **Truecolor + Transparency** — Full 24-bit RGB + alpha
 - **Smart Resize** — Auto-fits terminal width
 - **5 Filters** — `nearest` (pixel art) to `lanczos3` (photos)
+- **6 Styles** — `ansi`, `unicode`, `fade`, `ascii`, `braille`, and `full-block`
 
 ---
 
@@ -40,17 +41,17 @@ cargo install px2ansi-rs
 
 ## Quick Reference
 
-| Use Case        | Command                                              | Mode    | Style | Notes                |
-| --------------- | ---------------------------------------------------- | ------- | ----- | -------------------- |
-| **Convert**     | `px2ansi-rs convert image.png`                       | auto    | ▀     | Terminal width       |
-| **ANSI**        | `px2ansi-rs convert image.png --mode ansi`           | ANSI    | ▀     | Max compatibility    |
-| **Unicode**     | `px2ansi-rs convert image.png --mode unicode`        | Unicode | ▀     | High detail          |
-| **Retro**       | `px2ansi-rs convert image.png --mode unicode --full` | Unicode | ██    | Pixel perfect        |
-| **Index**       | `px2ansi-rs index <dir> -o index.json`               | N/A     | N/A   | Creates `index.json` |
-| **Interactive** | `px2ansi-rs show -i`                                 | auto    | auto  | Fuzzy TUI browser    |
-| **Fuzzy**       | `px2ansi-rs show chariz`                             | auto    | auto  | → Charizard          |
-| **Random**      | `px2ansi-rs show random`                             | auto    | auto  | Terminal greeting    |
-| **List**        | `px2ansi-rs list --count 10`                         | N/A     | N/A   | First 10 assets      |
+| Use Case        | Command                                           | Mode    | Style | Notes                |
+| --------------- | ------------------------------------------------- | ------- | ----- | -------------------- |
+| **Convert**     | `px2ansi-rs convert image.png`                    | auto    | ▀     | Terminal width       |
+| **ANSI**        | `px2ansi-rs convert image.png --style ansi`       | ANSI    | ▀     | Max compatibility    |
+| **Unicode**     | `px2ansi-rs convert image.png --style unicode`    | Unicode | ▀     | High detail          |
+| **Retro**       | `px2ansi-rs convert image.png --style full-block` | Unicode | ██    | Pixel perfect        |
+| **Index**       | `px2ansi-rs index <dir> -o index.json`            | N/A     | N/A   | Creates `index.json` |
+| **Interactive** | `px2ansi-rs show -i`                              | auto    | auto  | Fuzzy TUI browser    |
+| **Fuzzy**       | `px2ansi-rs show chariz`                          | auto    | auto  | → Charizard          |
+| **Random**      | `px2ansi-rs show random`                          | auto    | auto  | Terminal greeting    |
+| **List**        | `px2ansi-rs list --count 10`                      | N/A     | N/A   | First 10 assets      |
 
 - The `--full` toggle is specifically optimized for **Unicode mode** to achieve
   a "pixel-perfect" square look.
@@ -67,15 +68,15 @@ Basic conversion to stdout (auto-resizes to fit your terminal):
 ```Bash
 px2ansi-rs convert image.png
 # These basically look the same for both modes
-px2ansi-rs convert image.png --mode unicode
+px2ansi-rs convert image.png --style unicode
 ```
 
 **Unicode Mode** (Retro Style)
 
-To get the chunky "Pokemon Colorscript" look:
+To get the chunky "Pokemon Colorscript" look (Unicode with Full block):
 
 ```Bash
-px2ansi-rs convert image.png --mode unicode --full --filter nearest
+px2ansi-rs convert image.png --style full-block --filter nearest
 ```
 
 **Force Width & Filtering**
@@ -89,6 +90,14 @@ For bigger images `lanczos3` seems to look better:
 ```bash
 px2ansi-rs convert tests/scream.png --filter lanczos3
 ```
+
+Simple ASCII characters:
+
+```bash
+px2ansi-rs convert tests/test.png --style ascii --filter nearest
+```
+
+![screenshot3](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii.png)
 
 2. The Library Indexer
 
@@ -105,11 +114,11 @@ Once indexed, you can display an image by its name (file stem) without needing
 the full path:
 
 ```Bash
-px2ansi-rs show pikachu --mode ansi
+px2ansi-rs show pikachu --style ansi
 # Show a random sprite from your index
 px2ansi-rs show random
-px2ansi-rs show random --mode unicode
-px2ansi-rs show random --mode ansi --filter nearest
+px2ansi-rs show random --style unicode
+px2ansi-rs show random --style ansi --filter nearest
 ```
 
 - By default, `px2ansi-rs show` shows a random sprite from the `index.json` in
@@ -179,15 +188,13 @@ You can create this file manually to override the engine's built-in defaults:
 
 ```toml
 # Output mode: "ansi" (2 pixels per cell) or "unicode"
-mode = "ansi"
+style = "ansi"
 # Always show execution timing metadata
 latency = true
 # Default filter: "nearest", "triangle", "catmull-rom", "gaussian", "lanczos3"
 filter = "lanczos3"
 # Index file name to target (absolute path)
 index = "/home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json"
-# Use double-width full blocks (██) for square pixels
-full = false
 ```
 
 You can call your index from anywhere in your filesystem by using the `-I` flag,
@@ -263,16 +270,20 @@ programs.zsh.initContent = ''
 
 ---
 
-### 🎨 Rendering Modes
+### 🎨 Rendering Styles
 
 `px2ansi-rs` supports multiple ways to bring your sprites to life. Whether you
 want crisp modern detail or chunky retro vibes, we've got you covered.
 
-| Mode         | Command Flag     | Description                    | Best For                               |
-| ------------ | ---------------- | ------------------------------ | -------------------------------------- |
-| ANSI         | `--mode ansi`    | Standard 2-pixels-per-row      | Maximum compatibility & speed          |
-| HD Unicode   | `--mode unicode` | Hi-Def Unicode half-blocks 1:1 | High-Fidelity assets                   |
-| Retro Square | `--full`         | 1 pixel is a solid ██ square   | 8-bit/16-bit pixel art & retro styling |
+| Style        | Command Flag         | Description                          | Best For                                          |
+| ------------ | -------------------- | ------------------------------------ | ------------------------------------------------- |
+| ANSI         | `--style ansi`       | Standard 2-pixels-per-row            | Maximum compatibility & speed                     |
+| HD Unicode   | `--style unicode`    | Hi-Def Unicode half-blocks 1:1       | High-Fidelity assets                              |
+| Fade         | `--style fade`       | `░▒▓█`                               | High contrast images with clear light/dark areas  |
+| Retro Square | `--style full-block` | 1 pixel is a solid ██ square         | 8-bit/16-bit pixel art & retro styling            |
+| ASCII        | `--style ascii`      | Characters ordered by visual density | Photos and complex images, classic ASCII art feel |
+| Braille      | `--style braille`    | 2×4 pixels per cell via `⣿` dots     | Fine detail, dense output, line art               |
+| Dense        | WIP                  |                                      |                                                   |
 
 By default, both ANSI and Unicode modes now utilize a "vertical packing"
 technique to maximize resolution.
@@ -282,13 +293,14 @@ technique to maximize resolution.
   using the Unicode half-block (▀) and manipulating the foreground and
   background colors simultaneously.
 
-- **The Result**: Without `--full`: Both modes provide the same high-density
-  detail and use the full terminal width. They look identical because they are
-  using the same underlying pixel-packing logic to maintain 1:1 scaling.
-  - With `--full`: The logic switches from "packing" to "square-blocking," where
-    each individual pixel is rendered as a double-wide full block (██). This
-    creates the distinct chunky, retro aesthetic and causes the two modes to
-    diverge visually.
+- **The Result**: Without `--style full-block`: Both modes provide the same
+  high-density detail and use the full terminal width. They look identical
+  because they are using the same underlying pixel-packing logic to maintain 1:1
+  scaling.
+  - With `--style full-block`: The logic switches from "packing" to
+    "square-blocking," where each individual pixel is rendered as a double-wide
+    full block (██). This creates the distinct chunky, retro aesthetic and
+    causes the two modes to diverge visually.
 
 ---
 
