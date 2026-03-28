@@ -133,7 +133,7 @@ fn write_braille<W: Write>(
                     let px = rgba.get_pixel(px_x, px_y);
                     let [r, g, b, a] = px.0;
 
-                    if a > 128 {
+                    if a > 10 {
                         // let luma = 0.2126f32.mul_add(
                         //     f32::from(r),
                         //     0.0722f32.mul_add(f32::from(b), 0.7152 * f32::from(g)),
@@ -141,7 +141,7 @@ fn write_braille<W: Write>(
 
                         let luma = (2126 * u32::from(r) + 7152 * u32::from(g) + 722 * u32::from(b))
                             / 10000;
-                        if luma > 30 {
+                        if luma > 2 {
                             byte |= bit;
                             r_sum += u32::from(r);
                             g_sum += u32::from(g);
@@ -174,54 +174,118 @@ fn write_fade<W: Write>(
     img: &DynamicImage,
     _options: RenderOptions,
 ) -> std::io::Result<()> {
-    let charset = " ░▒▓█";
+    // let charset: &[&str] = &[" ", "░", "▒", "▓", "█"];
+    let charset: &[&str] = &["█", "▓", "▒", "░", " "];
     render_charset_colored(writer, img, charset)
 }
 
-/// Colored ASCII art rendering using perceptual luminance + ANSI foreground color.
-/// Uses a comprehensive 92-character ASCII ramp ordered by density.
 fn write_ascii<W: Write>(
     writer: &mut W,
     img: &DynamicImage,
     _options: RenderOptions,
 ) -> std::io::Result<()> {
-    let charset = " `.-':_,^=;><+!rc*/z?sLTv)J7(|Fi{C}fI31tlu[neoZ5Yxjya]2ESwqkP6h9d4VpOGbUAKXHm8RD#$Bg0MNWQ%&@";
+    let charset: &[&str] = &[
+        " ", "`", ".", "-", "'", ":", "_", ",", "^", "=", ";", ">", "<", "+", "!", "r", "c", "*",
+        "/", "z", "?", "s", "L", "T", "v", ")", "J", "7", "(", "|", "F", "i", "{", "C", "}", "f",
+        "I", "3", "1", "t", "l", "u", "[", "n", "e", "o", "Z", "5", "Y", "x", "j", "y", "a", "]",
+        "2", "E", "S", "w", "q", "k", "P", "6", "h", "9", "d", "4", "V", "p", "O", "G", "b", "U",
+        "A", "K", "X", "H", "m", "8", "R", "D", "#", "$", "B", "g", "0", "M", "N", "W", "Q", "%",
+        "&", "@",
+    ];
     render_charset_colored(writer, img, charset)
 }
 
-/// Shared colored charset renderer — maps each pixel to a char by luminance.
+/// This is our "Universal" renderer.
+/// It doesn't care if the 'glyph' is a space, a letter, or a 2-column Emoji.
 fn render_charset_colored<W: Write>(
     writer: &mut W,
     img: &DynamicImage,
-    charset: &str,
+    charset: &[&str],
 ) -> std::io::Result<()> {
     let rgba = img.to_rgba8();
     let (width, height) = rgba.dimensions();
-    let chars: Vec<char> = charset.chars().collect();
-    let num_chars = chars.len();
-    let num_chars_u32 = u32::try_from(num_chars).unwrap_or(1);
+    let num_chars_u32 = u32::try_from(charset.len()).unwrap_or(1);
+    let num_chars = charset.len();
 
+    // First pass: find the actual luma range of opaque pixels
+    let mut luma_min = u32::MAX;
+    let mut luma_max = u32::MIN;
     for y in 0..height {
         for x in 0..width {
             let px = rgba.get_pixel(x, y);
             let [red, green, blue, alpha] = px.0;
+            if alpha >= 30 {
+                let luma =
+                    (2126 * u32::from(red) + 7152 * u32::from(green) + 722 * u32::from(blue))
+                        / 10000;
+                luma_min = luma_min.min(luma);
+                luma_max = luma_max.max(luma);
+            }
+        }
+    }
 
+    // Avoid divide by zero if image is solid flat color
+    let luma_range = (luma_max - luma_min).max(1);
+
+    // Second pass: render using normalized luma
+    for y in 0..height {
+        for x in 0..width {
+            let px = rgba.get_pixel(x, y);
+            let [red, green, blue, alpha] = px.0;
             if alpha < 128 {
                 write!(writer, "\x1b[0m ")?;
                 continue;
             }
-
             let luma =
-                (2126 * u32::from(red) + 7152 * u32::from(green) + 722 * u32::from(blue)) / 10000; // 0..=255, exact Rec.709
+                (2126 * u32::from(red) + 7152 * u32::from(green) + 722 * u32::from(blue)) / 10000;
 
-            let idx = (luma * (num_chars_u32 - 1) / 255) as usize;
-            let idx = idx.min(num_chars - 1); // belt-and-suspenders clamp            // let luma = 0.2126f32.mul_add(
-            let ch = chars[idx];
-
-            write!(writer, "\x1b[38;2;{red};{green};{blue}m{ch}")?;
+            // Normalize to 0..=255 based on actual image range
+            let normalized = ((luma - luma_min) * 255) / luma_range;
+            let idx = (normalized * (num_chars_u32 - 1) / 255) as usize;
+            let idx = idx.min(num_chars - 1);
+            let glyph = charset[idx];
+            write!(writer, "\x1b[38;2;{red};{green};{blue}m{glyph}")?;
         }
         writeln!(writer, "\x1b[0m")?;
     }
-
     Ok(())
 }
+
+// fn render_charset_colored<W: Write>(
+//     writer: &mut W,
+//     img: &DynamicImage,
+//     charset: &[&str], // Accepting a slice of strings is the secret sauce
+// ) -> std::io::Result<()> {
+//     let rgba = img.to_rgba8();
+//     let (width, height) = rgba.dimensions();
+//     let num_chars = charset.len();
+//     let num_chars_u32 = u32::try_from(num_chars).unwrap_or(1);
+
+//     for y in 0..height {
+//         for x in 0..width {
+//             let px = rgba.get_pixel(x, y);
+//             let [red, green, blue, alpha] = px.0;
+
+//             // If a pixel is transparent, we print a space.
+//             // Note: If you use "Wide" charsets (like Emojis), you'll need
+//             // to print TWO spaces here to keep the grid aligned.
+//             if alpha < 128 {
+//                 write!(writer, "\x1b[0m ")?;
+//                 continue;
+//             }
+
+//             let luma =
+//                 (2126 * u32::from(red) + 7152 * u32::from(green) + 722 * u32::from(blue)) / 10000;
+
+//             // Map luma to our slice index
+//             // let idx = (luma as usize * (num_chars - 1)) / 255;
+//             let idx = (luma * (num_chars_u32 - 1) / 255) as usize;
+//             let idx = idx.min(num_chars - 1);
+//             let glyph = charset[idx];
+
+//             write!(writer, "\x1b[38;2;{red};{green};{blue}m{glyph}")?;
+//         }
+//         writeln!(writer, "\x1b[0m")?;
+//     }
+//     Ok(())
+// }
