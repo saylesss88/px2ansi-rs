@@ -119,6 +119,49 @@ impl RenderOptions {
         img.resize_exact(width, height, self.filter)
     }
 
+    /// Renders the image centered in the terminal.
+    /// Falls back to normal rendering if terminal width can't be determined.
+    pub fn render_centered<W: Write>(
+        &self,
+        img: &DynamicImage,
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
+        let prepared = self.prepare_image(img);
+
+        // Get rendered width in terminal columns
+        let rendered_cols = match self.charset {
+            CharsetMode::Braille => prepared.width() / 2,
+            CharsetMode::Unicode if self.style.full => prepared.width() * 2,
+            _ => prepared.width(),
+        };
+
+        // Calculate left padding
+        let term_w = terminal_size()
+            .map(|(Width(w), _)| u32::from(w))
+            .unwrap_or(80);
+
+        let padding = if term_w > rendered_cols {
+            (term_w - rendered_cols) / 2
+        } else {
+            0
+        };
+
+        let pad_str = " ".repeat(padding as usize);
+
+        // Capture the render into a buffer, then prefix each line with padding
+        let mut buf = Vec::new();
+        crate::render::write_ansi_art(&prepared, &mut buf, *self)?;
+
+        for line in buf.split(|&b| b == b'\n') {
+            if !line.is_empty() {
+                write!(writer, "{pad_str}")?;
+                writer.write_all(line)?;
+                writeln!(writer)?;
+            }
+        }
+
+        Ok(())
+    }
     /// Creates a new configuration instance by overriding default values with
     /// optional CLI arguments.
     ///
