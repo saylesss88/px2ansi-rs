@@ -94,7 +94,7 @@ impl Default for RenderStyle {
 /// (ANSI vs Unicode), scaling filters, and whether to use half-block positioning.#
 #[derive(Clone, Copy, Debug)]
 pub struct RenderOptions {
-    pub output_mode: OutputMode, // keep old name for now if lots of call sites use it
+    pub output_mode: OutputMode,
     pub target_width: Option<u32>,
     pub filter: FilterType,
     pub full: bool, // deprecated, but keep until you fully migrate
@@ -283,9 +283,9 @@ impl RenderOptions {
 pub fn write_ansi_art<W: Write>(
     img: &DynamicImage,
     writer: &mut W,
-    options: RenderOptions, // note: RenderOptions, not AnsiArtOptions
+    options: RenderOptions,
 ) -> std::io::Result<()> {
-    eprintln!("DEBUG: using charset={:?}", options.charset);
+    // eprintln!("DEBUG: using charset={:?}", options.charset);
     match options.charset {
         CharsetMode::Ansi => write_ansi_blocks(writer, img),
         CharsetMode::Unicode => write_unicode_blocks(writer, img, options.style.full),
@@ -320,7 +320,6 @@ fn write_unicode_blocks<W: Write>(
 ) -> std::io::Result<()> {
     let (width, height) = img.dimensions();
     if full_block {
-        // Your existing full-block logic
         for y in 0..height {
             for x in 0..width {
                 let px = img.get_pixel(x, y);
@@ -329,7 +328,7 @@ fn write_unicode_blocks<W: Write>(
             writeln!(writer, "\x1b[0m")?;
         }
     } else {
-        // Fallback to ANSI half-blocks (your existing logic)
+        // Fallback to ANSI half-blocks
         write_ansi_blocks(writer, img)?;
     }
     Ok(())
@@ -419,24 +418,16 @@ fn write_braille<W: Write>(
                         #[allow(clippy::cast_possible_truncation)]
                         #[allow(clippy::cast_sign_loss)]
                         let luma = 0.2126f32
-                            // .mul_add(r as f32, 0.0722f32.mul_add(b as f32, 0.7152 * g as f32));
-                            // .mul_add(r as f32, 0.0722f32.mul_add(f32::from(b), 0.7152 * g as f32));
                             .mul_add(
                                 f32::from(r),
                                 0.0722f32.mul_add(f32::from(b), 0.7152 * f32::from(g)),
                             );
-                        // let luma = (0.2126 * f32::from(r)
-                        //     + 0.7152 * f32::from(g)
-                        //     + 0.0722 * f32::from(b)) as u32;
 
                         if luma > 30.0 {
                             byte |= bit;
-                            // r_sum += r as u32;
                             r_sum += u32::from(r);
-                            // g_sum += g as u32;
                             g_sum += u32::from(g);
                             b_sum += u32::from(b);
-                            // b_sum += b as u32;
                             lit_count += 1;
                         }
                     }
@@ -448,14 +439,9 @@ fn write_braille<W: Write>(
                 write!(writer, "\x1b[0m\u{2800}")?;
             } else {
                 // Average color of lit dots
-                // let r = (r_sum / lit_count) as u8;
-                // let r = u8::try_from(r_sum / lit_count);
                 let red = u8::try_from(r_sum / lit_count).unwrap_or(0);
                 let green = u8::try_from(g_sum / lit_count).unwrap_or(0);
                 let blue = u8::try_from(b_sum / lit_count).unwrap_or(0);
-                // let g = (g_sum / lit_count) as u8;
-                // let b = (b_sum / lit_count) as u8;
-                // let c = char::from_u32(0x2800 + byte as u32).unwrap_or(' ');
                 let ch = char::from_u32(0x2800 + u32::from(byte)).unwrap_or(' ');
                 write!(writer, "\x1b[38;2;{red};{green};{blue}m{ch}")?;
             }
@@ -472,9 +458,6 @@ fn write_fade<W: Write>(
     img: &image::DynamicImage,
     _options: RenderOptions,
 ) -> std::io::Result<()> {
-    // 32-char ramp: much finer brightness gradation than 10 chars
-    // Chosen for increasing visual density across common terminal fonts
-    // let charset = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
     let charset = " ░▒▓█";
     render_charset_colored(writer, img, charset)
 }
@@ -502,25 +485,10 @@ fn render_charset_colored<W: Write>(
             }
 
             // Perceptual luminance → charset index
-            // let r_f = f32::from(red);
-            // let g_f = f32::from(green);
-            // let b_f = f32::from(blue);
-
-            // mul_add calculation: (a * b) + c
             let luma = 0.2126f32.mul_add(
                 f32::from(red),
                 0.0722f32.mul_add(f32::from(blue), 0.7152 * f32::from(green)),
             );
-            // let luma = 0.7152f32
-            //     .mul_add(g_f, 0.2126f32 * r_f)
-            //     .mul_add(0.0722f32, b_f)
-            //     .clamp(0.0, 255.0);
-            // let luma = 0.2126 * f32::from(r) + 0.7152 * f32::from(g) + 0.0722 * f32::from(b);
-            // let luma = 0.2126f32.mul_add(
-            //     f32::from(red),
-            //     0.0722f32.mul_add(f32::from(blue), 0.7152 * f32::from(green)),
-            // );
-            // if luma > 30.0 {}
             #[allow(clippy::cast_precision_loss)]
             #[allow(clippy::cast_possible_truncation)]
             #[allow(clippy::cast_sign_loss)]
