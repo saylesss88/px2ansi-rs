@@ -34,6 +34,18 @@ path = "src/main.rs"
 name = "px2ansi_rs"
 path = "src/lib.rs"
 
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+# missing_const_for_fn = "allow"
+cargo = { level = "warn", priority = -1 }
+
+unwrap_used = "warn" # Forces you to use .expect() or handle errors
+todo = "warn"        # Prevents accidental commits of unfinished code
+dbg_macro = "warn"   # Ensures no debug print statements leak to production
+panic = "warn"       # Warns on code that can panic
+
 [profile.release]
 opt-level = 3     # Maximum optimization
 lto = true        # Link Time Optimization (smaller/faster binary)
