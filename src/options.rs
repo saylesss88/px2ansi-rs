@@ -119,8 +119,18 @@ impl RenderOptions {
         img.resize_exact(width, height, self.filter)
     }
 
-    /// Renders the image centered in the terminal.
-    /// Falls back to normal rendering if terminal width can't be determined.
+    /// This method calculates the horizontal padding required to center the output,
+    /// captures the rendered ANSI art into an internal buffer, and then writes it
+    /// line-by-line to the provided writer with the calculated offset.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if:
+    /// * The underlying rendering engine ([`write_ansi_art`][crate::render::write_ansi_art])
+    ///   fails to process the image.
+    /// * An I/O error occurs while writing the padding or the image data to the `writer`.
+    /// * The system fails to allocate memory for the internal buffer used to
+    ///   calculate line breaks for centering.rendering if terminal width can't be determined.
     pub fn render_centered<W: Write>(
         &self,
         img: &DynamicImage,
@@ -136,9 +146,10 @@ impl RenderOptions {
         };
 
         // Calculate left padding
-        let term_w = terminal_size()
-            .map(|(Width(w), _)| u32::from(w))
-            .unwrap_or(80);
+        // let term_w = terminal_size()
+        //     .map(|(Width(w), _)| u32::from(w))
+        //     .unwrap_or(80);
+        let (term_w, _) = get_terminal_size();
 
         let padding = if term_w > rendered_cols {
             (term_w - rendered_cols) / 2
@@ -228,21 +239,17 @@ impl RenderOptions {
     #[must_use]
     pub fn calculate_dimensions(&self, orig_w: u32, orig_h: u32) -> (u32, u32) {
         const MAX_SAFE: u32 = 16384;
-
-        let term_dims =
-            terminal_size().map(|(Width(tw), Height(th))| (u32::from(tw), u32::from(th)));
-
-        let (max_w, max_h) = if let Some((tw, th)) = term_dims {
-            let (mw, mh) = match self.charset {
-                CharsetMode::Braille => (tw / 4, th / 2),
-                CharsetMode::Unicode if self.style.full => (tw / 2, th),
-                _ => (tw.saturating_sub(2), th * 2 / 3),
-            };
-            (mw, mh)
+        let (term_w, term_h) = get_terminal_size();
+        let (max_w, max_h) = if term_w > 0 && term_h > 0 {
+            match self.charset {
+                CharsetMode::Braille => (term_w, term_h * 2),
+                CharsetMode::Unicode if self.style.full => (term_w / 2, term_h),
+                // CharsetMode::Ascii | CharsetMode::Fade => (term_w.saturating_sub(2), term_h - 2),
+                _ => (term_w.saturating_sub(2), term_h * 2 / 3),
+            }
         } else {
             (80, 40)
         };
-
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let (render_w, render_h) = self.target_width.map_or_else(
             || {
@@ -250,7 +257,6 @@ impl RenderOptions {
                     let scale_w = (f64::from(max_w) / f64::from(orig_w)).floor();
                     let scale_h = (f64::from(max_h) / f64::from(orig_h)).floor();
                     let scale = scale_w.min(scale_h).max(1.0);
-
                     (
                         (f64::from(orig_w) * scale) as u32,
                         (f64::from(orig_h) * scale) as u32,
@@ -269,10 +275,13 @@ impl RenderOptions {
                 (tw, (f64::from(tw) * aspect).round() as u32)
             },
         );
-
-        (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE))
+        let result = (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE));
+        // eprintln!(
+        //     "DEBUG term={}x{} max={}x{} orig={}x{} render={}x{}",
+        //     term_w, term_h, max_w, max_h, orig_w, orig_h, result.0, result.1
+        // );
+        result
     }
-
     /// High-level method to process and render an image in one go.
     ///
     /// # Errors
@@ -283,4 +292,19 @@ impl RenderOptions {
         crate::render::write_ansi_art(&prepared, writer, *self)?;
         Ok(())
     }
+}
+
+fn get_terminal_size() -> (u32, u32) {
+    // Env vars are more reliable across terminals (foot, ghostty)
+    let cols = std::env::var("COLUMNS").ok().and_then(|s| s.parse().ok());
+    let rows = std::env::var("LINES").ok().and_then(|s| s.parse().ok());
+
+    // Only fall back to terminfo if env vars are missing
+    if let (Some(c), Some(r)) = (cols, rows) {
+        return (c, r);
+    }
+
+    terminal_size().map_or((80, 24), |(Width(w), Height(h))| {
+        (u32::from(w), u32::from(h))
+    })
 }
