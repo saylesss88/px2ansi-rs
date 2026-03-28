@@ -27,11 +27,11 @@ pub enum Commands {
         /// Output mode:
         /// - 'ansi': Highest detail. Uses half-blocks to fit 2 pixels per cell.
         /// - 'unicode': Uses half-blocks by default, opt-in for full block mode `--full`
-        #[arg(short, long)]
-        mode: Option<String>,
+        // #[arg(short, long)]
+        // mode: Option<String>,
 
-        #[arg(long)]
-        full: Option<bool>,
+        // #[arg(long)]
+        // full: Option<bool>,
 
         #[arg(long, value_enum)]
         style: Option<RenderStylePreset>,
@@ -63,12 +63,12 @@ pub enum Commands {
         #[arg(default_value = "random")]
         name: String,
         /// Output mode (ansi, unicode)
-        #[arg(short, long)]
-        mode: Option<String>,
+        // #[arg(short, long)]
+        // mode: Option<String>,
 
         /// Use double-width full blocks (██) for a retro, square look
-        #[arg(long)]
-        full: Option<bool>,
+        // #[arg(long)]
+        // full: Option<bool>,
 
         #[arg(long, value_enum)]
         style: Option<RenderStylePreset>,
