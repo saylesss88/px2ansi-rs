@@ -1,5 +1,3 @@
-# px2ansi-rs
-
 ![px2ansi-png](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi-rs-png.png)
 
 `px2ansi-rs` is a high-performance image conversion toolkit written in Rust.
@@ -51,6 +49,30 @@ cargo install px2ansi-rs
 ---
 
 ## Quick Reference
+
+```md
+Usage: px2ansi-rs [OPTIONS] <COMMAND>
+
+  Convert images to ANSI art and manage a searchable sprite library.
+  Written in Rust by T. Sawyer -> (Github: saylesss88)
+
+Commands:
+  convert    Convert a single image to terminal art
+  show       Display a sprite from the index
+  index      Build a searchable index from a directory of images
+  list       List entries in the index
+
+Options:
+  -l, --latency          Show timing and execution metadata
+  -I, --index <FILE>     Path to the index file
+  -h, --help             Show this message and exit
+  -V, --version          Display version information and exit
+
+Render Flags (for convert and show):
+  --style <MODE>         Rendering style (ansi, unicode, full-block, braille, fade, ascii, kanji)
+  --filter <FILTER>      Resize filter (nearest, triangle, catmull-rom, gaussian, lanczos3)
+  --width <WIDTH>        Force a specific output width in columns
+```
 
 | Use Case        | Command                                           | Mode    | Style | Notes                |
 | --------------- | ------------------------------------------------- | ------- | ----- | -------------------- |
@@ -198,7 +220,7 @@ The config is stored in your standard system config directory:
 You can create this file manually to override the engine's built-in defaults:
 
 ```toml
-# Output Style:
+# Output Style: "ansi", "unicode", "fade", "ascii", "kanji", "braille", "full-block"
 style = "ansi"
 # Always show execution timing metadata
 latency = true
@@ -286,15 +308,15 @@ programs.zsh.initContent = ''
 `px2ansi-rs` supports multiple ways to bring your sprites to life. Whether you
 want crisp modern detail or chunky retro vibes, we've got you covered.
 
-| Style        | Command Flag         | Description                          | Best For                                          |
-| ------------ | -------------------- | ------------------------------------ | ------------------------------------------------- |
-| ANSI         | `--style ansi`       | Standard 2-pixels-per-row            | Maximum compatibility & speed                     |
-| HD Unicode   | `--style unicode`    | Hi-Def Unicode half-blocks 1:1       | High-Fidelity assets                              |
-| Fade         | `--style fade`       | `░▒▓█`                               | High contrast images with clear light/dark areas  |
-| Retro Square | `--style full-block` | 1 pixel is a solid ██ square         | 8-bit/16-bit pixel art & retro styling            |
-| ASCII        | `--style ascii`      | Characters ordered by visual density | Photos and complex images, classic ASCII art feel |
-| Braille      | `--style braille`    | 2×4 pixels per cell via `⣿` dots     | Fine detail, dense output, line art               |
-| Dense        | WIP                  |                                      |                                                   |
+| Mode       | Flag                 | Description                         | Best For                          |
+| ---------- | -------------------- | ----------------------------------- | --------------------------------- |
+| ANSI       | `--style ansi`       | Half-blocks (▀▄) — 2 pixels per row | Maximum compatibility & speed     |
+| HD Unicode | `--style unicode`    | Hi-def Unicode half-blocks 1:1      | High-fidelity assets              |
+| Full Block | `--style full-block` | Solid ██ squares — 1:1 pixel ratio  | 8-bit/16-bit pixel art & retro    |
+| Braille    | `--style braille`    | 2×4 dot patterns — ultra dense      | Fine detail & line art            |
+| Fade       | `--style fade`       | Block shading (░▒▓█)                | High contrast logos & silhouettes |
+| ASCII      | `--style ascii`      | 92-character density ramp           | Photos & classic ASCII art        |
+| Kanji      | `--style kanji`      | Japanese kanji density ramp         | Unique stylized output            |
 
 By default, both ANSI and Unicode modes now utilize a "vertical packing"
 technique to maximize resolution.
@@ -312,6 +334,21 @@ technique to maximize resolution.
     "square-blocking," where each individual pixel is rendered as a double-wide
     full block (██). This creates the distinct chunky, retro aesthetic and
     causes the two modes to diverge visually.
+
+---
+
+### Resize Filters (`--filter`)
+
+You can specify a filter via the `--filter` flag or in your
+`default-config.toml`.
+
+- `nearest` — Nearest-neighbor. Fastest; best for pixel art / hard edges.
+- `triangle` — Linear filter (bilinear).
+- `catmull-rom` — Cubic filter.
+- `gaussian` — Gaussian filter.
+- `lanczos3` — Lanczos filter (window 3). Default.
+
+- [guide.encode.moe resampling](https://guide.encode.moe/encoding/resampling.html)
 
 ---
 
@@ -374,18 +411,6 @@ Finished in 0ms
 
 ---
 
-## Resize Filters (`--filter`)
-
-You can specify a filter via the `--filter` flag or in your
-`default-config.toml`.
-
-- `nearest` — Nearest-neighbor. Fastest; best for pixel art / hard edges.
-- `triangle` — Linear filter (bilinear).
-- `catmull-rom` — Cubic filter.
-- `gaussian` — Gaussian filter.
-- `lanczos3` — Lanczos filter (window 3). Default.
-
-- [guide.encode.moe resampling](https://guide.encode.moe/encoding/resampling.html)
 
 ## Project build with px2ansi-rs
 
