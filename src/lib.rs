@@ -26,21 +26,6 @@ impl FromStr for OutputMode {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct AnsiArtOptions {
-    pub mode: OutputMode,
-    pub full_block: bool,
-}
-
-impl Default for AnsiArtOptions {
-    fn default() -> Self {
-        Self {
-            mode: OutputMode::Ansi,
-            full_block: false,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CharsetMode {
     #[default]
@@ -94,10 +79,8 @@ impl Default for RenderStyle {
 /// (ANSI vs Unicode), scaling filters, and whether to use half-block positioning.#
 #[derive(Clone, Copy, Debug)]
 pub struct RenderOptions {
-    // pub output_mode: OutputMode,
     pub target_width: Option<u32>,
     pub filter: FilterType,
-    // pub full: bool, // deprecated, but keep until you fully migrate
     pub charset: CharsetMode,
     pub style: RenderStyle,
 }
@@ -105,24 +88,14 @@ pub struct RenderOptions {
 impl Default for RenderOptions {
     fn default() -> Self {
         Self {
-            // output_mode: OutputMode::Ansi, // existing enum
             target_width: None,
             filter: FilterType::Lanczos3,
-            // full: false,
             charset: CharsetMode::Ansi,
             style: RenderStyle::default(),
         }
     }
 }
 
-// impl From<RenderOptions> for AnsiArtOptions {
-//     fn from(opts: RenderOptions) -> Self {
-//         Self {
-//             mode: opts.output_mode,
-//             full_block: opts.full,
-//         }
-//     }
-// }
 impl RenderOptions {
     #[must_use]
     pub fn new() -> Self {
@@ -174,7 +147,7 @@ impl RenderOptions {
                 RenderStylePreset::Braille => opts.charset = CharsetMode::Braille,
                 RenderStylePreset::Fade => opts.charset = CharsetMode::Fade,
                 RenderStylePreset::Ascii => opts.charset = CharsetMode::Ascii,
-                RenderStylePreset::FullAnsi => {
+                RenderStylePreset::FullBlock => {
                     opts.charset = CharsetMode::Unicode;
                     opts.style.full = true;
                 }
@@ -529,7 +502,7 @@ pub enum RenderStylePreset {
     Braille,
     Fade,
     Ascii,
-    FullAnsi,
+    FullBlock,
     Dense,
 }
 // 1. Define an Enum for the CLI argument

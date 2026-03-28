@@ -34,14 +34,13 @@ fn main() -> Result<()> {
         Commands::Convert {
             filename,
             output,
-            mode,
+            // mode,
             width,
             filter,
-            full,
+            // full,
             style,
         } => {
-            let render_opts = RenderOptions::from_cli(mode, full, style, width, filter)?;
-            // let render_opts = RenderOptions::new();
+            let render_opts = RenderOptions::from_cli(style, width, filter)?;
 
             let params = ConvertParams {
                 path: &filename,
@@ -72,15 +71,11 @@ fn main() -> Result<()> {
 
         Commands::Show {
             name,
-            mode,
-            full,
             filter,
             interactive,
             style,
         } => {
-            // let render_opts = RenderOptions::new();
-
-            let render_opts = RenderOptions::from_cli(mode, full, style, None, filter)?;
+            let render_opts = RenderOptions::from_cli(style, None, filter)?;
 
             let params = ShowParams {
                 name: &name,
@@ -116,17 +111,6 @@ pub struct ConvertParams<'a> {
     /// Visual preferences for the final render.
     pub render: RenderOptions,
 }
-
-// impl<'a> ConvertParams<'a> {
-//     #[must_use]
-//     pub fn new(path: &'a str) -> Self {
-//         Self {
-//             path,
-//             output: None,
-//             render: RenderOptions::default(),
-//         }
-//     }
-// }
 
 /// Orchestrates the conversion of a standalone image.
 ///
