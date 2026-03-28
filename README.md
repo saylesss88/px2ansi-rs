@@ -14,6 +14,8 @@ advanced filters.
 
 ![screenshot5](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png)
 
+![screenshot6](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-kanji.png)
+
 ---
 
 ## Features
@@ -23,7 +25,8 @@ advanced filters.
 - **Truecolor + Transparency** — Full 24-bit RGB + alpha
 - **Smart Resize** — Auto-fits terminal width
 - **5 Filters** — `nearest` (pixel art) to `lanczos3` (photos)
-- **6 Styles** — `ansi`, `unicode`, `fade`, `ascii`, `braille`, and `full-block`
+- **7 Styles** — `ansi`, `unicode`, `fade`, `ascii`, `braille`, `full-block`,
+  and `kanji`
 
 ---
 
