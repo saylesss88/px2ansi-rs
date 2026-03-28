@@ -1,7 +1,7 @@
 # px2ansi-rs
 
-`px2ansi-rs` is a high-performance image-to-ANSI/Unicode toolkit written in
-Rust. While inspired by the original Python
+`px2ansi-rs` is a high-performance image conversion toolkit written in Rust.
+While inspired by the original Python
 [px2ansi](https://github.com/Nellousan/px2ansi) project, this is a complete
 reimplementation (~25x faster) with indexing, fuzzy search, TUI browsing, and
 advanced filters.
@@ -10,9 +10,9 @@ advanced filters.
 
 `px2ansi-rs convert nixos.png --style ascii --filter nearest`:
 
-![screenshot3](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos.png)
+![screenshot4](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos.png)
 
-![screenshot3](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png)
+![screenshot5](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png)
 
 ---
 
@@ -193,7 +193,7 @@ The config is stored in your standard system config directory:
 You can create this file manually to override the engine's built-in defaults:
 
 ```toml
-# Output mode: "ansi" (2 pixels per cell) or "unicode"
+# Output Style:
 style = "ansi"
 # Always show execution timing metadata
 latency = true
