@@ -195,6 +195,16 @@ fn write_ascii<W: Write>(
     render_charset_colored(writer, img, charset)
 }
 
+fn write_kanji<W: Write>(
+    writer: &mut W,
+    img: &DynamicImage,
+    _options: RenderOptions,
+) -> std::io::Result<()> {
+    // A ramp from "light/airy" characters to "dense/heavy" ones
+    // Note: These are 2-columns wide in most terminals!
+    let charset: &[&str] = &["　", "口", "田", "目", "竜", "罽", "龘"];
+    render_charset_colored(writer, img, charset)
+}
 /// This is our "Universal" renderer.
 /// It doesn't care if the 'glyph' is a space, a letter, or a 2-column Emoji.
 fn render_charset_colored<W: Write>(
@@ -250,4 +260,3 @@ fn render_charset_colored<W: Write>(
     }
     Ok(())
 }
-
