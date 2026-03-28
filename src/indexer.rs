@@ -41,9 +41,12 @@ pub fn build_index(dir: &str, output_path: &str) -> anyhow::Result<String> {
                     // Resolve the absolute path so the index is "portable" across directories
                     let absolute_path = fs::canonicalize(&path)?;
 
+                    let Some(stem) = path.file_stem() else {
+                        continue;
+                    };
                     index.push(ImageEntry {
-                        name: path.file_stem().unwrap().to_string_lossy().into(),
-                        path: absolute_path.to_string_lossy().into(),
+                        name: stem.to_string_lossy().into_owned(),
+                        path: absolute_path.to_string_lossy().into_owned(),
                         dimensions: img.dimensions(),
                     });
                 }
