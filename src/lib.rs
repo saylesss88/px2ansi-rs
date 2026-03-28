@@ -94,10 +94,10 @@ impl Default for RenderStyle {
 /// (ANSI vs Unicode), scaling filters, and whether to use half-block positioning.#
 #[derive(Clone, Copy, Debug)]
 pub struct RenderOptions {
-    pub output_mode: OutputMode,
+    // pub output_mode: OutputMode,
     pub target_width: Option<u32>,
     pub filter: FilterType,
-    pub full: bool, // deprecated, but keep until you fully migrate
+    // pub full: bool, // deprecated, but keep until you fully migrate
     pub charset: CharsetMode,
     pub style: RenderStyle,
 }
@@ -105,24 +105,24 @@ pub struct RenderOptions {
 impl Default for RenderOptions {
     fn default() -> Self {
         Self {
-            output_mode: OutputMode::Ansi, // existing enum
+            // output_mode: OutputMode::Ansi, // existing enum
             target_width: None,
             filter: FilterType::Lanczos3,
-            full: false,
+            // full: false,
             charset: CharsetMode::Ansi,
             style: RenderStyle::default(),
         }
     }
 }
 
-impl From<RenderOptions> for AnsiArtOptions {
-    fn from(opts: RenderOptions) -> Self {
-        Self {
-            mode: opts.output_mode,
-            full_block: opts.full,
-        }
-    }
-}
+// impl From<RenderOptions> for AnsiArtOptions {
+//     fn from(opts: RenderOptions) -> Self {
+//         Self {
+//             mode: opts.output_mode,
+//             full_block: opts.full,
+//         }
+//     }
+// }
 impl RenderOptions {
     #[must_use]
     pub fn new() -> Self {
@@ -150,22 +150,22 @@ impl RenderOptions {
     ///   Valid values are typically "ansi", "block", or "unicode".
     /// * Any internal parsing or conversion logic encountered via `anyhow` fails.
     pub fn from_cli(
-        mode: Option<String>,
-        full: Option<bool>,
+        // mode: Option<String>,
+        // full: Option<bool>,
         style: Option<RenderStylePreset>,
         width: Option<u32>,
         filter: Option<ResizeFilter>,
     ) -> anyhow::Result<Self> {
         let mut opts = Self::default();
 
-        if let Some(mode) = mode {
-            opts.output_mode = mode.parse()?;
-        }
+        // if let Some(mode) = mode {
+        //     opts.output_mode = mode.parse()?;
+        // }
 
-        if let Some(full) = full {
-            opts.full = full;
-            opts.style.full = full;
-        }
+        // if let Some(full) = full {
+        //     opts.full = full;
+        //     opts.style.full = full;
+        // }
 
         if let Some(style) = style {
             match style {
@@ -417,11 +417,10 @@ fn write_braille<W: Write>(
                         // Perceptual luminance (Rec. 709 coefficients)
                         #[allow(clippy::cast_possible_truncation)]
                         #[allow(clippy::cast_sign_loss)]
-                        let luma = 0.2126f32
-                            .mul_add(
-                                f32::from(r),
-                                0.0722f32.mul_add(f32::from(b), 0.7152 * f32::from(g)),
-                            );
+                        let luma = 0.2126f32.mul_add(
+                            f32::from(r),
+                            0.0722f32.mul_add(f32::from(b), 0.7152 * f32::from(g)),
+                        );
 
                         if luma > 30.0 {
                             byte |= bit;
