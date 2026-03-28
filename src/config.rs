@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     /// The rendering mode to use.
     /// Supported values: "ansi" (standard packing) or "unicode" (high-definition symbols).
-    pub mode: String,
+    // pub mode: String,
 
     /// Whether to display execution timing and performance metadata after rendering.
     pub latency: bool,
@@ -22,7 +22,7 @@ pub struct Config {
 
     /// If true, renders pixels as square blocks (██) instead of vertically packed half-blocks.
     /// This is ideal for a "retro" 1:1 pixel aspect ratio.
-    pub full: bool,
+    // pub full: bool,
 
     /// The path to the JSON index file containing the image library.
     ///
@@ -42,10 +42,10 @@ impl Default for Config {
     /// Provides the fallback defaults used when no config file is found.
     fn default() -> Self {
         Self {
-            mode: "ansi".into(),
+            // mode: "ansi".into(),
             latency: false,
             filter: ResizeFilter::Lanczos3,
-            full: false,
+            // full: false,
             index: "index.json".into(),
             style: RenderStylePreset::Ansi,
         }
