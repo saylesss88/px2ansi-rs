@@ -175,8 +175,7 @@ fn write_fade<W: Write>(
     img: &DynamicImage,
     _options: RenderOptions,
 ) -> std::io::Result<()> {
-    // let charset: &[&str] = &[" ", "░", "▒", "▓", "█"];
-    let charset: &[&str] = &["█", "▓", "▒", "░", " "];
+    let charset: &[&str] = &[" ", "░", "▒", "▓", "█"];
     render_charset_colored(writer, img, charset, false)
 }
 
@@ -203,7 +202,7 @@ fn write_kanji<W: Write>(
 ) -> std::io::Result<()> {
     // A ramp from "light/airy" characters to "dense/heavy" ones
     // Note: These are 2-columns wide in most terminals!
-    let charset: &[&str] = &["　", "口", "田", "目", "竜", "罽", "龘"];
+    let charset: &[&str] = &["　", "一", "口", "田", "目", "龍", "量", "首", "艦"];
     render_charset_colored(writer, img, charset, true)
 }
 /// This is our "Universal" renderer.
