@@ -1,5 +1,7 @@
 # px2ansi-rs
 
+![px2ansi-braille](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi-readme.png)
+
 `px2ansi-rs` is a high-performance image conversion toolkit written in Rust.
 While inspired by the original Python
 [px2ansi](https://github.com/Nellousan/px2ansi) project, this is a complete
