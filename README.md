@@ -10,11 +10,11 @@ advanced filters.
 
 `px2ansi-rs convert nixos.png --style ascii --filter nearest`:
 
-![screenshot4](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos.png)
+![px2ansi-ascii](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-ascii.png)
 
-![screenshot5](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png)
+![px2ansi-braille](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png)
 
-![screenshot6](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-kanji.png)
+![px2ansi-kanji](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-kanji.png)
 
 ---
 
@@ -53,25 +53,21 @@ cargo install px2ansi-rs
 ```md
 Usage: px2ansi-rs [OPTIONS] <COMMAND>
 
-  Convert images to ANSI art and manage a searchable sprite library.
-  Written in Rust by T. Sawyer -> (Github: saylesss88)
+Convert images to ANSI art and manage a searchable sprite library. Written in
+Rust by T. Sawyer -> (Github: saylesss88)
 
-Commands:
-  convert    Convert a single image to terminal art
-  show       Display a sprite from the index
-  index      Build a searchable index from a directory of images
-  list       List entries in the index
+Commands: convert Convert a single image to terminal art show Display a sprite
+from the index index Build a searchable index from a directory of images list
+List entries in the index
 
-Options:
-  -l, --latency          Show timing and execution metadata
-  -I, --index <FILE>     Path to the index file
-  -h, --help             Show this message and exit
-  -V, --version          Display version information and exit
+Options: -l, --latency Show timing and execution metadata -I, --index <FILE>
+Path to the index file -h, --help Show this message and exit -V, --version
+Display version information and exit
 
-Render Flags (for convert and show):
-  --style <MODE>         Rendering style (ansi, unicode, full-block, braille, fade, ascii, kanji)
-  --filter <FILTER>      Resize filter (nearest, triangle, catmull-rom, gaussian, lanczos3)
-  --width <WIDTH>        Force a specific output width in columns
+Render Flags (for convert and show): --style <MODE> Rendering style (ansi,
+unicode, full-block, braille, fade, ascii, kanji) --filter <FILTER> Resize
+filter (nearest, triangle, catmull-rom, gaussian, lanczos3) --width <WIDTH>
+Force a specific output width in columns
 ```
 
 | Use Case        | Command                                           | Mode    | Style | Notes                |
@@ -410,7 +406,6 @@ Finished in 0ms
 ```
 
 ---
-
 
 ## Project build with px2ansi-rs
 
