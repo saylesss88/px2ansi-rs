@@ -15,7 +15,7 @@ pub struct Cli {
 }
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Convert a single image to ANSI/Unicode
+    /// Convert a single image to ANSI/Unicode/Fade/Braille/Kanji/Full-block/Ascii
     Convert {
         /// Input image file
         filename: String,
@@ -23,15 +23,6 @@ pub enum Commands {
         /// Output file (optional)
         #[arg(short, long)]
         output: Option<String>,
-
-        /// Output mode:
-        /// - 'ansi': Highest detail. Uses half-blocks to fit 2 pixels per cell.
-        /// - 'unicode': Uses half-blocks by default, opt-in for full block mode `--full`
-        // #[arg(short, long)]
-        // mode: Option<String>,
-
-        // #[arg(long)]
-        // full: Option<bool>,
 
         #[arg(long, value_enum)]
         style: Option<RenderStylePreset>,
@@ -58,17 +49,11 @@ pub enum Commands {
         #[arg(short, long)]
         output: Option<String>,
     },
+    /// Display a sprite from the index
     Show {
         /// The name of the image to show. Use 'random' to pick a surprise sprite!
         #[arg(default_value = "random")]
         name: String,
-        /// Output mode (ansi, unicode)
-        // #[arg(short, long)]
-        // mode: Option<String>,
-
-        /// Use double-width full blocks (██) for a retro, square look
-        // #[arg(long)]
-        // full: Option<bool>,
 
         #[arg(long, value_enum)]
         style: Option<RenderStylePreset>,
@@ -79,13 +64,15 @@ pub enum Commands {
         #[arg(short = 'i', long)]
         interactive: bool,
     },
+    /// List entries in the index
     List {
         /// Number of entries to show (omit to show all)
         #[arg(short, long)]
         count: Option<usize>,
     },
+    /// Generate shell completions and add to your shell config.
+    /// Example: `px2ansi-rs completions bash >> ~/.bashrc`
     Completions {
-        /// The shell to generate completions for
         #[arg(value_enum)]
         shell: clap_complete::Shell,
     },
