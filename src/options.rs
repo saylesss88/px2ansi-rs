@@ -39,6 +39,8 @@ pub enum CharsetMode {
     Fade,
     /// Traditional 92-character density ramp for classic ASCII art.
     Ascii,
+
+    Kanji,
 }
 
 impl FromStr for CharsetMode {
@@ -50,8 +52,11 @@ impl FromStr for CharsetMode {
             "unicode" | "uni" => Ok(Self::Unicode),
             "braille" | "brl" => Ok(Self::Braille),
             "fade" | "grayscale" => Ok(Self::Fade),
+            "kanji" | "jp" => Ok(Self::Kanji),
             "ascii" => Ok(Self::Ascii),
-            _ => anyhow::bail!("Invalid charset '{s}'. Use: ansi, unicode, braille, fade, ascii"),
+            _ => anyhow::bail!(
+                "Invalid charset '{s}'. Use: ansi, unicode, braille, fade, ascii, kanji"
+            ),
         }
     }
 }
@@ -142,6 +147,7 @@ impl RenderOptions {
         let rendered_cols = match self.charset {
             CharsetMode::Braille => prepared.width() / 2,
             CharsetMode::Unicode if self.style.full => prepared.width() * 2,
+            CharsetMode::Kanji => prepared.width() * 2, // Kanji is double-width
             _ => prepared.width(),
         };
 
@@ -215,6 +221,7 @@ impl RenderOptions {
                     opts.style.full = false;
                     opts.style.density = Density::Heavy;
                 }
+                RenderStylePreset::Kanji => opts.charset = CharsetMode::Kanji,
             }
         }
 

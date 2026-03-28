@@ -20,6 +20,7 @@ pub fn write_ansi_art<W: Write>(
         CharsetMode::Braille => write_braille(writer, img, options),
         CharsetMode::Fade => write_fade(writer, img, options),
         CharsetMode::Ascii => write_ascii(writer, img, options),
+        CharsetMode::Kanji => write_kanji(writer, img, options),
     }
 }
 
@@ -176,7 +177,7 @@ fn write_fade<W: Write>(
 ) -> std::io::Result<()> {
     // let charset: &[&str] = &[" ", "░", "▒", "▓", "█"];
     let charset: &[&str] = &["█", "▓", "▒", "░", " "];
-    render_charset_colored(writer, img, charset)
+    render_charset_colored(writer, img, charset, false)
 }
 
 fn write_ascii<W: Write>(
@@ -192,7 +193,7 @@ fn write_ascii<W: Write>(
         "A", "K", "X", "H", "m", "8", "R", "D", "#", "$", "B", "g", "0", "M", "N", "W", "Q", "%",
         "&", "@",
     ];
-    render_charset_colored(writer, img, charset)
+    render_charset_colored(writer, img, charset, false)
 }
 
 fn write_kanji<W: Write>(
@@ -203,28 +204,33 @@ fn write_kanji<W: Write>(
     // A ramp from "light/airy" characters to "dense/heavy" ones
     // Note: These are 2-columns wide in most terminals!
     let charset: &[&str] = &["　", "口", "田", "目", "竜", "罽", "龘"];
-    render_charset_colored(writer, img, charset)
+    render_charset_colored(writer, img, charset, true)
 }
 /// This is our "Universal" renderer.
 /// It doesn't care if the 'glyph' is a space, a letter, or a 2-column Emoji.
+///
 fn render_charset_colored<W: Write>(
     writer: &mut W,
     img: &DynamicImage,
     charset: &[&str],
+    wide: bool, // true for kanji/emoji (2-column glyphs)
 ) -> std::io::Result<()> {
+    const ALPHA_THRESHOLD: u8 = 128;
     let rgba = img.to_rgba8();
     let (width, height) = rgba.dimensions();
     let num_chars_u32 = u32::try_from(charset.len()).unwrap_or(1);
     let num_chars = charset.len();
+    let x_step = if wide { 2 } else { 1 };
+    let blank = if wide { "  " } else { " " }; // two spaces for wide glyphs
 
     // First pass: find the actual luma range of opaque pixels
     let mut luma_min = u32::MAX;
     let mut luma_max = u32::MIN;
     for y in 0..height {
-        for x in 0..width {
+        for x in (0..width).step_by(x_step) {
             let px = rgba.get_pixel(x, y);
             let [red, green, blue, alpha] = px.0;
-            if alpha >= 30 {
+            if alpha >= ALPHA_THRESHOLD {
                 let luma =
                     (2126 * u32::from(red) + 7152 * u32::from(green) + 722 * u32::from(blue))
                         / 10000;
@@ -234,22 +240,19 @@ fn render_charset_colored<W: Write>(
         }
     }
 
-    // Avoid divide by zero if image is solid flat color
     let luma_range = (luma_max - luma_min).max(1);
 
     // Second pass: render using normalized luma
     for y in 0..height {
-        for x in 0..width {
+        for x in (0..width).step_by(x_step) {
             let px = rgba.get_pixel(x, y);
             let [red, green, blue, alpha] = px.0;
-            if alpha < 128 {
-                write!(writer, "\x1b[0m ")?;
+            if alpha < ALPHA_THRESHOLD {
+                write!(writer, "\x1b[0m{blank}")?;
                 continue;
             }
             let luma =
                 (2126 * u32::from(red) + 7152 * u32::from(green) + 722 * u32::from(blue)) / 10000;
-
-            // Normalize to 0..=255 based on actual image range
             let normalized = ((luma - luma_min) * 255) / luma_range;
             let idx = (normalized * (num_chars_u32 - 1) / 255) as usize;
             let idx = idx.min(num_chars - 1);

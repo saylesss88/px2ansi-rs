@@ -11,6 +11,7 @@ pub enum RenderStylePreset {
     Ascii,
     FullBlock,
     Dense,
+    Kanji,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
