@@ -8,6 +8,12 @@ advanced filters.
 
 ![px2ansi-rs demo](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi_demo.gif)
 
+`px2ansi-rs convert nixos.png --style ascii --filter nearest`:
+
+![screenshot3](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos.png)
+
+![screenshot3](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png)
+
 ---
 
 ## Features
