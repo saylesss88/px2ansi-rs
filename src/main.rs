@@ -123,12 +123,14 @@ fn convert_image(params: &ConvertParams<'_>) -> Result<()> {
         // File output: use RenderOptions::render directly
         let file = std::fs::File::create(output_path)?;
         let mut writer = BufWriter::new(file);
-        params.render.render(&img, &mut writer)?;
+        // params.render.render(&img, &mut writer)?;
+        params.render.render_centered(&img, &mut writer)?;
     } else {
         // Terminal output: use RenderOptions::render to stdout
         let stdout = io::stdout();
         let mut writer = BufWriter::new(stdout.lock());
-        params.render.render(&img, &mut writer)?;
+        // params.render.render(&img, &mut writer)?;
+        params.render.render_centered(&img, &mut writer)?;
     }
     Ok(())
 }
@@ -211,7 +213,8 @@ fn show_index_entry(params: &ShowParams<'_>) -> Result<()> {
         // Terminal output only for show command
         let stdout = io::stdout();
         let mut writer = BufWriter::new(stdout.lock());
-        params.render.render(&img, &mut writer)?;
+        // params.render.render(&img, &mut writer)?;
+        params.render.render_centered(&img, &mut writer)?;
     }
 
     if params.latency {
