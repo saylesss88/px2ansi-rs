@@ -5,26 +5,6 @@ use std::io::Write;
 use std::str::FromStr;
 use terminal_size::{Height, Width, terminal_size};
 
-/// Controls the fundamental approach to terminal output.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum OutputMode {
-    #[default]
-    Ansi, // Standard half-blocks
-    Unicode, // Half-blocks, Full blocks, or specialized chars (like pokemon-colorscripts)
-}
-
-impl FromStr for OutputMode {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "unicode" => Ok(Self::Unicode),
-            "ansi" | "block" => Ok(Self::Ansi),
-            _ => anyhow::bail!("Invalid output mode '{s}'. Use 'ansi' or 'unicode'"),
-        }
-    }
-}
-
 /// Defines the character set used to represent pixels in the terminal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CharsetMode {
@@ -301,17 +281,23 @@ impl RenderOptions {
     }
 }
 
+/// Use Env vars to get the terminal size
 fn get_terminal_size() -> (u32, u32) {
-    // Env vars are more reliable across terminals (foot, ghostty)
-    let cols = std::env::var("COLUMNS").ok().and_then(|s| s.parse().ok());
-    let rows = std::env::var("LINES").ok().and_then(|s| s.parse().ok());
+    let ts = terminal_size();
+    let env_cols = std::env::var("COLUMNS")
+        .ok()
+        .and_then(|s| s.parse::<u32>().ok());
+    let env_rows = std::env::var("LINES")
+        .ok()
+        .and_then(|s| s.parse::<u32>().ok());
 
-    // Only fall back to terminfo if env vars are missing
-    if let (Some(c), Some(r)) = (cols, rows) {
+    eprintln!("DEBUG terminal_size()={ts:?} COLUMNS={env_cols:?} LINES={env_rows:?}");
+
+    if let Some((Width(w), Height(h))) = ts {
+        return (u32::from(w), u32::from(h));
+    }
+    if let (Some(c), Some(r)) = (env_cols, env_rows) {
         return (c, r);
     }
-
-    terminal_size().map_or((80, 24), |(Width(w), Height(h))| {
-        (u32::from(w), u32::from(h))
-    })
+    (80, 24)
 }
