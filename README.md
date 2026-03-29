@@ -39,6 +39,29 @@ search, TUI browsing, and advanced filters.
 - **5 Filters** — `nearest` (pixel art) to `lanczos3` (photos)
 - **7 Styles** — `ansi`, `unicode`, `fade`, `ascii`, `braille`, `full-block`,
   and `kanji`
+- **Dual-Font Rasterization**: Intelligent font fallback system. Uses
+  high-quality fonts (like JetBrains Mono) for standard text while automatically
+  switching to Unifont for Braille patterns and Box Drawing characters to ensure
+  no broken glyphs.
+
+**What is Rasterization?**
+
+Computers think of text and shapes as mathematical "paths" (vectors) infinitely
+scalable lines and curves. However, your screen and PNG files are just grids of
+tiny colored dots called pixels.
+
+**Rasterization** is the bridge between the two. This tool takes:
+
+1. **The Input**: Raw ANSI bytes (like `\x1b[38;2;255;0;0mHello`)
+
+2. **The Logic**: "This should be the letter 'H' in red."
+
+3. **The Output**: A precise grid of pixels where the curves of the font are
+   "filled in" with color and blended into the background.
+
+Essentially, we are taking a terminal's "brain" and taking a high-fidelity
+digital photograph of it allowing us to save what we see in the terminal to a
+`.png` file to use elsewhere.
 
 ---
 
@@ -96,8 +119,8 @@ Force a specific output width in columns
 
 ## Usage
 
-> [!NOTE] 
-> `px2ansi-rs` now uses a subcommand-based interface: `convert`, `index`, `show`, and `list`
+> [!NOTE] `px2ansi-rs` now uses a subcommand-based interface: `convert`,
+> `index`, `show`, and `list`
 
 1. Convert an Image
 
@@ -246,9 +269,8 @@ or adding the `index` path like we did above, or you can pass it from the cli:
 px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json`
 ```
 
-> [!NOTE] 
-> Any field omitted from the `.toml` file will automatically fall back to the
-> engine's built-in defaults.
+> [!NOTE] Any field omitted from the `.toml` file will automatically fall back
+> to the engine's built-in defaults.
 
 **Hierarchy of Truth**
 
@@ -440,16 +462,22 @@ drag the `out.html` into the browsers tabs.
    <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-png.png">
 </p>
 
-### Work in Progress --output-image
+### Rasterize the ANSI escape codes into a PNG with --output-image
 
-I'm working on implimenting rasterizer, to convert escape codes into `.png` files.
+The `--output-image` flag will convert escape codes into `.png` files.
 
 ```bash
-px2ansi-rs convert tests/nixos.png --filter nearest --style ansi --output-image nixos.png
+px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image nixos-rasterized.png
 ```
 
-- This outputs a small image to `nixos.png` but is still a WIP, it doesn't look like the terminal
-output as of yet.
+What I see in the browser when I open `nixos-rasterized.png`:
+
+<p align="center">
+   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-rasterize.png">
+</p>
+
+> [!NOTE] Certain styles look better than others. I have defaulted to a Tokyo
+> Night background for the images and may make this configurable in the future.
 
 ---
 
