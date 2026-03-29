@@ -25,6 +25,7 @@ walkdir = "2.5.0"
 dialoguer = { version = "0.12.0", features = ["fuzzy-select"] }
 clap_complete = "4.5.66"
 confy = "2.0.0"
+fontdue = "0.9.3"
 
 [[bin]]
 name = "px2ansi-rs"
