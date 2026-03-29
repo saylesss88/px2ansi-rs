@@ -233,9 +233,8 @@ or adding the `index` path like we did above, or you can pass it from the cli:
 px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json`
 ```
 
-> [!NOTE]
-> Any field omitted from the `.toml` file will automatically fall back to the
-> engine's built-in defaults.
+> [!NOTE] Any field omitted from the `.toml` file will automatically fall back
+> to the engine's built-in defaults.
 
 **Hierarchy of Truth**
 
