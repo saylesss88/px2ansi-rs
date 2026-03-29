@@ -307,11 +307,21 @@ fn create_index(params: &IndexParams<'_>) -> Result<()> {
     crate::indexer::build_index(params.dir, params.output)?;
     Ok(())
 }
+// fn save_ansi_as_image(params: &ConvertParams<'_>, image_path: &str) -> Result<()> {
+//     // Re-open and prepare the image at the same dimensions the renderer used
+//     let img = image::ImageReader::open(params.path)?.decode()?;
+//     let prepared = params.render.prepare_image(&img);
+//     prepared.save(image_path)?;
+//     println!("✅ Saved preview to {image_path}");
+//     Ok(())
+// }
 fn save_ansi_as_image(params: &ConvertParams<'_>, image_path: &str) -> Result<()> {
-    // Re-open and prepare the image at the same dimensions the renderer used
     let img = image::ImageReader::open(params.path)?.decode()?;
-    let prepared = params.render.prepare_image(&img);
-    prepared.save(image_path)?;
+    let mut buf = Vec::new();
+    params.render.render_centered(&img, &mut buf)?;
+
+    let rasterized = px2ansi_rs::rasterize::rasterize_ansi(&buf)?;
+    rasterized.save(image_path)?;
     println!("✅ Saved preview to {image_path}");
     Ok(())
 }
