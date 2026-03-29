@@ -21,16 +21,10 @@ const BG: Rgba<u8> = Rgba([26, 27, 38, 255]);
 /// input produces an empty render grid.
 pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
     let font = Font::from_bytes(
-        include_bytes!("../assets/JetBrainsMonoNerdFont-Regular.ttf") as &[u8],
+        include_bytes!("../assets/IosevkaCharonMono-Regular.ttf") as &[u8],
         FontSettings::default(),
     )
-    .map_err(|e| anyhow::anyhow!("Primary font error: {e}"))?;
-
-    let fallback = Font::from_bytes(
-        include_bytes!("../assets/unifont-16.0.04.ttf") as &[u8],
-        FontSettings::default(),
-    )
-    .map_err(|e| anyhow::anyhow!("Fallback font error: {e}"))?;
+    .map_err(|e| anyhow::anyhow!("Font error: {e}"))?;
 
     let cells = parse_ansi(ansi);
     anyhow::ensure!(!cells.is_empty(), "No cells to render");
@@ -63,13 +57,15 @@ pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
                 continue;
             };
 
-            let (metrics, bitmap) = select_font(&font, &fallback, ch);
+            let (metrics, bitmap) = font.rasterize(ch, FONT_SIZE);
+            if metrics.width == 0 {
+                continue; // glyph not in font, skip silently
+            }
 
             let base_x = col_u32.saturating_mul(CELL_W);
             let base_y = row_u32.saturating_mul(CELL_H);
-
             let glyph_h = u32::try_from(metrics.height).unwrap_or(0);
-            let y_offset = (CELL_H.saturating_sub(glyph_h)) / 2;
+            let y_offset = CELL_H.saturating_sub(glyph_h) / 2;
 
             for gy in 0..metrics.height {
                 for gx in 0..metrics.width {
@@ -77,7 +73,6 @@ pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
                     if coverage == 0 {
                         continue;
                     }
-
                     let Ok(gx_u32) = u32::try_from(gx) else {
                         continue;
                     };
@@ -97,26 +92,6 @@ pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
     }
 
     Ok(img)
-}
-
-/// Selects the appropriate font for a character, routing Braille and Box
-/// Drawing characters to the fallback font.
-fn select_font(primary: &Font, fallback: &Font, ch: char) -> (fontdue::Metrics, Vec<u8>) {
-    let use_fallback = matches!(ch,
-        '\u{2500}'..='\u{259F}' |
-        '\u{2800}'..='\u{28FF}'
-    );
-
-    if use_fallback {
-        return fallback.rasterize(ch, FONT_SIZE);
-    }
-
-    let (m, bmp) = primary.rasterize(ch, FONT_SIZE);
-    if m.width == 0 {
-        fallback.rasterize(ch, FONT_SIZE)
-    } else {
-        (m, bmp)
-    }
 }
 /// Alpha-blends a foreground color against the Tokyo Night background.
 fn blend_pixel(r: u8, g: u8, b: u8, coverage: u8) -> Rgba<u8> {
