@@ -50,7 +50,7 @@ cargo install px2ansi-rs
 
 ## Quick Reference
 
-```md
+```
 Usage: px2ansi-rs [OPTIONS] <COMMAND>
 
 Convert images to ANSI art and manage a searchable sprite library. Written in
@@ -227,11 +227,14 @@ index = "/home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json"
 ```
 
 You can call your index from anywhere in your filesystem by using the `-I` flag,
-or adding the `index` path like we did above, or you can pass it from the cli
-`px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json`
+or adding the `index` path like we did above, or you can pass it from the cli:
 
-> Note: Any field omitted from the `.toml` file will automatically fall back to
-> the engine's built-in defaults.
+```bash
+px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json`
+```
+
+> [!NOTE] Any field omitted from the `.toml` file will automatically fall back
+> to the engine's built-in defaults.
 
 **Hierarchy of Truth**
 
