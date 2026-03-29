@@ -1,14 +1,16 @@
 ![px2ansi-png](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi-rs-png.png)
 
-`px2ansi-rs` is a high-performance image conversion/ANSI Art Generator toolkit written in Rust.
-While inspired by the original Python
-[px2ansi](https://github.com/Nellousan/px2ansi) project, this is a complete
-reimplementation (~25x faster) with indexing, fuzzy search, TUI browsing, and
-advanced filters.
+`px2ansi-rs` is a high-fidelity terminal art engine and asset manager. `px2ansi-rs` transforms images
+into terminal-native art using 7 distinct rendering styles, from classic ANSI blocks to high-density
+Braille and Kanji. With a built-in indexing system and manifest support, it's designed to manage and
+display entire sprite libraries with the same ease as `pokemon-colorscripts`. 
+
+While inspired by the original [px2ansi](https://github.com/Nellousan/px2ansi) project, this is a
+complete reimplementation (~25x faster) with indexing, fuzzy search, TUI browsing, and advanced 
+filters.
 
 ![px2ansi-rs demo](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi_demo.gif)
 
-`px2ansi-rs convert nixos.png --style ascii --filter nearest`:
 
 <p align="center">
     <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-ascii.png">
@@ -31,6 +33,7 @@ advanced filters.
 - **Interactive TUI** — `show -i` to browse
 - **Truecolor + Transparency** — Full 24-bit RGB + alpha
 - **Smart Resize** — Auto-fits terminal width
+- **Set your own Dimensions** -- Use `--width` to adjust size 
 - **5 Filters** — `nearest` (pixel art) to `lanczos3` (photos)
 - **7 Styles** — `ansi`, `unicode`, `fade`, `ascii`, `braille`, `full-block`,
   and `kanji`
@@ -137,7 +140,6 @@ px2ansi-rs convert tests/test.png --style ascii --filter nearest
     <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii.png">
 </p> 
 
-![screenshot3](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii.png)
 
 2. The Library Indexer
 
@@ -172,7 +174,9 @@ The Quick Way (Supports fuzzy matching)
 px2ansi-rs show bul <ENTER>
 ```
 
-![screenshot3](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/bul.png)
+<p align="center">
+   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/bul.png">
+</p>
 
 **Interactive Search (The "Browser" Mode)**
 
