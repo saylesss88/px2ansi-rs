@@ -1,6 +1,6 @@
 ![px2ansi-png](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi-rs-png.png)
 
-`px2ansi-rs` is a high-performance image conversion toolkit written in Rust.
+`px2ansi-rs` is a high-performance image conversion/ANSI Art Generator toolkit written in Rust.
 While inspired by the original Python
 [px2ansi](https://github.com/Nellousan/px2ansi) project, this is a complete
 reimplementation (~25x faster) with indexing, fuzzy search, TUI browsing, and
@@ -10,11 +10,18 @@ advanced filters.
 
 `px2ansi-rs convert nixos.png --style ascii --filter nearest`:
 
-![px2ansi-ascii](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-ascii.png)
+<p align="center">
+    <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-ascii.png">
+</p>
 
-![px2ansi-braille](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png)
+<p align="center">
+    <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png">
+</p>
 
-![px2ansi-kanji](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-kanji.png)
+<p align="center">
+   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-kanji.png">
+</p>
+
 
 ---
 
@@ -85,10 +92,11 @@ Force a specific output width in columns
 - The `--full` toggle is specifically optimized for **Unicode mode** to achieve
   a "pixel-perfect" square look.
 
-### Usage
+## Usage
 
-`px2ansi-rs` now uses a subcommand-based interface: `convert`, `index`, `show`,
-and `list`
+> [!NOTE]
+> `px2ansi-rs` now uses a subcommand-based interface: `convert`, `index`, `show`,
+> and `list`
 
 1. Convert an Image
 
@@ -125,6 +133,9 @@ Simple ASCII characters:
 ```bash
 px2ansi-rs convert tests/test.png --style ascii --filter nearest
 ```
+<p align="center">
+    <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii.png">
+</p> 
 
 ![screenshot3](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii.png)
 
