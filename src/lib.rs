@@ -4,4 +4,4 @@ pub mod options;
 pub mod render;
 
 pub use cli_enums::{RenderStylePreset, ResizeFilter};
-pub use options::{CharsetMode, Density, OutputMode, RenderOptions, RenderStyle};
+pub use options::{CharsetMode, Density, RenderOptions, RenderStyle};
