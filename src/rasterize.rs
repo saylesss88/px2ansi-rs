@@ -2,92 +2,94 @@ use fontdue::{Font, FontSettings};
 use image::{Rgba, RgbaImage};
 
 const FONT_SIZE: f32 = 14.0;
-const CELL_W: u32 = 8; // pixels per character cell width
-const CELL_H: u32 = 16; // pixels per character cell height
+const CELL_W: u32 = 8;
+const CELL_H: u32 = 16;
 
-/// Parses ANSI escape sequences and rasterizes the output to a PNG buffer.
+/// Tokyo Night background color (#1A1B26)
+const BG: Rgba<u8> = Rgba([26, 27, 38, 255]);
+
+/// Processes a raw byte slice containing ANSI escape sequences and renders
+/// it into an RGBA image buffer suitable for saving as a PNG.
+///
+/// Embedded fonts handle the full Unicode range required for terminal art,
+/// including Braille (U+2800–U+28FF) and Box Drawing (U+2500–U+259F) characters
+/// which are routed to a fallback font for correct glyph rendering.
+///
+/// # Errors
+///
+/// Returns an error if either embedded font fails to load, or if the parsed
+/// input produces an empty render grid.
 pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
-    let font_data = include_bytes!("../assets/JetBrainsMonoNerdFont-Regular.ttf");
-    let fallback_data = include_bytes!("../assets/unifont-16.0.04.ttf");
-    let font = Font::from_bytes(font_data as &[u8], FontSettings::default())
-        .map_err(|e| anyhow::anyhow!("Font error: {e}"))?;
-    let fallback = Font::from_bytes(fallback_data as &[u8], FontSettings::default())
-        .map_err(|e| anyhow::anyhow!("Font error: {e}"))?;
+    let font = Font::from_bytes(
+        include_bytes!("../assets/JetBrainsMonoNerdFont-Regular.ttf") as &[u8],
+        FontSettings::default(),
+    )
+    .map_err(|e| anyhow::anyhow!("Primary font error: {e}"))?;
 
-    let (test_m, _) = fallback.rasterize('⣿', FONT_SIZE);
-    eprintln!(
-        "DEBUG unifont braille metrics: {}x{}",
-        test_m.width, test_m.height
-    );
-    // Parse into a grid of (char, [r,g,b])
+    let fallback = Font::from_bytes(
+        include_bytes!("../assets/unifont-16.0.04.ttf") as &[u8],
+        FontSettings::default(),
+    )
+    .map_err(|e| anyhow::anyhow!("Fallback font error: {e}"))?;
+
     let cells = parse_ansi(ansi);
+    anyhow::ensure!(!cells.is_empty(), "No cells to render");
 
-    if cells.is_empty() {
-        anyhow::bail!("No cells to render");
-    }
-
-    let cols = cells.iter().map(|r| r.len()).max().unwrap_or(0);
+    let cols = cells.iter().map(std::vec::Vec::len).max().unwrap_or(0);
     let rows = cells.len();
 
-    let img_w = cols as u32 * CELL_W;
-    let img_h = rows as u32 * CELL_H;
+    let img_w = u32::try_from(cols)
+        .unwrap_or(u32::MAX)
+        .saturating_mul(CELL_W);
+    let img_h = u32::try_from(rows)
+        .unwrap_or(u32::MAX)
+        .saturating_mul(CELL_H);
 
     let mut img = RgbaImage::new(img_w, img_h);
-
-    // Tokyo Night
-    let bg = Rgba([26, 27, 38, 255]); // #1A1B26
     for pixel in img.pixels_mut() {
-        *pixel = bg;
+        *pixel = BG;
     }
 
     for (row_idx, row) in cells.iter().enumerate() {
-        for (col_idx, cell) in row.iter().enumerate() {
-            let (ch, [r, g, b]) = *cell;
+        for (col_idx, &(ch, [r, g, b])) in row.iter().enumerate() {
             if ch == ' ' || ch == '\0' {
                 continue;
             }
 
-            let (metrics, bitmap) = {
-                let is_braille = ('\u{2800}'..='\u{28FF}').contains(&ch);
-                let is_box = ('\u{2500}'..='\u{259F}').contains(&ch);
-
-                if is_braille || is_box {
-                    // Always use unifont for braille and box drawing chars
-                    fallback.rasterize(ch, FONT_SIZE)
-                } else {
-                    let (m, bmp) = font.rasterize(ch, FONT_SIZE);
-                    if m.width == 0 {
-                        fallback.rasterize(ch, FONT_SIZE)
-                    } else {
-                        (m, bmp)
-                    }
-                }
+            let Ok(col_u32) = u32::try_from(col_idx) else {
+                continue;
             };
-            // let (metrics, bitmap) = font.rasterize(ch, FONT_SIZE);
-            let base_x = col_idx as u32 * CELL_W;
-            let base_y = row_idx as u32 * CELL_H;
-            // Center glyph vertically in cell
-            let y_offset = ((CELL_H as i32 - metrics.height as i32) / 2).max(0) as u32;
+            let Ok(row_u32) = u32::try_from(row_idx) else {
+                continue;
+            };
+
+            let (metrics, bitmap) = select_font(&font, &fallback, ch);
+
+            let base_x = col_u32.saturating_mul(CELL_W);
+            let base_y = row_u32.saturating_mul(CELL_H);
+
+            let glyph_h = u32::try_from(metrics.height).unwrap_or(0);
+            let y_offset = (CELL_H.saturating_sub(glyph_h)) / 2;
 
             for gy in 0..metrics.height {
                 for gx in 0..metrics.width {
                     let coverage = bitmap[gy * metrics.width + gx];
+                    if coverage == 0 {
+                        continue;
+                    }
 
-                    if coverage > 0 {
-                        let px_x = base_x + gx as u32;
-                        let px_y = base_y + y_offset + gy as u32;
-                        if px_x < img_w && px_y < img_h {
-                            let alpha = coverage as f32 / 255.0;
-                            let blend = |fg: u8, bg: u8| -> u8 {
-                                (fg as f32 * alpha + bg as f32 * (1.0 - alpha)) as u8
-                            };
-                            let [br, bg_c, bb, _] = bg.0;
-                            img.put_pixel(
-                                px_x,
-                                px_y,
-                                Rgba([blend(r, br), blend(g, bg_c), blend(b, bb), 255]),
-                            );
-                        }
+                    let Ok(gx_u32) = u32::try_from(gx) else {
+                        continue;
+                    };
+                    let Ok(glyph_u32) = u32::try_from(gy) else {
+                        continue;
+                    };
+
+                    let px_x = base_x.saturating_add(gx_u32);
+                    let px_y = base_y.saturating_add(y_offset).saturating_add(glyph_u32);
+
+                    if px_x < img_w && px_y < img_h {
+                        img.put_pixel(px_x, px_y, blend_pixel(r, g, b, coverage));
                     }
                 }
             }
@@ -97,44 +99,71 @@ pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
     Ok(img)
 }
 
-/// Parses ANSI escape sequences into a grid of (char, [r, g, b]) cells.
+/// Selects the appropriate font for a character, routing Braille and Box
+/// Drawing characters to the fallback font.
+fn select_font(primary: &Font, fallback: &Font, ch: char) -> (fontdue::Metrics, Vec<u8>) {
+    let use_fallback = matches!(ch,
+        '\u{2500}'..='\u{259F}' |
+        '\u{2800}'..='\u{28FF}'
+    );
+
+    if use_fallback {
+        return fallback.rasterize(ch, FONT_SIZE);
+    }
+
+    let (m, bmp) = primary.rasterize(ch, FONT_SIZE);
+    if m.width == 0 {
+        fallback.rasterize(ch, FONT_SIZE)
+    } else {
+        (m, bmp)
+    }
+}
+/// Alpha-blends a foreground color against the Tokyo Night background.
+fn blend_pixel(r: u8, g: u8, b: u8, coverage: u8) -> Rgba<u8> {
+    let alpha = f32::from(coverage) / 255.0;
+    let blend = |fg: u8, bg: u8| -> u8 {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let result = f32::from(bg).mul_add(1.0 - alpha, f32::from(fg) * alpha) as u8;
+        result
+    };
+    let [br, bg_c, bb, _] = BG.0;
+    Rgba([blend(r, br), blend(g, bg_c), blend(b, bb), 255])
+}
+
+/// Parses ANSI escape sequences into a grid of `(char, [r, g, b])` cells.
+///
+/// Only SGR truecolor sequences (`ESC[38;2;R;G;Bm`) are handled. All other
+/// escape sequences are silently ignored. The default color is white.
 fn parse_ansi(input: &[u8]) -> Vec<Vec<(char, [u8; 3])>> {
     let mut rows: Vec<Vec<(char, [u8; 3])>> = Vec::new();
     let mut current_row: Vec<(char, [u8; 3])> = Vec::new();
-    let mut current_color: [u8; 3] = [255, 255, 255]; // default white
+    let mut current_color: [u8; 3] = [255, 255, 255];
     let mut i = 0;
 
     while i < input.len() {
-        // ESC [ sequence
-        if input[i] == 0x1b && i + 1 < input.len() && input[i + 1] == b'[' {
+        if input[i] == 0x1b && input.get(i + 1) == Some(&b'[') {
             i += 2;
-            // Collect until final byte (letter)
             let mut seq = Vec::new();
             while i < input.len() && !input[i].is_ascii_alphabetic() {
                 seq.push(input[i]);
                 i += 1;
             }
-            let final_byte = if i < input.len() { input[i] } else { 0 };
+            let final_byte = input.get(i).copied().unwrap_or(0);
             i += 1;
-
             if final_byte == b'm' {
                 let params = std::str::from_utf8(&seq).unwrap_or("");
                 parse_color_params(params, &mut current_color);
             }
-            // ignore other escape sequences (cursor movement etc.)
         } else if input[i] == b'\n' {
-            rows.push(current_row.clone());
-            current_row.clear();
+            rows.push(std::mem::take(&mut current_row));
             i += 1;
         } else {
-            // Decode UTF-8 character
             let ch = if input[i] < 128 {
                 input[i] as char
             } else {
-                // Multi-byte UTF-8 — braille, block chars etc.
                 let s = std::str::from_utf8(&input[i..]).unwrap_or(" ");
                 let ch = s.chars().next().unwrap_or(' ');
-                i += ch.len_utf8() - 1; // -1 because we add 1 below
+                i += ch.len_utf8() - 1;
                 ch
             };
             current_row.push((ch, current_color));
@@ -149,15 +178,16 @@ fn parse_ansi(input: &[u8]) -> Vec<Vec<(char, [u8; 3])>> {
     rows
 }
 
-/// Parses SGR color params like "38;2;255;100;50" into an RGB triple.
+/// Parses an SGR parameter string and updates the current color if a
+/// truecolor sequence (`38;2;R;G;B`) is found. Resets to white on `0` or empty.
 fn parse_color_params(params: &str, color: &mut [u8; 3]) {
     if params == "0" || params.is_empty() {
-        *color = [255, 255, 255]; // reset to white
+        *color = [255, 255, 255];
         return;
     }
+
     let parts: Vec<u8> = params.split(';').filter_map(|s| s.parse().ok()).collect();
 
-    // Truecolor: 38;2;R;G;B
     if parts.len() >= 5 && parts[0] == 38 && parts[1] == 2 {
         *color = [parts[2], parts[3], parts[4]];
     }
