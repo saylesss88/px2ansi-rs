@@ -24,6 +24,10 @@ pub enum Commands {
         #[arg(short, long)]
         output: Option<String>,
 
+        /// Save a rasterized preview instead of terminal escape codes
+        #[arg(short = 'O', long = "output-image")]
+        output_image: Option<String>,
+
         #[arg(long, value_enum)]
         style: Option<RenderStylePreset>,
 

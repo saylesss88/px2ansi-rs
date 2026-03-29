@@ -10,7 +10,7 @@ use colored::Colorize;
 use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use rand::prelude::IndexedRandom;
-use std::io::{self, BufWriter};
+use std::io::{self, BufWriter, Write};
 use std::time::Instant;
 
 use px2ansi_rs::RenderOptions;
@@ -34,17 +34,18 @@ fn main() -> Result<()> {
         Commands::Convert {
             filename,
             output,
-            // mode,
+            output_image,
             width,
             filter,
-            // full,
             style,
         } => {
+            let active_output_image = output_image.as_deref().or(cfg.output_image.as_deref());
             let render_opts = RenderOptions::from_cli(style, width, filter)?;
 
             let params = ConvertParams {
                 path: &filename,
                 output: output.as_deref(),
+                output_image: active_output_image,
                 render: render_opts,
             };
             convert_image(&params)?;
@@ -110,6 +111,7 @@ pub struct ConvertParams<'a> {
     pub output: Option<&'a str>,
     /// Visual preferences for the final render.
     pub render: RenderOptions,
+    pub output_image: Option<&'a str>,
 }
 
 /// Orchestrates the conversion of a standalone image.
@@ -119,22 +121,27 @@ pub struct ConvertParams<'a> {
 fn convert_image(params: &ConvertParams<'_>) -> Result<()> {
     let img = image::ImageReader::open(params.path)?.decode()?;
 
+    // Render to buffer once, reuse for both outputs
+    let mut buf = Vec::new();
+    params.render.render_centered(&img, &mut buf)?;
+
     if let Some(output_path) = params.output {
-        // File output: use RenderOptions::render directly
         let file = std::fs::File::create(output_path)?;
         let mut writer = BufWriter::new(file);
-        // params.render.render(&img, &mut writer)?;
-        params.render.render_centered(&img, &mut writer)?;
+        writer.write_all(&buf)?;
     } else {
-        // Terminal output: use RenderOptions::render to stdout
         let stdout = io::stdout();
         let mut writer = BufWriter::new(stdout.lock());
-        // params.render.render(&img, &mut writer)?;
-        params.render.render_centered(&img, &mut writer)?;
+        writer.write_all(&buf)?;
     }
+
+    // Save rasterized PNG if requested
+    if let Some(image_path) = params.output_image {
+        save_ansi_as_image(params, image_path)?;
+    }
+
     Ok(())
 }
-
 #[derive(Debug)]
 struct ListParams<'a> {
     index_path: &'a str,
@@ -298,5 +305,13 @@ struct IndexParams<'a> {
 
 fn create_index(params: &IndexParams<'_>) -> Result<()> {
     crate::indexer::build_index(params.dir, params.output)?;
+    Ok(())
+}
+fn save_ansi_as_image(params: &ConvertParams<'_>, image_path: &str) -> Result<()> {
+    // Re-open and prepare the image at the same dimensions the renderer used
+    let img = image::ImageReader::open(params.path)?.decode()?;
+    let prepared = params.render.prepare_image(&img);
+    prepared.save(image_path)?;
+    println!("✅ Saved preview to {image_path}");
     Ok(())
 }

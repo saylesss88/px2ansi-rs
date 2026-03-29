@@ -9,20 +9,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(default)]
 pub struct Config {
-    /// The rendering mode to use.
-    /// Supported values: "ansi" (standard packing) or "unicode" (high-definition symbols).
-    // pub mode: String,
-
     /// Whether to display execution timing and performance metadata after rendering.
     pub latency: bool,
 
     /// The resampling filter used when scaling images to fit the terminal.
     /// `Nearest` is recommended for pixel art, while `Lanczos3` is best for photos.
     pub filter: ResizeFilter,
-
-    /// If true, renders pixels as square blocks (██) instead of vertically packed half-blocks.
-    /// This is ideal for a "retro" 1:1 pixel aspect ratio.
-    // pub full: bool,
 
     /// The path to the JSON index file containing the image library.
     ///
@@ -31,6 +23,8 @@ pub struct Config {
     pub index: String,
 
     pub style: RenderStylePreset,
+
+    pub output_image: Option<String>,
 }
 // impl Config {
 //     pub fn new() -> Self {
@@ -42,12 +36,11 @@ impl Default for Config {
     /// Provides the fallback defaults used when no config file is found.
     fn default() -> Self {
         Self {
-            // mode: "ansi".into(),
             latency: false,
             filter: ResizeFilter::Lanczos3,
-            // full: false,
             index: "index.json".into(),
             style: RenderStylePreset::Ansi,
+            output_image: None,
         }
     }
 }
