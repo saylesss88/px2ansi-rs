@@ -84,23 +84,23 @@ cargo install px2ansi-rs
 ## Quick Reference
 
 ```
+Pixel art tools
+
 Usage: px2ansi-rs [OPTIONS] <COMMAND>
 
-Convert images to ANSI art and manage a searchable sprite library. Written in
-Rust by T. Sawyer -> (Github: saylesss88)
+Commands:
+  convert      Convert a single image to ANSI/Unicode/Fade/Braille/Kanji/Full-block/Ascii
+  index        Create a JSON index of a directory
+  show         Display a sprite from the index
+  list         List entries in the index
+  completions  Generate shell completions and add to your shell config. Example: `px2ansi-rs completions bash >> ~/.bashrc`
+  help         Print this message or the help of the given subcommand(s)
 
-Commands: convert Convert a single image to terminal art show Display a sprite
-from the index index Build a searchable index from a directory of images list
-List entries in the index
-
-Options: -l, --latency Show timing and execution metadata -I, --index <FILE>
-Path to the index file -h, --help Show this message and exit -V, --version
-Display version information and exit
-
-Render Flags (for convert and show): --style <MODE> Rendering style (ansi,
-unicode, full-block, braille, fade, ascii, kanji) --filter <FILTER> Resize
-filter (nearest, triangle, catmull-rom, gaussian, lanczos3) --width <WIDTH>
-Force a specific output width in columns
+Options:
+  -l, --latency        Show timing and execution metadata
+  -I, --index <INDEX>
+  -h, --help           Print help
+  -V, --version        Print version
 ```
 
 | Use Case        | Command                                           | Mode    | Style | Notes                |
