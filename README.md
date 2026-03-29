@@ -1,4 +1,6 @@
-![px2ansi-png](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi-rs-png.png)
+<p align="center">
+   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi-rs-png.png">
+</p>
 
 `px2ansi-rs` is a high-fidelity terminal art engine and asset manager. `px2ansi-rs` transforms images
 into terminal-native art using 7 distinct rendering styles, from classic ANSI blocks to high-density
