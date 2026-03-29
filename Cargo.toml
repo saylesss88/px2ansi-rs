@@ -9,8 +9,7 @@ repository = "https://github.com/saylesss88/px2ansi-rs"
 readme = "README.md"
 keywords = ["ansi", "pixel-art", "terminal", "image", "cli"]
 categories = ["command-line-utilities", "multimedia::images", "rendering"]
-exclude = ["assets/*", "tests/*", "target/*", ".github/*", ".gitignore"]
-
+include = ["src/**/*", "assets/IosevkaCharonMono-Regular.ttf", "Cargo.toml", "README.md", "LICENSE"]
 [dependencies]
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 clap = { version = "4.5", features = ["derive"] }
