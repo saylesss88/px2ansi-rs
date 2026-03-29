@@ -2,17 +2,18 @@
    <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi-rs-png.png">
 </p>
 
-`px2ansi-rs` is a high-fidelity terminal art engine and asset manager. `px2ansi-rs` transforms images
-into terminal-native art using 7 distinct rendering styles, from classic ANSI blocks to high-density
-Braille and Kanji. With a built-in indexing system and manifest support, it's designed to manage and
-display entire sprite libraries with the same ease as `pokemon-colorscripts`. 
+`px2ansi-rs` is a high-fidelity terminal art engine and asset manager.
+`px2ansi-rs` transforms images into terminal-native art using 7 distinct
+rendering styles, from classic ANSI blocks to high-density Braille and Kanji.
+With a built-in indexing system and manifest support, it's designed to manage
+and display entire sprite libraries with the same ease as
+`pokemon-colorscripts`.
 
-While inspired by the original [px2ansi](https://github.com/Nellousan/px2ansi) project, this is a
-complete reimplementation (~25x faster) with indexing, fuzzy search, TUI browsing, and advanced 
-filters.
+While inspired by the original [px2ansi](https://github.com/Nellousan/px2ansi)
+project, this is a complete reimplementation (~25x faster) with indexing, fuzzy
+search, TUI browsing, and advanced filters.
 
 ![px2ansi-rs demo](https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi_demo.gif)
-
 
 <p align="center">
     <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-ascii.png">
@@ -26,7 +27,6 @@ filters.
    <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-kanji.png">
 </p>
 
-
 ---
 
 ## Features
@@ -35,7 +35,7 @@ filters.
 - **Interactive TUI** — `show -i` to browse
 - **Truecolor + Transparency** — Full 24-bit RGB + alpha
 - **Smart Resize** — Auto-fits terminal width
-- **Set your own Dimensions** -- Use `--width` to adjust size 
+- **Set your own Dimensions** -- Use `--width` to adjust size
 - **5 Filters** — `nearest` (pixel art) to `lanczos3` (photos)
 - **7 Styles** — `ansi`, `unicode`, `fade`, `ascii`, `braille`, `full-block`,
   and `kanji`
@@ -94,12 +94,10 @@ Force a specific output width in columns
 | **Random**      | `px2ansi-rs show random`                          | auto    | auto  | Terminal greeting    |
 | **List**        | `px2ansi-rs list --count 10`                      | N/A     | N/A   | First 10 assets      |
 
-
 ## Usage
 
-> [!NOTE]
-> `px2ansi-rs` now uses a subcommand-based interface: `convert`, `index`, `show`,
-> and `list`
+> [!NOTE] 
+> `px2ansi-rs` now uses a subcommand-based interface: `convert`, `index`, `show`, and `list`
 
 1. Convert an Image
 
@@ -136,10 +134,10 @@ Simple ASCII characters:
 ```bash
 px2ansi-rs convert tests/test.png --style ascii --filter nearest
 ```
+
 <p align="center">
     <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii.png">
-</p> 
-
+</p>
 
 2. The Library Indexer
 
@@ -248,7 +246,7 @@ or adding the `index` path like we did above, or you can pass it from the cli:
 px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json`
 ```
 
-> [!NOTE]
+> [!NOTE] 
 > Any field omitted from the `.toml` file will automatically fall back to the
 > engine's built-in defaults.
 
@@ -426,9 +424,40 @@ Finished in 0ms
 
 ---
 
+## Converting to a Useable Format outside of the terminal
+
+You can use something like `aha` to convert ANSI to HTML, open it in your
+browser and screenshot it.
+
+```bash
+nix-shell -p aha --run "px2ansi-rs convert tests/nixos.png --style braille | aha > out.html"
+```
+
+Then open `out.html` in a browser and screenshot it. For example, use Thunar and
+drag the `out.html` into the browsers tabs.
+
+<p align="center">
+   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-png.png">
+</p>
+
+### Work in Progress --output-image
+
+I'm working on implimenting rasterizer, to convert escape codes into `.png` files.
+
+```bash
+px2ansi-rs convert tests/nixos.png --filter nearest --style ansi --output-image nixos.png
+```
+
+- This outputs a small image to `nixos.png` but is still a WIP, it doesn't look like the terminal
+output as of yet.
+
+---
+
 ## Project build with px2ansi-rs
 
 - [slasher-horrorscripts](https://crates.io/crates/slasher-horrorscripts)
+
+---
 
 ## ⚠️ Troubleshooting & Errors
 
@@ -442,6 +471,8 @@ Finished in 0ms
   was likely too low (below 30). Try a more specific search term or use `-i`.
 - **Terminal Gaps**: If you see horizontal lines, your terminal's line-height is
   likely > 1.0.
+
+---
 
 ## License
 
