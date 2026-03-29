@@ -94,8 +94,6 @@ Force a specific output width in columns
 | **Random**      | `px2ansi-rs show random`                          | auto    | auto  | Terminal greeting    |
 | **List**        | `px2ansi-rs list --count 10`                      | N/A     | N/A   | First 10 assets      |
 
-- The `--full` toggle is specifically optimized for **Unicode mode** to achieve
-  a "pixel-perfect" square look.
 
 ## Usage
 
