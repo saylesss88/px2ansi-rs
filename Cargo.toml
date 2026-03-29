@@ -1,13 +1,13 @@
 [package]
 name = "px2ansi-rs"
-version = "0.3.16"
+version = "0.3.17"
 edition = "2024"
 authors = ["T. Sawyer <saylesss87@proton.me>", "Nell Fauveau <nellousan@hotmail.fr> (original Python version)"]
 license = "GPL-3.0"
 description = "Convert pixel art images to ANSI terminal art (Rust port)"
 repository = "https://github.com/saylesss88/px2ansi-rs"
 readme = "README.md"
-keywords = ["ansi", "pixel-art", "terminal", "image", "cli"]
+keywords = ["ansi", "pixel-art", "terminal", "rasterize", "cli"]
 categories = ["command-line-utilities", "multimedia::images", "rendering"]
 include = ["src/**/*", "assets/IosevkaCharonMono-Regular.ttf", "Cargo.toml", "README.md", "LICENSE"]
 [dependencies]

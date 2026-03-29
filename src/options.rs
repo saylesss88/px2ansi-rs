@@ -1,9 +1,11 @@
-use crate::cli_enums::{RenderStylePreset, ResizeFilter};
-use image::DynamicImage;
-use image::imageops::FilterType;
 use std::io::Write;
 use std::str::FromStr;
+
+use image::DynamicImage;
+use image::imageops::FilterType;
 use terminal_size::{Height, Width, terminal_size};
+
+use crate::cli_enums::{RenderStylePreset, ResizeFilter};
 
 /// Defines the character set used to represent pixels in the terminal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -291,7 +293,7 @@ fn get_terminal_size() -> (u32, u32) {
         .ok()
         .and_then(|s| s.parse::<u32>().ok());
 
-    eprintln!("DEBUG terminal_size()={ts:?} COLUMNS={env_cols:?} LINES={env_rows:?}");
+    // eprintln!("DEBUG terminal_size()={ts:?} COLUMNS={env_cols:?} LINES={env_rows:?}");
 
     if let Some((Width(w), Height(h))) = ts {
         return (u32::from(w), u32::from(h));

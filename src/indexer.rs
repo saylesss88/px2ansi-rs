@@ -1,6 +1,7 @@
 use image::GenericImageView;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::path::Path;
 
 /// Represents a single image discovered during the indexing process.
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -18,7 +19,7 @@ pub struct ImageEntry {
 /// This function converts all relative image paths into absolute paths using
 /// `fs::canonicalize` to ensure the index remains valid regardless of the
 /// current working directory.
-pub fn build_index(dir: &str, output_path: &str) -> anyhow::Result<String> {
+pub fn build_index(dir: &Path, output_path: &Path) -> anyhow::Result<String> {
     let mut index = Vec::new();
 
     // Iterate through the directory entries
@@ -34,16 +35,17 @@ pub fn build_index(dir: &str, output_path: &str) -> anyhow::Result<String> {
                 .unwrap_or("")
                 .to_lowercase();
 
-            // Supported image formats
-            if matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp" | "bmp") {
-                // Open image to extract dimensions and verify it's a valid image
+            let supported = matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp" | "bmp");
+
+            if supported {
+                // image::open handles &Path perfectly
                 if let Ok(img) = image::open(&path) {
-                    // Resolve the absolute path so the index is "portable" across directories
                     let absolute_path = fs::canonicalize(&path)?;
 
                     let Some(stem) = path.file_stem() else {
                         continue;
                     };
+
                     index.push(ImageEntry {
                         name: stem.to_string_lossy().into_owned(),
                         path: absolute_path.to_string_lossy().into_owned(),
@@ -54,13 +56,10 @@ pub fn build_index(dir: &str, output_path: &str) -> anyhow::Result<String> {
         }
     }
 
-    // 1. Sort alphabetically by name for cleaner 'list' output
     index.sort_by(|a, b| a.name.cmp(&b.name));
-
-    // 2. Serialize to pretty JSON
     let json_data = serde_json::to_string_pretty(&index)?;
 
-    // 3. Write to the specified output file
+    // fs::write handles &Path perfectly
     fs::write(output_path, &json_data)?;
 
     Ok(json_data)

@@ -8,17 +8,24 @@ const CELL_H: u32 = 16;
 /// Tokyo Night background color (#1A1B26)
 const BG: Rgba<u8> = Rgba([26, 27, 38, 255]);
 
-/// Processes a raw byte slice containing ANSI escape sequences and renders
-/// it into an RGBA image buffer suitable for saving as a PNG.
+/// Processes a raw byte slice of ANSI escape sequences and renders it into an
+/// RGBA image buffer.
 ///
-/// Embedded fonts handle the full Unicode range required for terminal art,
-/// including Braille (U+2800–U+28FF) and Box Drawing (U+2500–U+259F) characters
-/// which are routed to a fallback font for correct glyph rendering.
+/// This function uses a single embedded monospace font (Iosevka Charon) to
+/// rasterize terminal art. It calculates the final image dimensions based on
+/// the parsed grid of characters and applies a background-to-foreground
+/// pixel blending pass.
 ///
 /// # Errors
 ///
-/// Returns an error if either embedded font fails to load, or if the parsed
-/// input produces an empty render grid.
+/// Returns an error if:
+/// * The embedded font fails to initialize.
+/// * The input produces an empty grid (no renderable content).
+///
+/// # Limitations
+///
+/// Character glyphs not present in the primary embedded font are skipped
+/// silently during the rasterization process.
 pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
     let font = Font::from_bytes(
         include_bytes!("../assets/IosevkaCharonMono-Regular.ttf") as &[u8],

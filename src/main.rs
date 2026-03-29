@@ -1,18 +1,36 @@
+//! # px2ansi-rs CLI
+//!
+//! The command-line interface for `px2ansi-rs`.
+//!
+//! This crate serves as the binary entry point, handling:
+//! 1. **Configuration**: Loading defaults from system-specific config paths.
+//! 2. **CLI Parsing**: Resolving subcommands (convert, index, show, list).
+//! 3. **Orchestration**: Routing data between the image processor, the asset indexer,
+//!    and the ANSI-to-PNG rasterizer.
+//!
+//! ## Execution Logic
+//! The CLI prioritizes settings in this order:
+//! Explicit CLI Flags > Config File (`default-config.toml`) > Hardcoded Defaults.
+
 #![allow(clippy::multiple_crate_versions)]
+
 mod cli;
 mod config;
 mod indexer;
-use crate::cli::{Cli, Commands};
-use crate::config::Config;
+
+use std::io::{self, BufWriter, Write};
+use std::path::Path;
+use std::time::Instant;
+
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use colored::Colorize;
 use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use rand::prelude::IndexedRandom;
-use std::io::{self, BufWriter, Write};
-use std::time::Instant;
 
+use crate::cli::{Cli, Commands};
+use crate::config::Config;
 use px2ansi_rs::RenderOptions;
 
 /// The main entry point. We parse the CLI args, start a stopwatch for the "speed"
@@ -26,24 +44,36 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     let active_latency = cli.latency || cfg.latency;
 
-    let active_index = cli.index.as_deref().unwrap_or(&cfg.index);
+    let active_index = cli
+        .index
+        .as_deref()
+        .map(Path::new)
+        .map_or_else(|| Path::new(&cfg.index), Path::new);
     // 3. Apply Overrides
     // If the user didn't specify a mode on CLI, use the config mode
 
     match cli.command {
         Commands::Convert {
-            filename,
+            input,
             output,
             output_image,
             width,
             filter,
             style,
         } => {
-            let active_output_image = output_image.as_deref().or(cfg.output_image.as_deref());
+            // 1. Convert Option<PathBuf> -> Option<&Path>
+            let cli_out_img = output_image.as_deref();
+
+            // 2. Convert Option<String> -> Option<&Path>
+            let cfg_out_img = cfg.output_image.as_deref().map(Path::new);
+
+            // 3. Now both sides are Option<&Path>, so .or() works!
+            let active_output_image = cli_out_img.or(cfg_out_img);
+
             let render_opts = RenderOptions::from_cli(style, width, filter)?;
 
             let params = ConvertParams {
-                path: &filename,
+                path: &input,
                 output: output.as_deref(),
                 output_image: active_output_image,
                 render: render_opts,
@@ -60,7 +90,11 @@ fn main() -> Result<()> {
 
             create_index(&params)?;
 
-            println!("✅ Created index of {dir} at {save_path}");
+            println!(
+                "✅ Created index of {} at {}",
+                dir.display(),
+                save_path.display()
+            );
         }
         Commands::List { count } => {
             let params = ListParams {
@@ -106,12 +140,12 @@ fn main() -> Result<()> {
 /// allocations during the conversion hand-off.
 pub struct ConvertParams<'a> {
     /// The path to the source image file.
-    pub path: &'a str,
+    pub path: &'a Path,
     /// An optional file path to save the output. If `None`, prints to stdout.
-    pub output: Option<&'a str>,
+    pub output: Option<&'a Path>,
     /// Visual preferences for the final render.
     pub render: RenderOptions,
-    pub output_image: Option<&'a str>,
+    pub output_image: Option<&'a Path>,
 }
 
 /// Orchestrates the conversion of a standalone image.
@@ -144,17 +178,22 @@ fn convert_image(params: &ConvertParams<'_>) -> Result<()> {
 }
 #[derive(Debug)]
 struct ListParams<'a> {
-    index_path: &'a str,
+    index_path: &'a Path,
     count: Option<usize>,
+}
+fn create_index(params: &IndexParams<'_>) -> Result<()> {
+    // Assuming build_index is updated to accept &Path or converts it
+    crate::indexer::build_index(params.dir, params.output)?;
+    Ok(())
 }
 /// Reads the generated index file and displays the "sprite" entries.
 /// We cap the output by `count` so we don't accidentally flood the
 /// terminal if the index contains thousands of images.
 fn list_index_entries(params: &ListParams<'_>) -> Result<()> {
     // eprintln!("DEBUG index path: {index_path}");
+    let content = std::fs::read_to_string(params.index_path)?;
+    let entries: Vec<crate::indexer::ImageEntry> = serde_json::from_str(&content)?;
 
-    let entries: Vec<crate::indexer::ImageEntry> =
-        serde_json::from_str(&std::fs::read_to_string(params.index_path)?)?;
     let limit = params.count.unwrap_or(entries.len()).min(entries.len());
 
     println!(
@@ -179,7 +218,7 @@ pub struct ShowParams<'a> {
     /// The name of the image to look up (supports exact or fuzzy matching).
     pub name: &'a str,
     /// Path to the JSON index file generated by the `index` command.
-    pub index_path: &'a str,
+    pub index_path: &'a Path,
     /// Visual preferences for the final render.
     pub render: RenderOptions,
     /// If true, launches a fuzzy-finder TUI instead of using the `name` field.
@@ -299,14 +338,10 @@ fn prompt_search(
 }
 
 struct IndexParams<'a> {
-    dir: &'a str,
-    output: &'a str,
+    dir: &'a Path,
+    output: &'a Path,
 }
 
-fn create_index(params: &IndexParams<'_>) -> Result<()> {
-    crate::indexer::build_index(params.dir, params.output)?;
-    Ok(())
-}
 // fn save_ansi_as_image(params: &ConvertParams<'_>, image_path: &str) -> Result<()> {
 //     // Re-open and prepare the image at the same dimensions the renderer used
 //     let img = image::ImageReader::open(params.path)?.decode()?;
@@ -315,13 +350,23 @@ fn create_index(params: &IndexParams<'_>) -> Result<()> {
 //     println!("✅ Saved preview to {image_path}");
 //     Ok(())
 // }
-fn save_ansi_as_image(params: &ConvertParams<'_>, image_path: &str) -> Result<()> {
+// fn save_ansi_as_image(params: &ConvertParams<'_>, image_path: &str) -> Result<()> {
+//     let img = image::ImageReader::open(params.path)?.decode()?;
+//     let mut buf = Vec::new();
+//     params.render.render_centered(&img, &mut buf)?;
+
+//     let rasterized = px2ansi_rs::rasterize::rasterize_ansi(&buf)?;
+//     rasterized.save(image_path)?;
+//     println!("✅ Saved preview to {image_path}");
+//     Ok(())
+// }
+fn save_ansi_as_image(params: &ConvertParams<'_>, image_path: &Path) -> Result<()> {
     let img = image::ImageReader::open(params.path)?.decode()?;
     let mut buf = Vec::new();
     params.render.render_centered(&img, &mut buf)?;
 
     let rasterized = px2ansi_rs::rasterize::rasterize_ansi(&buf)?;
-    rasterized.save(image_path)?;
-    println!("✅ Saved preview to {image_path}");
+    rasterized.save(image_path)?; // .save() also accepts &Path
+    println!("✅ Saved preview to {}", image_path.display()); // Use .display() to print paths
     Ok(())
 }

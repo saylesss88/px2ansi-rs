@@ -1,5 +1,13 @@
+//! Command-line interface definition for `px2ansi-rs`.
+//!
+//! This module defines the `Cli` struct and `Commands` enum using `clap`.
+//! It handles the mapping between user input and the internal data structures
+//! used by the rendering and indexing engines.
+
 use clap::{Parser, Subcommand};
 use px2ansi_rs::{RenderStylePreset, ResizeFilter};
+use std::path::PathBuf;
+
 #[derive(Parser)]
 #[command(name = "px2ansi-rs", version, about = "Pixel art tools")]
 pub struct Cli {
@@ -18,15 +26,16 @@ pub enum Commands {
     /// Convert a single image to ANSI/Unicode/Fade/Braille/Kanji/Full-block/Ascii
     Convert {
         /// Input image file
-        filename: String,
+        // filename: String,
+        input: PathBuf,
 
         /// Output file (optional)
         #[arg(short, long)]
-        output: Option<String>,
+        output: Option<PathBuf>,
 
         /// Save a rasterized preview instead of terminal escape codes
         #[arg(short = 'O', long = "output-image")]
-        output_image: Option<String>,
+        output_image: Option<PathBuf>,
 
         #[arg(long, value_enum)]
         style: Option<RenderStylePreset>,
@@ -48,10 +57,10 @@ pub enum Commands {
     /// Create a JSON index of a directory
     Index {
         /// Directory to scan
-        dir: String,
+        dir: PathBuf,
         /// Path to save the JSON index
         #[arg(short, long)]
-        output: Option<String>,
+        output: Option<PathBuf>,
     },
     /// Display a sprite from the index
     Show {
