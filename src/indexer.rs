@@ -3,6 +3,7 @@ use std::path::Path;
 
 use image::GenericImageView;
 use serde::{Deserialize, Serialize};
+use walkdir::WalkDir;
 
 /// Represents a single image discovered during the indexing process.
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -24,37 +25,29 @@ pub fn build_index(dir: &Path, output_path: &Path) -> anyhow::Result<String> {
     let mut index = Vec::new();
 
     // Iterate through the directory entries
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
+    for entry in WalkDir::new(dir).into_iter().filter_map(Result::ok) {
         let path = entry.path();
-
-        // Only process regular files
-        if path.is_file() {
-            let ext = path
-                .extension()
-                .and_then(|s| s.to_str())
-                .unwrap_or("")
-                .to_lowercase();
-
-            let supported = matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp" | "bmp");
-
-            if supported {
-                // image::open handles &Path perfectly
-                if let Ok(img) = image::open(&path) {
-                    let absolute_path = fs::canonicalize(&path)?;
-
-                    let Some(stem) = path.file_stem() else {
-                        continue;
-                    };
-
-                    index.push(ImageEntry {
-                        name: stem.to_string_lossy().into_owned(),
-                        path: absolute_path.to_string_lossy().into_owned(),
-                        dimensions: img.dimensions(),
-                    });
-                }
-            }
+        if !path.is_file() {
+            continue;
         }
+        let ext = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+        if !matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp" | "bmp") {
+            continue;
+        }
+        let Ok(img) = image::open(path) else { continue };
+        let absolute_path = fs::canonicalize(path)?;
+        let Some(stem) = path.file_stem() else {
+            continue;
+        };
+        index.push(ImageEntry {
+            name: stem.to_string_lossy().into_owned(),
+            path: absolute_path.to_string_lossy().into_owned(),
+            dimensions: img.dimensions(),
+        });
     }
 
     index.sort_by(|a, b| a.name.cmp(&b.name));
