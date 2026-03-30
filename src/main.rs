@@ -19,7 +19,7 @@ mod config;
 mod indexer;
 
 use std::io::{self, BufWriter, Write};
-use std::path::Path;
+use std::path::PathBuf;
 use std::time::Instant;
 
 use anyhow::Result;
@@ -37,22 +37,20 @@ use px2ansi_rs::RenderOptions;
 /// flex at the end, and route the command to its specific handler.
 fn main() -> Result<()> {
     let start = Instant::now();
-    // 1. Load config from ~/.config/px2ansi-rs/default-config.toml
-    let cfg: Config = confy::load("px2ansi-rs", None)?;
 
-    // 2. Parse CLI args
     let cli = Cli::parse();
-    let active_latency = cli.latency || cfg.latency;
 
-    let active_index = cli
-        .index
-        .as_deref()
-        .map(Path::new)
-        .map_or_else(|| Path::new(&cfg.index), Path::new);
-    // 3. Apply Overrides
-    // If the user didn't specify a mode on CLI, use the config mode
+    // Early exit for completions so we don’t load config at all.
+    if let Commands::Completions { shell } = &cli.command {
+        let mut cmd = Cli::command();
+        clap_complete::generate(*shell, &mut cmd, "px2ansi-rs", &mut std::io::stdout());
+        return Ok(());
+    }
 
-    match cli.command {
+    let cfg: Config = confy::load("px2ansi-rs", None)?;
+    let opts = ResolvedOptions::from_cli_and_config(&cli, &cfg);
+
+    let cmd = match cli.command {
         Commands::Convert {
             input,
             output,
@@ -61,48 +59,29 @@ fn main() -> Result<()> {
             filter,
             style,
         } => {
-            // 1. Convert Option<PathBuf> -> Option<&Path>
-            let cli_out_img = output_image.as_deref();
+            let render = RenderOptions::from_cli(style, width, filter)?;
 
-            // 2. Convert Option<String> -> Option<&Path>
-            let cfg_out_img = cfg.output_image.as_deref().map(Path::new);
+            let output_image: Option<PathBuf> =
+                output_image.or_else(|| cfg.output_image.as_ref().map(Into::into));
 
-            // 3. Now both sides are Option<&Path>, so .or() works!
-            let active_output_image = cli_out_img.or(cfg_out_img);
-
-            let render_opts = RenderOptions::from_cli(style, width, filter)?;
-
-            let params = ConvertParams {
-                path: &input,
-                output: output.as_deref(),
-                output_image: active_output_image,
-                render: render_opts,
-            };
-            convert_image(&params)?;
+            Command::Convert(ConvertCmd {
+                input,
+                output,
+                output_image,
+                render,
+            })
         }
+
         Commands::Index { dir, output } => {
-            // Priority: --output flag > global -I flag > config.toml
-            let save_path = output.as_deref().unwrap_or(active_index);
-            let params = IndexParams {
-                dir: &dir,
-                output: save_path,
-            };
+            let output = output.map_or_else(|| opts.index_path.clone(), PathBuf::from);
 
-            create_index(&params)?;
+            Command::Index(IndexCmd { dir, output })
+        }
 
-            println!(
-                "✅ Created index of {} at {}",
-                dir.display(),
-                save_path.display()
-            );
-        }
-        Commands::List { count } => {
-            let params = ListParams {
-                index_path: active_index,
-                count,
-            };
-            list_index_entries(&params)?;
-        }
+        Commands::List { count } => Command::List(ListCmd {
+            index_path: opts.index_path,
+            count,
+        }),
 
         Commands::Show {
             name,
@@ -110,173 +89,220 @@ fn main() -> Result<()> {
             interactive,
             style,
         } => {
-            let render_opts = RenderOptions::from_cli(style, None, filter)?;
+            let render = RenderOptions::from_cli(style, None, filter)?;
 
-            let params = ShowParams {
-                name: &name,
-                index_path: active_index,
-                render: render_opts,
+            Command::Show(ShowCmd {
+                name,
+                index_path: opts.index_path,
+                render,
                 interactive,
-                latency: active_latency,
-            };
-            show_index_entry(&params)?;
+                latency: opts.latency,
+            })
         }
 
-        Commands::Completions { shell } => {
-            let mut cmd = cli::Cli::command();
-            clap_complete::generate(shell, &mut cmd, "px2ansi-rs", &mut std::io::stdout());
-            return Ok(()); // Important: exit early so we don't run the engine logic
-        }
-    }
-    if active_latency {
+        Commands::Completions { .. } => unreachable!(),
+    };
+
+    handle_command(&cmd)?;
+
+    if opts.latency {
         print_summary(start.elapsed());
     }
     Ok(())
 }
 
-/// Parameters for converting a local file into terminal art.
-///
-/// This struct borrows data from the CLI parser to avoid unnecessary string
-/// allocations during the conversion hand-off.
-pub struct ConvertParams<'a> {
-    /// The path to the source image file.
-    pub path: &'a Path,
-    /// An optional file path to save the output. If `None`, prints to stdout.
-    pub output: Option<&'a Path>,
-    /// Visual preferences for the final render.
-    pub render: RenderOptions,
-    pub output_image: Option<&'a Path>,
-}
-
-/// Orchestrates the conversion of a standalone image.
-///
-/// It handles the high-level flow: opening the file, deciding between
-/// file-save or terminal-render, and ensuring the image is decoded properly.
-fn convert_image(params: &ConvertParams<'_>) -> Result<()> {
-    let img = image::ImageReader::open(params.path)?.decode()?;
-
-    // Render to buffer once, reuse for both outputs
-    let mut buf = Vec::new();
-    params.render.render_centered(&img, &mut buf)?;
-
-    if let Some(output_path) = params.output {
-        let file = std::fs::File::create(output_path)?;
-        let mut writer = BufWriter::new(file);
-        writer.write_all(&buf)?;
-    } else {
-        let stdout = io::stdout();
-        let mut writer = BufWriter::new(stdout.lock());
-        writer.write_all(&buf)?;
-    }
-
-    // Save rasterized PNG if requested
-    if let Some(image_path) = params.output_image {
-        save_ansi_as_image(params, image_path)?;
-    }
-
-    Ok(())
-}
+/// Parameters for converting a single image file to ANSI art
 #[derive(Debug)]
-struct ListParams<'a> {
-    index_path: &'a Path,
-    count: Option<usize>,
-}
-fn create_index(params: &IndexParams<'_>) -> Result<()> {
-    // Assuming build_index is updated to accept &Path or converts it
-    crate::indexer::build_index(params.dir, params.output)?;
-    Ok(())
-}
-/// Reads the generated index file and displays the "sprite" entries.
-/// We cap the output by `count` so we don't accidentally flood the
-/// terminal if the index contains thousands of images.
-fn list_index_entries(params: &ListParams<'_>) -> Result<()> {
-    // eprintln!("DEBUG index path: {index_path}");
-    let content = std::fs::read_to_string(params.index_path)?;
-    let entries: Vec<crate::indexer::ImageEntry> = serde_json::from_str(&content)?;
-
-    let limit = params.count.unwrap_or(entries.len()).min(entries.len());
-
-    println!(
-        "{} Showing {} of {} entries:",
-        "Index:".magenta().bold(),
-        limit,
-        entries.len()
-    );
-    for entry in entries.iter().take(limit) {
-        println!(
-            "  • {:<20} {}x{}px",
-            entry.name.cyan(),
-            entry.dimensions.0.to_string().dimmed(),
-            entry.dimensions.1.to_string().dimmed()
-        );
-    }
-    Ok(())
-}
-
-/// Parameters for retrieving and displaying an image from the pre-built index.
-pub struct ShowParams<'a> {
-    /// The name of the image to look up (supports exact or fuzzy matching).
-    pub name: &'a str,
-    /// Path to the JSON index file generated by the `index` command.
-    pub index_path: &'a Path,
-    /// Visual preferences for the final render.
+struct ConvertCmd {
+    /// Path to the source image.
+    pub input: PathBuf,
+    /// Optional path to save the ANSI text output. If None, prints to stdout.
+    pub output: Option<PathBuf>,
+    /// Optional path to save a PNG rasterization of the result.
+    pub output_image: Option<PathBuf>,
+    /// Visual settings (width, filter, style).
     pub render: RenderOptions,
-    /// If true, launches a fuzzy-finder TUI instead of using the `name` field.
+}
+
+impl ConvertCmd {
+    /// Reads the input image, renders it to ANSI using the provided options,
+    /// and handles routing the result to the filesystem or standard output.
+    pub fn run(&self) -> Result<()> {
+        // 1. Load and decode the image
+        let img = image::ImageReader::open(&self.input)?.decode()?;
+
+        // 2. Render to a buffer (we use a buffer so we can reuse it for PNG rasterization)
+        let mut buf = Vec::new();
+        self.render.render_centered(&img, &mut buf)?;
+
+        // 3. Handle Output (File vs Stdout)
+        if let Some(path) = &self.output {
+            let file = std::fs::File::create(path)?;
+            let mut writer = BufWriter::new(file);
+            writer.write_all(&buf)?;
+        } else {
+            let stdout = io::stdout();
+            let mut writer = BufWriter::new(stdout.lock());
+            writer.write_all(&buf)?;
+        }
+
+        // 4. Handle optional PNG rasterization
+        if let Some(png_path) = &self.output_image {
+            let rasterized = px2ansi_rs::rasterize::rasterize_ansi(&buf)?;
+            rasterized.save(png_path)?;
+            println!("✅ Saved preview to {}", png_path.display());
+        }
+
+        Ok(())
+    }
+}
+
+/// Parameters for creating a new asset index from a directory.
+#[derive(Debug)]
+struct IndexCmd {
+    /// The source directory containing image files.
+    pub dir: PathBuf,
+    /// The destination path for the generated JSON index.
+    pub output: PathBuf,
+}
+
+impl IndexCmd {
+    /// Scans the source directory and writes a JSON manifest to the output path.
+    fn run(&self) -> Result<()> {
+        crate::indexer::build_index(&self.dir, &self.output)?;
+        Ok(())
+    }
+}
+
+/// Parameters for listing the contents of an index.
+#[derive(Debug)]
+struct ListCmd {
+    /// Path to the JSON index file.
+    pub index_path: PathBuf,
+    /// Maximum number of entries to display.
+    pub count: Option<usize>,
+}
+
+impl ListCmd {
+    /// Parses the index file and prints a formatted list of available sprites.
+    fn run(&self) -> Result<()> {
+        let content = std::fs::read_to_string(&self.index_path)?;
+        let entries: Vec<crate::indexer::ImageEntry> = serde_json::from_str(&content)?;
+
+        let limit = self.count.unwrap_or(entries.len()).min(entries.len());
+
+        println!(
+            "{} Showing {} of {} entries:",
+            "Index:".magenta().bold(),
+            limit,
+            entries.len()
+        );
+        for entry in entries.iter().take(limit) {
+            println!(
+                "  • {:<20} {}x{}px",
+                entry.name.cyan(),
+                entry.dimensions.0.to_string().dimmed(),
+                entry.dimensions.1.to_string().dimmed()
+            );
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+struct ShowCmd {
+    pub name: String,
+    pub index_path: PathBuf,
+    pub render: RenderOptions,
     pub interactive: bool,
-    /// If true, prints performance metrics (latency) after rendering.
     pub latency: bool,
 }
 
-/// Locates and renders an image from a managed index.
-///
-/// This is the primary way users interact with the tool. It manages the
-/// search-and-display logic, including fuzzy matching and random selection.
-///
-/// It supports:
-/// 1. `interactive`: A fuzzy-search TUI for when you don't know the exact name.
-/// 2. `random`: For when you're feeling adventurous.
-/// 3. `name`: Tries an exact match, then falls back to a fuzzy search.
-fn show_index_entry(params: &ShowParams<'_>) -> Result<()> {
-    let start_time = std::time::Instant::now();
-    let entries: Vec<crate::indexer::ImageEntry> =
-        serde_json::from_str(&std::fs::read_to_string(params.index_path)?)?;
-    if entries.is_empty() {
-        anyhow::bail!("Index is empty.");
-    }
-
-    let entry_opt = if params.interactive {
-        prompt_search(&entries)?
-    } else {
-        search_index(&entries, params.name)?
-    };
-
-    if let Some(e) = entry_opt {
-        if params.interactive {
-            println!("Showing: {}", e.name.cyan().bold());
+impl ShowCmd {
+    /// Locates and renders an image from a managed index.
+    ///
+    /// This is the primary way users interact with the tool. It manages the
+    /// search-and-display logic, including fuzzy matching and random selection.
+    ///
+    /// It supports:
+    /// 1. `interactive`: A fuzzy-search TUI for when you don't know the exact name.
+    /// 2. `random`: For when you're feeling adventurous.
+    /// 3. `name`: Tries an exact match, then falls back to a fuzzy search.
+    fn run(&self) -> Result<()> {
+        let start_time = Instant::now();
+        let entries: Vec<crate::indexer::ImageEntry> =
+            serde_json::from_str(&std::fs::read_to_string(&self.index_path)?)?;
+        if entries.is_empty() {
+            anyhow::bail!("Index is empty.");
         }
 
-        let img = image::ImageReader::open(&e.path)?.decode()?;
-        // Terminal output only for show command
-        let stdout = io::stdout();
-        let mut writer = BufWriter::new(stdout.lock());
-        // params.render.render(&img, &mut writer)?;
-        params.render.render_centered(&img, &mut writer)?;
-    }
+        let entry_opt = if self.interactive {
+            prompt_search(&entries)?
+        } else {
+            search_index(&entries, &self.name)?
+        };
 
-    if params.latency {
-        print_summary(start_time.elapsed());
+        if let Some(e) = entry_opt {
+            if self.interactive {
+                println!("Showing: {}", e.name.cyan().bold());
+            }
+
+            let img = image::ImageReader::open(&e.path)?.decode()?;
+            let stdout = io::stdout();
+            let mut writer = BufWriter::new(stdout.lock());
+            self.render.render_centered(&img, &mut writer)?;
+        }
+
+        if self.latency {
+            print_summary(start_time.elapsed());
+        }
+        Ok(())
     }
-    Ok(())
 }
 
-// --- Helpers ---
-fn print_summary(duration: std::time::Duration) {
-    eprintln!(
-        "\n{} took {}ms",
-        "Execution".bright_blue().bold(),
-        duration.as_millis()
-    );
+/// The internal representation of the action the user wants to perform.
+/// This bridges the gap between raw CLI arguments and execution logic.
+enum Command {
+    Convert(ConvertCmd),
+    Index(IndexCmd),
+    List(ListCmd),
+    Show(ShowCmd),
 }
+
+/// A unified configuration state.
+/// These values are resolved by merging the `default-config.toml`
+/// with any explicit overrides provided via CLI flags.
+#[derive(Debug)]
+struct ResolvedOptions {
+    /// Whether to display execution timing at the end of the run.
+    latency: bool,
+    /// The primary index file used for 'show' and 'list' commands.
+    index_path: PathBuf,
+}
+
+impl ResolvedOptions {
+    /// Merges the raw CLI input with the persistent configuration file.
+    /// CLI flags always take priority over config file values.
+    fn from_cli_and_config(cli: &Cli, cfg: &Config) -> Self {
+        Self {
+            latency: cli.latency || cfg.latency,
+            index_path: cli
+                .index
+                .as_deref()
+                .map_or_else(|| PathBuf::from(&cfg.index), PathBuf::from),
+        }
+    }
+}
+
+fn handle_command(cmd: &Command) -> Result<()> {
+    match cmd {
+        Command::Convert(c) => ConvertCmd::run(c),
+        Command::Index(c) => IndexCmd::run(c),
+        Command::List(c) => ListCmd::run(c),
+        Command::Show(c) => ShowCmd::run(c),
+    }
+}
+
 /// Searches the index for an image entry based on the provided name.
 ///
 /// It follows a prioritized search strategy:
@@ -337,18 +363,11 @@ fn prompt_search(
     Ok(selection.map(|idx| &entries[idx]))
 }
 
-struct IndexParams<'a> {
-    dir: &'a Path,
-    output: &'a Path,
-}
-
-fn save_ansi_as_image(params: &ConvertParams<'_>, image_path: &Path) -> Result<()> {
-    let img = image::ImageReader::open(params.path)?.decode()?;
-    let mut buf = Vec::new();
-    params.render.render_centered(&img, &mut buf)?;
-
-    let rasterized = px2ansi_rs::rasterize::rasterize_ansi(&buf)?;
-    rasterized.save(image_path)?;
-    println!("✅ Saved preview to {}", image_path.display());
-    Ok(())
+// Helper Functions
+fn print_summary(duration: std::time::Duration) {
+    eprintln!(
+        "\n{} took {}ms",
+        "Execution".bright_blue().bold(),
+        duration.as_millis()
+    );
 }

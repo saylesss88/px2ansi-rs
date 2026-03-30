@@ -7,6 +7,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use clap_complete::aot::Shell;
 
 use px2ansi_rs::{RenderStylePreset, ResizeFilter};
 
@@ -87,8 +88,9 @@ pub enum Commands {
     },
     /// Generate shell completions and add to your shell config.
     /// Example: `px2ansi-rs completions bash >> ~/.bashrc`
+    #[command(arg_required_else_help = true)]
     Completions {
         #[arg(value_enum)]
-        shell: clap_complete::Shell,
+        shell: Shell,
     },
 }
