@@ -1,7 +1,8 @@
-use image::GenericImageView;
-use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+
+use image::GenericImageView;
+use serde::{Deserialize, Serialize};
 
 /// Represents a single image discovered during the indexing process.
 #[derive(Clone, Serialize, Deserialize, Debug)]

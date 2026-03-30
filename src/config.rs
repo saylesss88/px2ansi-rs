@@ -1,5 +1,6 @@
-use px2ansi_rs::{RenderStylePreset, ResizeFilter};
 use serde::{Deserialize, Serialize};
+
+use px2ansi_rs::{RenderStylePreset, ResizeFilter};
 
 /// Global configuration for the px2ansi engine.
 ///

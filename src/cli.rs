@@ -4,9 +4,11 @@
 //! It handles the mapping between user input and the internal data structures
 //! used by the rendering and indexing engines.
 
-use clap::{Parser, Subcommand};
-use px2ansi_rs::{RenderStylePreset, ResizeFilter};
 use std::path::PathBuf;
+
+use clap::{Parser, Subcommand};
+
+use px2ansi_rs::{RenderStylePreset, ResizeFilter};
 
 #[derive(Parser)]
 #[command(name = "px2ansi-rs", version, about = "Pixel art tools")]

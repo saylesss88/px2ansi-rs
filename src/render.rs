@@ -1,6 +1,8 @@
-use crate::options::{CharsetMode, RenderOptions};
-use image::{DynamicImage, GenericImageView, Rgba};
 use std::io::Write;
+
+use image::{DynamicImage, GenericImageView, Rgba};
+
+use crate::options::{CharsetMode, RenderOptions};
 
 /// This function takes a processed image and dispatches it to a specific
 /// renderer based on the user's `CharsetMode` choice.

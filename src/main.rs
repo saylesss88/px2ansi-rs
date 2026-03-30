@@ -342,31 +342,13 @@ struct IndexParams<'a> {
     output: &'a Path,
 }
 
-// fn save_ansi_as_image(params: &ConvertParams<'_>, image_path: &str) -> Result<()> {
-//     // Re-open and prepare the image at the same dimensions the renderer used
-//     let img = image::ImageReader::open(params.path)?.decode()?;
-//     let prepared = params.render.prepare_image(&img);
-//     prepared.save(image_path)?;
-//     println!("✅ Saved preview to {image_path}");
-//     Ok(())
-// }
-// fn save_ansi_as_image(params: &ConvertParams<'_>, image_path: &str) -> Result<()> {
-//     let img = image::ImageReader::open(params.path)?.decode()?;
-//     let mut buf = Vec::new();
-//     params.render.render_centered(&img, &mut buf)?;
-
-//     let rasterized = px2ansi_rs::rasterize::rasterize_ansi(&buf)?;
-//     rasterized.save(image_path)?;
-//     println!("✅ Saved preview to {image_path}");
-//     Ok(())
-// }
 fn save_ansi_as_image(params: &ConvertParams<'_>, image_path: &Path) -> Result<()> {
     let img = image::ImageReader::open(params.path)?.decode()?;
     let mut buf = Vec::new();
     params.render.render_centered(&img, &mut buf)?;
 
     let rasterized = px2ansi_rs::rasterize::rasterize_ansi(&buf)?;
-    rasterized.save(image_path)?; // .save() also accepts &Path
-    println!("✅ Saved preview to {}", image_path.display()); // Use .display() to print paths
+    rasterized.save(image_path)?;
+    println!("✅ Saved preview to {}", image_path.display());
     Ok(())
 }
