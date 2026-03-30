@@ -27,11 +27,6 @@ pub struct Config {
 
     pub output_image: Option<String>,
 }
-// impl Config {
-//     pub fn new() -> Self {
-//         Self::default()
-//     }
-// }
 
 impl Default for Config {
     /// Provides the fallback defaults used when no config file is found.

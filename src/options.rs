@@ -43,6 +43,28 @@ impl FromStr for CharsetMode {
     }
 }
 
+impl From<RenderStylePreset> for RenderOptions {
+    fn from(preset: RenderStylePreset) -> Self {
+        let mut opts = Self::default();
+        match preset {
+            RenderStylePreset::Ansi => opts.charset = CharsetMode::Ansi,
+            RenderStylePreset::Unicode => opts.charset = CharsetMode::Unicode,
+            RenderStylePreset::Braille => opts.charset = CharsetMode::Braille,
+            RenderStylePreset::Fade => opts.charset = CharsetMode::Fade,
+            RenderStylePreset::Ascii => opts.charset = CharsetMode::Ascii,
+            RenderStylePreset::Kanji => opts.charset = CharsetMode::Kanji,
+            RenderStylePreset::FullBlock => {
+                opts.charset = CharsetMode::Unicode;
+                opts.style.full = true;
+            }
+            RenderStylePreset::Dense => {
+                opts.charset = CharsetMode::Unicode;
+                opts.style.density = Density::Heavy;
+            }
+        }
+        opts
+    }
+}
 /// Aesthetic density settings for the rendered output.
 #[derive(Clone, Copy, Debug, Default)]
 pub enum Density {
@@ -93,11 +115,6 @@ impl Default for RenderOptions {
 }
 
 impl RenderOptions {
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Prepares a `DynamicImage` for the terminal by resizing it to fit the
     /// calculated constraints.  
     #[must_use]
@@ -133,10 +150,6 @@ impl RenderOptions {
             _ => prepared.width(),
         };
 
-        // Calculate left padding
-        // let term_w = terminal_size()
-        //     .map(|(Width(w), _)| u32::from(w))
-        //     .unwrap_or(80);
         let (term_w, _) = get_terminal_size();
 
         let padding = if term_w > rendered_cols {
@@ -185,39 +198,15 @@ impl RenderOptions {
         width: Option<u32>,
         filter: Option<ResizeFilter>,
     ) -> anyhow::Result<Self> {
-        let mut opts = Self::default();
-
-        if let Some(style) = style {
-            match style {
-                RenderStylePreset::Ansi => opts.charset = CharsetMode::Ansi,
-                RenderStylePreset::Unicode => opts.charset = CharsetMode::Unicode,
-                RenderStylePreset::Braille => opts.charset = CharsetMode::Braille,
-                RenderStylePreset::Fade => opts.charset = CharsetMode::Fade,
-                RenderStylePreset::Ascii => opts.charset = CharsetMode::Ascii,
-                RenderStylePreset::FullBlock => {
-                    opts.charset = CharsetMode::Unicode;
-                    opts.style.full = true;
-                }
-                RenderStylePreset::Dense => {
-                    opts.charset = CharsetMode::Unicode;
-                    opts.style.full = false;
-                    opts.style.density = Density::Heavy;
-                }
-                RenderStylePreset::Kanji => opts.charset = CharsetMode::Kanji,
-            }
-        }
-
+        let mut opts = style.map(Self::from).unwrap_or_default();
         if let Some(width) = width {
             opts.target_width = Some(width);
         }
-
         if let Some(filter) = filter {
             opts.filter = filter.into();
         }
-
         Ok(opts)
     }
-
     /// Calculates the optimal target dimensions for the terminal.
     ///
     /// This is the most complex part of the renderer, as it has to account for:
@@ -264,22 +253,8 @@ impl RenderOptions {
                 (tw, (f64::from(tw) * aspect).round() as u32)
             },
         );
-        let result = (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE));
-        // eprintln!(
-        //     "DEBUG term={}x{} max={}x{} orig={}x{} render={}x{}",
-        //     term_w, term_h, max_w, max_h, orig_w, orig_h, result.0, result.1
-        // );
-        result
-    }
-    /// High-level method to process and render an image in one go.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the image processing or terminal writing fails.
-    pub fn render<W: Write>(&self, img: &DynamicImage, writer: &mut W) -> anyhow::Result<()> {
-        let prepared = self.prepare_image(img);
-        crate::render::write_ansi_art(&prepared, writer, *self)?;
-        Ok(())
+
+        (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE))
     }
 }
 
@@ -292,8 +267,6 @@ fn get_terminal_size() -> (u32, u32) {
     let env_rows = std::env::var("LINES")
         .ok()
         .and_then(|s| s.parse::<u32>().ok());
-
-    // eprintln!("DEBUG terminal_size()={ts:?} COLUMNS={env_cols:?} LINES={env_rows:?}");
 
     if let Some((Width(w), Height(h))) = ts {
         return (u32::from(w), u32::from(h));
