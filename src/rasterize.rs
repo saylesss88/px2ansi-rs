@@ -91,7 +91,7 @@ pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
                     let px_y = base_y.saturating_add(y_offset).saturating_add(glyph_u32);
 
                     if px_x < img_w && px_y < img_h {
-                        img.put_pixel(px_x, px_y, blend_pixel(r, g, b, coverage));
+                        img.put_pixel(px_x, px_y, blend_pixel([r, g, b], coverage));
                     }
                 }
             }
@@ -101,7 +101,7 @@ pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
     Ok(img)
 }
 /// Alpha-blends a foreground color against the Tokyo Night background.
-fn blend_pixel(r: u8, g: u8, b: u8, coverage: u8) -> Rgba<u8> {
+fn blend_pixel([r, g, b]: [u8; 3], coverage: u8) -> Rgba<u8> {
     let alpha = f32::from(coverage) / 255.0;
     let blend = |fg: u8, bg: u8| -> u8 {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -167,10 +167,8 @@ fn parse_color_params(params: &str, color: &mut [u8; 3]) {
         *color = [255, 255, 255];
         return;
     }
-
     let parts: Vec<u8> = params.split(';').filter_map(|s| s.parse().ok()).collect();
-
-    if parts.len() >= 5 && parts[0] == 38 && parts[1] == 2 {
-        *color = [parts[2], parts[3], parts[4]];
+    if let [38, 2, r, g, b, ..] = parts.as_slice() {
+        *color = [*r, *g, *b];
     }
 }
