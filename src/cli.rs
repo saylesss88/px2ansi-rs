@@ -29,7 +29,6 @@ pub enum Commands {
     /// Convert a single image to ANSI/Unicode/Fade/Braille/Kanji/Full-block/Ascii
     Convert {
         /// Input image file
-        // filename: String,
         input: PathBuf,
 
         /// Output file (optional)

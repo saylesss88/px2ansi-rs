@@ -138,14 +138,25 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         )
     }
 
-    /// Renders using double-width Kanji characters ordered by visual density.
+    /// Renders using double-width Kanji characters ordered by approximate visual density.
     fn kanji(&mut self) -> std::io::Result<()> {
         self.charset_colored(
-            &["　", "一", "口", "田", "目", "龍", "量", "首", "艦"],
+            &[
+                "\u{3000}", "一", "二", "十", "口", "日", "田", "目", "国", "風", "龍", "龘",
+            ],
             true,
         )
     }
 
+    fn chinese(&mut self) -> std::io::Result<()> {
+        self.charset_colored(
+            &[
+                "\u{3000}", "一", "二", "十", "人", "丁", "口", "日", "目", "田", "国", "木", "金",
+                "華", "黑", "龍", "龘",
+            ],
+            true,
+        )
+    }
     /// Universal colored charset renderer.
     ///
     /// Maps each pixel to a glyph by normalized perceptual luminance, then
@@ -223,6 +234,7 @@ pub fn write_ansi_art<W: Write>(
         CharsetMode::Fade => renderer.fade(),
         CharsetMode::Ascii => renderer.ascii(),
         CharsetMode::Kanji => renderer.kanji(),
+        CharsetMode::Chinese => renderer.chinese(),
     }
 }
 

@@ -23,6 +23,8 @@ pub enum CharsetMode {
     Ascii,
 
     Kanji,
+
+    Chinese,
 }
 
 impl FromStr for CharsetMode {
@@ -35,6 +37,7 @@ impl FromStr for CharsetMode {
             "braille" | "brl" => Ok(Self::Braille),
             "fade" | "grayscale" => Ok(Self::Fade),
             "kanji" | "jp" => Ok(Self::Kanji),
+            "chinese" | "zh" | "hanzi" => Ok(Self::Chinese),
             "ascii" => Ok(Self::Ascii),
             _ => anyhow::bail!(
                 "Invalid charset '{s}'. Use: ansi, unicode, braille, fade, ascii, kanji"
@@ -53,6 +56,7 @@ impl From<RenderStylePreset> for RenderOptions {
             RenderStylePreset::Fade => opts.charset = CharsetMode::Fade,
             RenderStylePreset::Ascii => opts.charset = CharsetMode::Ascii,
             RenderStylePreset::Kanji => opts.charset = CharsetMode::Kanji,
+            RenderStylePreset::Chinese => opts.charset = CharsetMode::Chinese,
             RenderStylePreset::FullBlock => {
                 opts.charset = CharsetMode::Unicode;
                 opts.style.full = true;
@@ -146,7 +150,7 @@ impl RenderOptions {
         let rendered_cols = match self.charset {
             CharsetMode::Braille => prepared.width() / 2,
             CharsetMode::Unicode if self.style.full => prepared.width() * 2,
-            CharsetMode::Kanji => prepared.width() * 2, // Kanji is double-width
+            CharsetMode::Kanji | CharsetMode::Chinese => prepared.width() * 2, // Kanji is double-width
             _ => prepared.width(),
         };
 
