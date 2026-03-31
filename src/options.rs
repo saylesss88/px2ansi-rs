@@ -1,6 +1,7 @@
 use std::io::Write;
 use std::str::FromStr;
 
+use clap::ValueEnum;
 use image::DynamicImage;
 use image::imageops::FilterType;
 use terminal_size::{Height, Width, terminal_size};
@@ -62,7 +63,7 @@ impl From<RenderStylePreset> for RenderOptions {
                 opts.style.full = true;
             }
             RenderStylePreset::Dense => {
-                opts.charset = CharsetMode::Unicode;
+                opts.charset = CharsetMode::Ascii;
                 opts.style.density = Density::Heavy;
             }
         }
@@ -70,7 +71,8 @@ impl From<RenderStylePreset> for RenderOptions {
     }
 }
 /// Aesthetic density settings for the rendered output.
-#[derive(Clone, Copy, Debug, Default)]
+/// WIP
+#[derive(Clone, Copy, Debug, Default, ValueEnum)]
 pub enum Density {
     #[default]
     Medium,
@@ -150,7 +152,7 @@ impl RenderOptions {
         let rendered_cols = match self.charset {
             CharsetMode::Braille => prepared.width() / 2,
             CharsetMode::Unicode if self.style.full => prepared.width() * 2,
-            CharsetMode::Kanji | CharsetMode::Chinese => prepared.width() * 2, // Kanji is double-width
+            CharsetMode::Kanji | CharsetMode::Chinese => prepared.width() * 2, // Kanji/Chinese is double-width
             _ => prepared.width(),
         };
 
@@ -199,10 +201,14 @@ impl RenderOptions {
     /// * Checking for terminal capability conflicts with the selected `RenderStylePreset`.
     pub fn from_cli(
         style: Option<RenderStylePreset>,
+        density: Option<Density>,
         width: Option<u32>,
         filter: Option<ResizeFilter>,
     ) -> anyhow::Result<Self> {
         let mut opts = style.map(Self::from).unwrap_or_default();
+        if let Some(d) = density {
+            opts.style.density = d;
+        }
         if let Some(width) = width {
             opts.target_width = Some(width);
         }

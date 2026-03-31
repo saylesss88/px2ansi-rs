@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 use clap_complete::aot::Shell;
 
-use px2ansi_rs::{RenderStylePreset, ResizeFilter};
+use px2ansi_rs::{Density, RenderStylePreset, ResizeFilter};
 
 #[derive(Parser)]
 #[command(name = "px2ansi-rs", version, about = "Pixel art tools")]
@@ -42,6 +42,11 @@ pub enum Commands {
         #[arg(long, value_enum)]
         style: Option<RenderStylePreset>,
 
+        /// Character density for --style ascii and --style fade.
+        /// Light: sparse 30-char ramp, Medium: full 92-char ramp, Heavy: block-heavy ramp.
+        #[arg(long, value_enum)]
+        density: Option<Density>,
+
         /// Force a specific width
         #[arg(long)]
         width: Option<u32>,
@@ -72,6 +77,9 @@ pub enum Commands {
 
         #[arg(long, value_enum)]
         style: Option<RenderStylePreset>,
+
+        #[arg(long, value_enum)]
+        density: Option<Density>,
 
         #[arg(short, long, value_enum)]
         filter: Option<ResizeFilter>,

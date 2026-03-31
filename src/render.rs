@@ -1,6 +1,7 @@
 use image::{DynamicImage, GenericImageView, Rgba};
 use std::io::Write;
 
+use crate::Density;
 use crate::options::{CharsetMode, RenderOptions};
 
 /// The alpha threshold below which a pixel is considered transparent.
@@ -123,10 +124,13 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         self.charset_colored(&[" ", "░", "▒", "▓", "█"], false)
     }
 
-    /// Renders using a 92-character ASCII density ramp.
-    fn ascii(&mut self) -> std::io::Result<()> {
-        self.charset_colored(
-            &[
+    fn ascii(&mut self, density: Density) -> std::io::Result<()> {
+        let charset: &[&str] = match density {
+            Density::Light => &[
+                " ", " ", ".", "`", "\"", "\\", ":", "I", "!", ">", "~", "_", "?", "[", "{", "|",
+                ")", "(", "/", "Y", "L", "p", "d", "a", "*", "W", "8", "%", "@", "$",
+            ],
+            Density::Medium => &[
                 " ", "`", ".", "-", "'", ":", "_", ",", "^", "=", ";", ">", "<", "+", "!", "r",
                 "c", "*", "/", "z", "?", "s", "L", "T", "v", ")", "J", "7", "(", "|", "F", "i",
                 "{", "C", "}", "f", "I", "3", "1", "t", "l", "u", "[", "n", "e", "o", "Z", "5",
@@ -134,9 +138,26 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                 "d", "4", "V", "p", "O", "G", "b", "U", "A", "K", "X", "H", "m", "8", "R", "D",
                 "#", "$", "B", "g", "0", "M", "N", "W", "Q", "%", "&", "@",
             ],
-            false,
-        )
+            Density::Heavy => &[
+                " ", ".", ":", ";", "i", "o", "x", "X", "O", "0", "#", "@", "█", "▓", "▒", "░", "█",
+            ],
+        };
+        self.charset_colored(charset, false)
     }
+    /// Renders using a 92-character ASCII density ramp.
+    // fn ascii(&mut self) -> std::io::Result<()> {
+    //     self.charset_colored(
+    //         &[
+    //             " ", "`", ".", "-", "'", ":", "_", ",", "^", "=", ";", ">", "<", "+", "!", "r",
+    //             "c", "*", "/", "z", "?", "s", "L", "T", "v", ")", "J", "7", "(", "|", "F", "i",
+    //             "{", "C", "}", "f", "I", "3", "1", "t", "l", "u", "[", "n", "e", "o", "Z", "5",
+    //             "Y", "x", "j", "y", "a", "]", "2", "E", "S", "w", "q", "k", "P", "6", "h", "9",
+    //             "d", "4", "V", "p", "O", "G", "b", "U", "A", "K", "X", "H", "m", "8", "R", "D",
+    //             "#", "$", "B", "g", "0", "M", "N", "W", "Q", "%", "&", "@",
+    //         ],
+    //         false,
+    //     )
+    // }
 
     /// Renders using double-width Kanji characters ordered by approximate visual density.
     fn kanji(&mut self) -> std::io::Result<()> {
@@ -232,7 +253,7 @@ pub fn write_ansi_art<W: Write>(
         CharsetMode::Unicode => renderer.unicode_blocks(options.style.full),
         CharsetMode::Braille => renderer.braille(),
         CharsetMode::Fade => renderer.fade(),
-        CharsetMode::Ascii => renderer.ascii(),
+        CharsetMode::Ascii => renderer.ascii(options.style.density),
         CharsetMode::Kanji => renderer.kanji(),
         CharsetMode::Chinese => renderer.chinese(),
     }

@@ -37,8 +37,8 @@ search, TUI browsing, and advanced filters.
 - **Smart Resize** — Auto-fits terminal width
 - **Set your own Dimensions** -- Use `--width` to adjust size
 - **5 Filters** — `nearest` (pixel art) to `lanczos3` (photos)
-- **7 Styles** — `ansi`, `unicode`, `fade`, `ascii`, `braille`, `full-block`,
-  and `kanji`
+- **8 Styles** — `ansi`, `unicode`, `fade`, `ascii`, `braille`, `full-block`,
+  `chinese`, and `kanji`
 - **Font Rasterization**: IosevkaCharonMono-Regular.ttf is embedded into the
   binary for rasterization.
 
@@ -118,8 +118,8 @@ Options:
 ## Usage
 
 > [!NOTE]
-> `px2ansi-rs` now uses a subcommand-based interface: `convert`, `index`,
-> `show`, and `list`
+> `px2ansi-rs` now uses a subcommand-based interface: `convert`, `index`, `show`
+> , and `list`
 
 1. Convert an Image
 
@@ -352,6 +352,12 @@ want crisp modern detail or chunky retro vibes, we've got you covered.
 | Fade       | `--style fade`       | Block shading (░▒▓█)                | High contrast logos & silhouettes |
 | ASCII      | `--style ascii`      | 92-character density ramp           | Photos & classic ASCII art        |
 | Kanji      | `--style kanji`      | Japanese kanji density ramp         | Unique stylized output            |
+| Chinese      | `--style chinese`      | Chinese density ramp         | Unique stylized output            |
+
+> [!NOTE]
+> Now `--style ascii` has an optional `--density` flag with the values `light`,
+> `medium`, and `heavy`. Passing the flag `--style dense` is a shorthand for
+> `--style ascii --density heavy`
 
 By default, both ANSI and Unicode modes now utilize a "vertical packing"
 technique to maximize resolution.
