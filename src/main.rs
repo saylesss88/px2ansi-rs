@@ -99,7 +99,6 @@ fn main() -> Result<()> {
                 index_path: opts.index_path,
                 render,
                 interactive,
-                latency: opts.latency,
             })
         }
 
@@ -218,7 +217,6 @@ struct ShowCmd {
     pub index_path: PathBuf,
     pub render: RenderOptions,
     pub interactive: bool,
-    pub latency: bool,
 }
 
 impl ShowCmd {
@@ -232,7 +230,6 @@ impl ShowCmd {
     /// 2. `random`: For when you're feeling adventurous.
     /// 3. `name`: Tries an exact match, then falls back to a fuzzy search.
     fn run(&self) -> Result<()> {
-        let start_time = Instant::now();
         let entries: Vec<crate::indexer::ImageEntry> =
             serde_json::from_str(&std::fs::read_to_string(&self.index_path)?)?;
         if entries.is_empty() {
@@ -256,9 +253,6 @@ impl ShowCmd {
             self.render.render_centered(&img, &mut writer)?;
         }
 
-        if self.latency {
-            print_summary(start_time.elapsed());
-        }
         Ok(())
     }
 }
