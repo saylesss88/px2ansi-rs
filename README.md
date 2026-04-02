@@ -6,9 +6,14 @@
 
 `px2ansi-rs` is a high-fidelity terminal art engine and asset manager.
 
-It transforms images into terminal-native art using 8 rendering styles, from classic ANSI blocks to high-density Braille and Kanji. With built-in indexing and manifest support, it is designed to manage and display entire sprite libraries with the same ease as `pokemon-colorscripts`.
+It transforms images into terminal-native art using 8 rendering styles, from
+classic ANSI blocks to high-density Braille and Kanji. With built-in indexing
+and manifest support, it is designed to manage and display entire sprite
+libraries with the same ease as `pokemon-colorscripts`.
 
-Inspired by the original [px2ansi](https://github.com/Nellousan/px2ansi) project, this is a complete reimplementation with indexing, fuzzy search, TUI browsing, and advanced filters. It is approximately 25x faster.
+Inspired by the original [px2ansi](https://github.com/Nellousan/px2ansi)
+project, this is a complete reimplementation with indexing, fuzzy search, TUI
+browsing, and advanced filters. It is approximately 25x faster.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi_demo.gif" width="600" alt="px2ansi-rs demo">
@@ -45,8 +50,10 @@ Inspired by the original [px2ansi](https://github.com/Nellousan/px2ansi) project
 - **Smart resize** — Auto-fits terminal width.
 - **Custom dimensions** — Use `--width` to adjust output size.
 - **5 filters** — `nearest` for pixel art through `lanczos3` for photos.
-- **8 styles** — `ansi`, `unicode`, `fade`, `ascii`, `braille`, `full-block`, `chinese`, and `kanji`.
-- **Embedded font rasterization** — `IosevkaCharonMono-Regular.ttf` is bundled for rasterization.
+- **8 styles** — `ansi`, `unicode`, `fade`, `ascii`, `braille`, `full-block`,
+  `chinese`, and `kanji`.
+- **Embedded font rasterization** — `IosevkaCharonMono-Regular.ttf` is bundled
+  for rasterization.
 - **Optional monochrome output** — Use `--no-color` where it makes sense.
 
 [Back to TOC](#top)
@@ -101,8 +108,11 @@ Options:
 
 ## Usage
 
-> [!NOTE]
-> `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`, `show`, and `list`.
+<!-- prettier-ignore -->
+[!NOTE]
+
+> `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`, `show`,
+> and `list`.
 
 Most subcommands also have their own help menus:
 
@@ -160,7 +170,8 @@ px2ansi-rs index ./assets/sprites --output index.json
 
 ### 3. Show by name
 
-Once indexed, you can display an image by its name without needing the full path:
+Once indexed, you can display an image by its name without needing the full
+path:
 
 ```bash
 px2ansi-rs show pikachu --style ansi
@@ -169,7 +180,8 @@ px2ansi-rs show random --style unicode
 px2ansi-rs show random --style ansi --filter nearest
 ```
 
-By default, `px2ansi-rs show` displays a random sprite from `index.json` in the current folder.
+By default, `px2ansi-rs show` displays a random sprite from `index.json` in the
+current folder.
 
 #### Quick way with fuzzy matching
 
@@ -249,7 +261,9 @@ You can point `show` at an index anywhere in your filesystem with `-I`:
 px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json
 ```
 
-> [!NOTE]
+<!-- prettier-ignore -->
+[!NOTE]
+
 > Any field omitted from the `.toml` file falls back to the built-in defaults.
 
 ### Hierarchy of truth
@@ -264,7 +278,8 @@ px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.jso
 
 ## Shell completions
 
-`px2ansi-rs` can generate completion scripts for Bash, Zsh, Fish, and PowerShell.
+`px2ansi-rs` can generate completion scripts for Bash, Zsh, Fish, and
+PowerShell.
 
 ### Quick setup
 
@@ -306,19 +321,22 @@ programs.zsh.initContent = ''
 
 `px2ansi-rs` supports multiple ways to bring your sprites to life.
 
-| Mode       | Flag                 | Description                         | Best for                       |
-|------------|----------------------|-------------------------------------|--------------------------------|
-| ANSI       | `--style ansi`       | Half-blocks (`▀▄`) — 2 pixels per row | Compatibility and speed        |
-| HD Unicode | `--style unicode`    | High-definition Unicode half-blocks  | High-fidelity assets           |
-| Full Block | `--style full-block` | Solid `██` squares                 | 8-bit and 16-bit pixel art     |
-| Braille    | `--style braille`    | 2×4 dot patterns                 | Fine detail and line art       |
-| Fade       | `--style fade`       | Block shading (`░▒▓█`)            | High-contrast logos           |
-| ASCII      | `--style ascii`       | Character-density ramp            | Photos and classic ASCII art   |
-| Kanji      | `--style kanji`      | Japanese kanji density ramp        | Stylized output                |
-| Chinese    | `--style chinese`    | Chinese density ramp               | Stylized output                |
+| Mode       | Flag                 | Description                           | Best for                     |
+| ---------- | -------------------- | ------------------------------------- | ---------------------------- |
+| ANSI       | `--style ansi`       | Half-blocks (`▀▄`) — 2 pixels per row | Compatibility and speed      |
+| HD Unicode | `--style unicode`    | High-definition Unicode half-blocks   | High-fidelity assets         |
+| Full Block | `--style full-block` | Solid `██` squares                    | 8-bit and 16-bit pixel art   |
+| Braille    | `--style braille`    | 2×4 dot patterns                      | Fine detail and line art     |
+| Fade       | `--style fade`       | Block shading (`░▒▓█`)                | High-contrast logos          |
+| ASCII      | `--style ascii`      | Character-density ramp                | Photos and classic ASCII art |
+| Kanji      | `--style kanji`      | Japanese kanji density ramp           | Stylized output              |
+| Chinese    | `--style chinese`    | Chinese density ramp                  | Stylized output              |
 
-> [!NOTE]
-> `--style ascii` also supports `--density light|medium|heavy`. `--style dense` is shorthand for `--style ascii --density heavy`.
+<!-- prettier-ignore -->
+[!NOTE]
+
+> `--style ascii` also supports `--density light|medium|heavy`. `--style dense`
+> is shorthand for `--style ascii --density heavy`.
 
 By default, ANSI and Unicode modes use vertical packing to maximize resolution.
 
@@ -328,7 +346,8 @@ By default, ANSI and Unicode modes use vertical packing to maximize resolution.
 
 ## Performance & workflow
 
-`px2ansi-rs` is designed for high-performance terminal environments and works best in a “build once, show many” workflow.
+`px2ansi-rs` is designed for high-performance terminal environments and works
+best in a “build once, show many” workflow.
 
 ### The indexing advantage
 
@@ -369,8 +388,11 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-rasterize.png" width="300" alt="Rasterized output example">
 </p>
 
+<!-- prettier-ignore -->
 > [!NOTE]
-> Some styles look better than others. The default background is Tokyo Night, and that may change in the future.
+
+> Some styles look better than others. The default background is Tokyo Night,
+> and that may change in the future.
 
 [Back to TOC](#top)
 
@@ -388,10 +410,14 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
 
 `px2ansi-rs` uses `anyhow` for error handling. Common issues:
 
-- **Broken pipe** — Happens when output is piped into a command that exits early, such as `head`. This is normal.
-- **Missing index** — If `show` fails, ensure `index.json` exists in the current directory or pass `--index <PATH>`.
-- **Low fuzzy score** — If a search returns no result, try a more specific query or use `-i`.
-- **Terminal gaps** — If you see horizontal lines, your terminal line-height may be greater than `1.0`.
+- **Broken pipe** — Happens when output is piped into a command that exits
+  early, such as `head`. This is normal.
+- **Missing index** — If `show` fails, ensure `index.json` exists in the current
+  directory or pass `--index <PATH>`.
+- **Low fuzzy score** — If a search returns no result, try a more specific query
+  or use `-i`.
+- **Terminal gaps** — If you see horizontal lines, your terminal line-height may
+  be greater than `1.0`.
 
 [Back to TOC](#top)
 
