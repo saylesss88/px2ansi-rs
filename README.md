@@ -151,7 +151,7 @@ px2ansi-rs convert tests/test.png --style ascii --filter nearest --no-color
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii.png" style="max-width: 100%; height: auto;" width="600" alt="ASCII Pikachu example">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii.png" style="max-width: 100%; height: 400;" width="600" alt="ASCII Pikachu example">
 </p>
 
 ### 2. Create an index
