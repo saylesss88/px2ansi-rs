@@ -14,7 +14,6 @@
 
 #![allow(clippy::multiple_crate_versions)]
 
-mod cli;
 mod config;
 mod indexer;
 
@@ -29,9 +28,9 @@ use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use rand::prelude::IndexedRandom;
 
-use crate::cli::{Cli, Commands};
 use crate::config::Config;
 use px2ansi_rs::RenderOptions;
+use px2ansi_rs::cli::{Cli, Commands};
 
 /// The main entry point. We parse the CLI args, start a stopwatch for the "speed"
 /// flex at the end, and route the command to its specific handler.

@@ -9,10 +9,18 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 use clap_complete::aot::Shell;
 
-use px2ansi_rs::{Density, RenderStylePreset, ResizeFilter};
+use crate::{Density, RenderStylePreset, ResizeFilter};
 
 #[derive(Parser)]
-#[command(name = "px2ansi-rs", version, about = "Pixel art tools")]
+#[command(
+    name = "px2ansi-rs",
+    version,
+    about = "High-fidelity terminal art engine and asset manager",
+    long_about = "px2ansi-rs converts images to ANSI terminal art using multiple rendering \
+                  styles including half-blocks, braille, ASCII density ramps, and CJK characters. \
+                  It includes an image indexer with fuzzy search, interactive TUI browsing, \
+                  and can export rendered art as PNG via a built-in rasterizer."
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
@@ -21,6 +29,7 @@ pub struct Cli {
     #[arg(short = 'l', long = "latency", global = true)]
     pub latency: bool,
 
+    /// Path to the JSON index file (overrides config file setting)
     #[arg(short = 'I', long = "index", global = true)]
     pub index: Option<String>,
 }

@@ -1,0 +1,30 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH px2ansi-rs-completions 1  "px2ansi-rs-completions " 
+.SH NAME
+px2ansi\-rs\-completions \- Generate shell completions and add to your shell config. Example: `px2ansi\-rs completions bash >> ~/.bashrc`
+.SH SYNOPSIS
+\fBpx2ansi\-rs\-completions\fR [\fB\-h\fR|\fB\-\-help\fR] <\fISHELL\fR> 
+.SH DESCRIPTION
+Generate shell completions and add to your shell config. Example: `px2ansi\-rs completions bash >> ~/.bashrc`
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fISHELL\fR>
+
+.br
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+bash
+.IP \(bu 2
+elvish
+.IP \(bu 2
+fish
+.IP \(bu 2
+powershell
+.IP \(bu 2
+zsh
+.RE

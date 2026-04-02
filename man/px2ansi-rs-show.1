@@ -1,0 +1,77 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH px2ansi-rs-show 1  "px2ansi-rs-show " 
+.SH NAME
+px2ansi\-rs\-show \- Display a sprite from the index
+.SH SYNOPSIS
+\fBpx2ansi\-rs\-show\fR [\fB\-\-style\fR] [\fB\-\-no\-color\fR] [\fB\-\-density\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-i\fR|\fB\-\-interactive\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fINAME\fR] 
+.SH DESCRIPTION
+Display a sprite from the index
+.SH OPTIONS
+.TP
+\fB\-\-style\fR \fI<STYLE>\fR
+
+.br
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+ansi
+.IP \(bu 2
+unicode
+.IP \(bu 2
+braille
+.IP \(bu 2
+fade
+.IP \(bu 2
+ascii
+.IP \(bu 2
+full\-block
+.IP \(bu 2
+dense
+.IP \(bu 2
+kanji
+.IP \(bu 2
+chinese
+.RE
+.TP
+\fB\-\-no\-color\fR
+Disable ANSI color output (monochrome). Applies to ascii, fade, braille, kanji, and chinese modes
+.TP
+\fB\-\-density\fR \fI<DENSITY>\fR
+
+.br
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+medium
+.IP \(bu 2
+light
+.IP \(bu 2
+heavy
+.RE
+.TP
+\fB\-f\fR, \fB\-\-filter\fR \fI<FILTER>\fR
+
+.br
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+nearest: Nearest Neighbor (Best for pixel art)
+.IP \(bu 2
+triangle: Linear interpolation
+.IP \(bu 2
+catmull\-rom: Sharp cubic filter
+.IP \(bu 2
+gaussian: Blurry cubic filter
+.IP \(bu 2
+lanczos3: High\-quality resampling (Slowest)
+.RE
+.TP
+\fB\-i\fR, \fB\-\-interactive\fR
+
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+[\fINAME\fR] [default: random]
+The name of the image to show. Use \*(Aqrandom\*(Aq to pick a surprise sprite!

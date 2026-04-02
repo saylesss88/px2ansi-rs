@@ -1,0 +1,43 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH px2ansi-rs 1  "px2ansi-rs 0.3.17" 
+.SH NAME
+px2ansi\-rs \- High\-fidelity terminal art engine and asset manager
+.SH SYNOPSIS
+\fBpx2ansi\-rs\fR [\fB\-l\fR|\fB\-\-latency\fR] [\fB\-I\fR|\fB\-\-index\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] <\fIsubcommands\fR>
+.SH DESCRIPTION
+px2ansi\-rs converts images to ANSI terminal art using multiple rendering styles including half\-blocks, braille, ASCII density ramps, and CJK characters. It includes an image indexer with fuzzy search, interactive TUI browsing, and can export rendered art as PNG via a built\-in rasterizer.
+.SH OPTIONS
+.TP
+\fB\-l\fR, \fB\-\-latency\fR
+Show timing and execution metadata
+.TP
+\fB\-I\fR, \fB\-\-index\fR \fI<INDEX>\fR
+Path to the JSON index file (overrides config file setting)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version
+.SH SUBCOMMANDS
+.TP
+px2ansi\-rs\-convert(1)
+Convert a single image to ANSI/Unicode/Fade/Braille/Kanji/Full\-block/Ascii
+.TP
+px2ansi\-rs\-index(1)
+Create a JSON index of a directory
+.TP
+px2ansi\-rs\-show(1)
+Display a sprite from the index
+.TP
+px2ansi\-rs\-list(1)
+List entries in the index
+.TP
+px2ansi\-rs\-completions(1)
+Generate shell completions and add to your shell config. Example: `px2ansi\-rs completions bash >> ~/.bashrc`
+.TP
+px2ansi\-rs\-help(1)
+Print this message or the help of the given subcommand(s)
+.SH VERSION
+v0.3.17

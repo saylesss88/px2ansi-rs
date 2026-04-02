@@ -1,0 +1,87 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH px2ansi-rs-convert 1  "px2ansi-rs-convert " 
+.SH NAME
+px2ansi\-rs\-convert \- Convert a single image to ANSI/Unicode/Fade/Braille/Kanji/Full\-block/Ascii
+.SH SYNOPSIS
+\fBpx2ansi\-rs\-convert\fR [\fB\-o\fR|\fB\-\-output\fR] [\fB\-O\fR|\fB\-\-output\-image\fR] [\fB\-\-style\fR] [\fB\-\-density\fR] [\fB\-\-no\-color\fR] [\fB\-\-width\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> 
+.SH DESCRIPTION
+Convert a single image to ANSI/Unicode/Fade/Braille/Kanji/Full\-block/Ascii
+.SH OPTIONS
+.TP
+\fB\-o\fR, \fB\-\-output\fR \fI<OUTPUT>\fR
+Output file (optional)
+.TP
+\fB\-O\fR, \fB\-\-output\-image\fR \fI<OUTPUT_IMAGE>\fR
+Save a rasterized preview instead of terminal escape codes
+.TP
+\fB\-\-style\fR \fI<STYLE>\fR
+
+.br
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+ansi
+.IP \(bu 2
+unicode
+.IP \(bu 2
+braille
+.IP \(bu 2
+fade
+.IP \(bu 2
+ascii
+.IP \(bu 2
+full\-block
+.IP \(bu 2
+dense
+.IP \(bu 2
+kanji
+.IP \(bu 2
+chinese
+.RE
+.TP
+\fB\-\-density\fR \fI<DENSITY>\fR
+Character density for \-\-style ascii and \-\-style fade. Light: sparse 30\-char ramp, Medium: full 92\-char ramp, Heavy: block\-heavy ramp
+.br
+
+.br
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+medium
+.IP \(bu 2
+light
+.IP \(bu 2
+heavy
+.RE
+.TP
+\fB\-\-no\-color\fR
+Disable ANSI color output (monochrome). Applies to ascii, fade, braille, kanji, and chinese modes
+.TP
+\fB\-\-width\fR \fI<WIDTH>\fR
+Force a specific width
+.TP
+\fB\-f\fR, \fB\-\-filter\fR \fI<FILTER>\fR
+Nearest is best for pixel art. Lanczos3 is best for high\-resolution images.
+.br
+
+.br
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+nearest: Nearest Neighbor (Best for pixel art)
+.IP \(bu 2
+triangle: Linear interpolation
+.IP \(bu 2
+catmull\-rom: Sharp cubic filter
+.IP \(bu 2
+gaussian: Blurry cubic filter
+.IP \(bu 2
+lanczos3: High\-quality resampling (Slowest)
+.RE
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+Input image file
