@@ -3,7 +3,6 @@ use clap_mangen::Man;
 use std::path::PathBuf;
 
 // We need to duplicate the Cli definition here or expose it from the lib.
-// The easiest way is to expose it from lib.rs.
 use px2ansi_rs::Cli;
 
 fn main() -> anyhow::Result<()> {
