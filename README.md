@@ -108,9 +108,7 @@ Options:
 
 ## Usage
 
-<!-- prettier-ignore -->
 [!NOTE]
-
 > `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`, `show`,
 > and `list`.
 
@@ -261,9 +259,7 @@ You can point `show` at an index anywhere in your filesystem with `-I`:
 px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json
 ```
 
-<!-- prettier-ignore -->
 [!NOTE]
-
 > Any field omitted from the `.toml` file falls back to the built-in defaults.
 
 ### Hierarchy of truth
@@ -332,9 +328,7 @@ programs.zsh.initContent = ''
 | Kanji      | `--style kanji`      | Japanese kanji density ramp           | Stylized output              |
 | Chinese    | `--style chinese`    | Chinese density ramp                  | Stylized output              |
 
-<!-- prettier-ignore -->
 [!NOTE]
-
 > `--style ascii` also supports `--density light|medium|heavy`. `--style dense`
 > is shorthand for `--style ascii --density heavy`.
 
@@ -388,9 +382,7 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-rasterize.png" width="300" alt="Rasterized output example">
 </p>
 
-<!-- prettier-ignore -->
 > [!NOTE]
-
 > Some styles look better than others. The default background is Tokyo Night,
 > and that may change in the future.
 
