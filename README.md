@@ -11,15 +11,15 @@ It transforms images into terminal-native art using 8 rendering styles, from cla
 Inspired by the original [px2ansi](https://github.com/Nellousan/px2ansi) project, this is a complete reimplementation with indexing, fuzzy search, TUI browsing, and advanced filters. It is approximately 25x faster.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi_demo.gif" style="max-width: 100%; height: auto;" width="600" alt="px2ansi-rs demo">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi_demo.gif" width="600" alt="px2ansi-rs demo">
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-ascii.png" style="max-width: 100%; height: auto;" width="600" alt="ASCII rendering example">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-ascii.png" width="600" alt="ASCII rendering example">
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png" style="max-width: 100%; height: auto;" width="600" alt="Braille rendering example">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png" width="600" alt="Braille rendering example">
 </p>
 
 ## Table of contents
@@ -151,7 +151,7 @@ px2ansi-rs convert tests/test.png --style ascii --filter nearest --no-color
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii.png" style="max-width: 100%; max-height: 400px;" width="600" alt="ASCII Pikachu example">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii.png" width="400" alt="ASCII Pikachu example">
 </p>
 
 ### 2. Create an index
@@ -370,7 +370,7 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-rasterize.png" style="max-width: 100%; height: auto;" width="600" alt="Rasterized output example">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-rasterize.png" width="600" alt="Rasterized output example">
 </p>
 
 > [!NOTE]
