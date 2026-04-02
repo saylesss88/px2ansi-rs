@@ -101,18 +101,7 @@ Options:
   -h, --help           Print help
   -V, --version        Print version
 ```
-
-| Use Case        | Command                                           | Mode    | Style | Notes                |
-| --------------- | ------------------------------------------------- | ------- | ----- | -------------------- |
-| **Convert**     | `px2ansi-rs convert image.png`                    | auto    | ▀     | Terminal width       |
-| **ANSI**        | `px2ansi-rs convert image.png --style ansi`       | ANSI    | ▀     | Max compatibility    |
-| **Unicode**     | `px2ansi-rs convert image.png --style unicode`    | Unicode | ▀     | High detail          |
-| **Retro**       | `px2ansi-rs convert image.png --style full-block` | Unicode | ██    | Pixel perfect        |
-| **Index**       | `px2ansi-rs index <dir> -o index.json`            | N/A     | N/A   | Creates `index.json` |
-| **Interactive** | `px2ansi-rs show -i`                              | auto    | auto  | Fuzzy TUI browser    |
-| **Fuzzy**       | `px2ansi-rs show chariz`                          | auto    | auto  | → Charizard          |
-| **Random**      | `px2ansi-rs show random`                          | auto    | auto  | Terminal greeting    |
-| **List**        | `px2ansi-rs list --count 10`                      | N/A     | N/A   | First 10 assets      |
+---
 
 ## Usage
 
