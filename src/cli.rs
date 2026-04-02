@@ -47,6 +47,10 @@ pub enum Commands {
         #[arg(long, value_enum)]
         density: Option<Density>,
 
+        /// Disable ANSI color output (monochrome). Applies to ascii, fade, braille, kanji, and chinese modes.
+        #[arg(long = "no-color")]
+        no_color: bool,
+
         /// Force a specific width
         #[arg(long)]
         width: Option<u32>,
@@ -77,6 +81,10 @@ pub enum Commands {
 
         #[arg(long, value_enum)]
         style: Option<RenderStylePreset>,
+
+        /// Disable ANSI color output (monochrome). Applies to ascii, fade, braille, kanji, and chinese modes.
+        #[arg(long = "no-color")]
+        no_color: bool,
 
         #[arg(long, value_enum)]
         density: Option<Density>,

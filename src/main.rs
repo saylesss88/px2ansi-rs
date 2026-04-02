@@ -59,8 +59,9 @@ fn main() -> Result<()> {
             filter,
             style,
             density,
+            no_color,
         } => {
-            let render = RenderOptions::from_cli(style, density, width, filter)?;
+            let render = RenderOptions::from_cli(style, density, width, filter, no_color)?;
 
             let output_image: Option<PathBuf> =
                 output_image.or_else(|| cfg.output_image.as_ref().map(Into::into));
@@ -90,8 +91,9 @@ fn main() -> Result<()> {
             interactive,
             style,
             density,
+            no_color,
         } => {
-            let render = RenderOptions::from_cli(style, density, None, filter)?;
+            let render = RenderOptions::from_cli(style, density, None, filter, no_color)?;
 
             Command::Show(ShowCmd {
                 name,

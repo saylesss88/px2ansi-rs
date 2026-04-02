@@ -20,11 +20,16 @@ const ALPHA_THRESHOLD: u8 = 128;
 struct Renderer<'img, 'w, W: Write> {
     writer: &'w mut W,
     img: &'img DynamicImage,
+    options: RenderOptions,
 }
 
 impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
-    const fn new(writer: &'w mut W, img: &'img DynamicImage) -> Self {
-        Self { writer, img }
+    const fn new(writer: &'w mut W, img: &'img DynamicImage, options: RenderOptions) -> Self {
+        Self {
+            writer,
+            img,
+            options,
+        }
     }
 
     /// Renders using ANSI half-block characters (▀/▄).
@@ -111,7 +116,12 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                     let green = u8::try_from(g_sum / lit_count).unwrap_or(0);
                     let blue = u8::try_from(b_sum / lit_count).unwrap_or(0);
                     let ch = char::from_u32(0x2800 + u32::from(byte)).unwrap_or(' ');
-                    write!(self.writer, "\x1b[38;2;{red};{green};{blue}m{ch}")?;
+
+                    if self.options.color {
+                        write!(self.writer, "\x1b[38;2;{red};{green};{blue}m{ch}")?;
+                    } else {
+                        write!(self.writer, "{ch}")?;
+                    }
                 }
             }
             writeln!(self.writer, "\x1b[0m")?;
@@ -124,6 +134,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         self.charset_colored(&[" ", "░", "▒", "▓", "█"], false)
     }
 
+    /// Renders using a 92-character ASCII density ramp.
     fn ascii(&mut self, density: Density) -> std::io::Result<()> {
         let charset: &[&str] = match density {
             Density::Light => &[
@@ -144,20 +155,6 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         };
         self.charset_colored(charset, false)
     }
-    /// Renders using a 92-character ASCII density ramp.
-    // fn ascii(&mut self) -> std::io::Result<()> {
-    //     self.charset_colored(
-    //         &[
-    //             " ", "`", ".", "-", "'", ":", "_", ",", "^", "=", ";", ">", "<", "+", "!", "r",
-    //             "c", "*", "/", "z", "?", "s", "L", "T", "v", ")", "J", "7", "(", "|", "F", "i",
-    //             "{", "C", "}", "f", "I", "3", "1", "t", "l", "u", "[", "n", "e", "o", "Z", "5",
-    //             "Y", "x", "j", "y", "a", "]", "2", "E", "S", "w", "q", "k", "P", "6", "h", "9",
-    //             "d", "4", "V", "p", "O", "G", "b", "U", "A", "K", "X", "H", "m", "8", "R", "D",
-    //             "#", "$", "B", "g", "0", "M", "N", "W", "Q", "%", "&", "@",
-    //         ],
-    //         false,
-    //     )
-    // }
 
     /// Renders using double-width Kanji characters ordered by approximate visual density.
     fn kanji(&mut self) -> std::io::Result<()> {
@@ -226,7 +223,12 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                 let normalized = ((luma - luma_min) * 255) / luma_range;
                 let idx = ((normalized * (num_chars_u32 - 1) / 255) as usize).min(num_chars - 1);
                 let glyph = charset[idx];
-                write!(self.writer, "\x1b[38;2;{red};{green};{blue}m{glyph}")?;
+
+                if self.options.color {
+                    write!(self.writer, "\x1b[38;2;{red};{green};{blue}m{glyph}")?;
+                } else {
+                    write!(self.writer, "{glyph}")?;
+                }
             }
             writeln!(self.writer, "\x1b[0m")?;
         }
@@ -247,7 +249,7 @@ pub fn write_ansi_art<W: Write>(
     writer: &mut W,
     options: RenderOptions,
 ) -> std::io::Result<()> {
-    let mut renderer = Renderer::new(writer, img);
+    let mut renderer = Renderer::new(writer, img, options);
     match options.charset {
         CharsetMode::Ansi => renderer.ansi_blocks(),
         CharsetMode::Unicode => renderer.unicode_blocks(options.style.full),

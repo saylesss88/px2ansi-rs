@@ -107,6 +107,7 @@ pub struct RenderOptions {
     pub filter: FilterType,
     pub charset: CharsetMode,
     pub style: RenderStyle,
+    pub color: bool,
 }
 
 impl Default for RenderOptions {
@@ -116,6 +117,7 @@ impl Default for RenderOptions {
             filter: FilterType::Lanczos3,
             charset: CharsetMode::Ansi,
             style: RenderStyle::default(),
+            color: true, // color on by default
         }
     }
 }
@@ -204,6 +206,7 @@ impl RenderOptions {
         density: Option<Density>,
         width: Option<u32>,
         filter: Option<ResizeFilter>,
+        no_color: bool,
     ) -> anyhow::Result<Self> {
         let mut opts = style.map(Self::from).unwrap_or_default();
         if let Some(d) = density {
@@ -215,6 +218,7 @@ impl RenderOptions {
         if let Some(filter) = filter {
             opts.filter = filter.into();
         }
+        opts.color = !no_color;
         Ok(opts)
     }
     /// Calculates the optimal target dimensions for the terminal.
