@@ -1,4 +1,4 @@
-<p align="center" id="top">
+<p align="center">
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi-rs-png.png" alt="px2ansi-rs logo">
 </p>
 
@@ -23,6 +23,8 @@ Inspired by the original [px2ansi](https://github.com/Nellousan/px2ansi) project
 </p>
 
 ## Table of contents
+
+<a id="top"></a>
 
 - [Features](#features)
 - [Installation](#installation)
@@ -51,7 +53,7 @@ Inspired by the original [px2ansi](https://github.com/Nellousan/px2ansi) project
 - **Embedded font rasterization** — `IosevkaCharonMono-Regular.ttf` is bundled for rasterization.
 - **Optional monochrome output** — Use `--no-color` where it makes sense.
 
-[Back to top](#top)
+[Back to TOC](#top)
 
 ---
 
@@ -71,7 +73,7 @@ cargo install --path .
 cargo install px2ansi-rs
 ```
 
-[Back to top](#top)
+[Back to TOC](#top)
 
 ---
 
@@ -97,7 +99,7 @@ Options:
   -V, --version        Print version
 ```
 
-[Back to top](#top)
+[Back to TOC](#top)
 
 ---
 
@@ -215,7 +217,7 @@ Index: Showing 10 of 1333 entries:
   -  aerodactyl-mega      68x56px
 ```
 
-[Back to top](#top)
+[Back to TOC](#top)
 
 ---
 
@@ -260,7 +262,7 @@ px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.jso
 2. **Config file** is used if no flag is provided.
 3. **Built-in defaults** are used if the config file is missing.
 
-[Back to top](#top)
+[Back to TOC](#top)
 
 ---
 
@@ -300,7 +302,7 @@ programs.zsh.initContent = ''
 '';
 ```
 
-[Back to top](#top)
+[Back to TOC](#top)
 
 ---
 
@@ -324,7 +326,7 @@ programs.zsh.initContent = ''
 
 By default, ANSI and Unicode modes use vertical packing to maximize resolution.
 
-[Back to top](#top)
+[Back to TOC](#top)
 
 ---
 
@@ -355,7 +357,7 @@ px2ansi-rs index . -o index.json -l
 px2ansi-rs show random -l
 ```
 
-[Back to top](#top)
+[Back to TOC](#top)
 
 ---
 
@@ -374,7 +376,7 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
 > [!NOTE]
 > Some styles look better than others. The default background is Tokyo Night, and that may change in the future.
 
-[Back to top](#top)
+[Back to TOC](#top)
 
 ---
 
@@ -382,7 +384,7 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
 
 - [slasher-horrorscripts](https://crates.io/crates/slasher-horrorscripts)
 
-[Back to top](#top)
+[Back to TOC](#top)
 
 ---
 
@@ -395,7 +397,7 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
 - **Low fuzzy score** — If a search returns no result, try a more specific query or use `-i`.
 - **Terminal gaps** — If you see horizontal lines, your terminal line-height may be greater than `1.0`.
 
-[Back to top](#top)
+[Back to TOC](#top)
 
 ---
 
