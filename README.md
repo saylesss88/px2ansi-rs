@@ -11,7 +11,7 @@ It transforms images into terminal-native art using 8 rendering styles, from cla
 Inspired by the original [px2ansi](https://github.com/Nellousan/px2ansi) project, this is a complete reimplementation with indexing, fuzzy search, TUI browsing, and advanced filters. It is approximately 25x faster.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi_demo.gif" alt="px2ansi-rs demo">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi_demo.gif" style="max-width: 100%; height: auto;" width="600" alt="px2ansi-rs demo">
 </p>
 
 <p align="center">
