@@ -23,10 +23,6 @@ search, TUI browsing, and advanced filters.
     <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png">
 </p>
 
-<p align="center">
-   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-kanji.png">
-</p>
-
 ---
 
 ## Features
@@ -41,8 +37,9 @@ search, TUI browsing, and advanced filters.
   `chinese`, and `kanji`
 - **Font Rasterization**: `IosevkaCharonMono-Regular.ttf` is embedded into the
   binary for rasterization.
-- Defaults to color output with an optional monochrome override using
+- Defaults to color output with an optional monochrome override using the flag
   `--no-color` on the styles where it makes sense.
+  (ascii/fade/kanji/chinese/braille)
 
 **What is Rasterization?**
 
@@ -119,8 +116,9 @@ Options:
 
 ## Usage
 
-> [!NOTE] `px2ansi-rs` now uses a subcommand-based interface: `convert`,
-> `index`, `show` , and `list`
+> [!NOTE]
+> `px2ansi-rs` now uses a subcommand-based interface: `convert`, `index`, `show`
+> , and `list`
 
 Most subcommands also have a help menu, for example:
 
@@ -277,8 +275,9 @@ or adding the `index` path like we did above, or you can pass it from the cli:
 px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json`
 ```
 
-> [!NOTE] Any field omitted from the `.toml` file will automatically fall back
-> to the engine's built-in defaults.
+> [!NOTE]
+> Any field omitted from the `.toml` file will automatically fall back to the
+> engine's built-in defaults.
 
 **Hierarchy of Truth**
 
@@ -362,8 +361,9 @@ want crisp modern detail or chunky retro vibes, we've got you covered.
 | Kanji      | `--style kanji`      | Japanese kanji density ramp         | Unique stylized output            |
 | Chinese    | `--style chinese`    | Chinese density ramp                | Unique stylized output            |
 
-> [!NOTE] Now `--style ascii` has an optional `--density` flag with the values
-> `light`, `medium`, and `heavy`. Passing the flag `--style dense` is a
+> [!NOTE]
+> Now `--style ascii` has an optional `--density` flag with the values `light`,
+> `medium`, and `heavy`. Passing the flag `--style dense` is a
 > shorthand for `--style ascii --density heavy`
 
 By default, both ANSI and Unicode modes now utilize a "vertical packing"
@@ -475,8 +475,9 @@ What I see in the browser when I open `nixos-rasterized.png`:
    <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-rasterize.png">
 </p>
 
-> [!NOTE] Certain styles look better than others. I have defaulted to a Tokyo
-> Night background for the images and may make this configurable in the future.
+> [!NOTE]
+> Certain styles look better than others. I have defaulted to a Tokyo Night
+> background for the images and may make this configurable in the future.
 
 ---
 
