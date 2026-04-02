@@ -108,7 +108,7 @@ Options:
 
 ## Usage
 
-[!NOTE]
+> [!NOTE]
 > `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`, `show`,
 > and `list`.
 
@@ -259,7 +259,7 @@ You can point `show` at an index anywhere in your filesystem with `-I`:
 px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json
 ```
 
-[!NOTE]
+> [!NOTE]
 > Any field omitted from the `.toml` file falls back to the built-in defaults.
 
 ### Hierarchy of truth
@@ -328,7 +328,7 @@ programs.zsh.initContent = ''
 | Kanji      | `--style kanji`      | Japanese kanji density ramp           | Stylized output              |
 | Chinese    | `--style chinese`    | Chinese density ramp                  | Stylized output              |
 
-[!NOTE]
+> [!NOTE]
 > `--style ascii` also supports `--density light|medium|heavy`. `--style dense`
 > is shorthand for `--style ascii --density heavy`.
 
