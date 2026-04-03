@@ -19,7 +19,7 @@ pub mod options;
 pub mod rasterize;
 pub mod render;
 
-pub use crate::cli::Cli;
+pub use crate::cli::{Cli, Commands};
 /// CLI-specific enums for style presets and image resizing filters.
 pub use cli_enums::{RenderStylePreset, ResizeFilter};
 
@@ -29,8 +29,3 @@ pub use options::{CharsetMode, Density, RenderOptions, RenderStyle};
 
 /// The primary entry point for turning ANSI byte streams into PNG buffers.
 pub use rasterize::rasterize_ansi;
-
-// pub fn build_cli() -> clap::Command {
-//     use clap::CommandFactory;
-//     crate::cli::Cli::command()
-// }

@@ -29,8 +29,7 @@ use fuzzy_matcher::skim::SkimMatcherV2;
 use rand::prelude::IndexedRandom;
 
 use crate::config::Config;
-use px2ansi_rs::RenderOptions;
-use px2ansi_rs::cli::{Cli, Commands};
+use px2ansi_rs::{Cli, Commands, RenderOptions};
 
 /// The main entry point. We parse the CLI args, start a stopwatch for the "speed"
 /// flex at the end, and route the command to its specific handler.
