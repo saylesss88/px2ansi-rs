@@ -412,6 +412,42 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
 
 [Back to TOC](#top)
 
+### 📖 Man Page Generation
+
+The project includes a utility to generate manual pages for the primary CLI and all subcommands (like build-index) using clap_mangen.
+
+**Generating the files**
+To generate the `.1` roff files, run the included `generate-manpage` binary:
+
+```bash
+cargo run --bin generate-manpage
+# Or once px2ansi-rs is installed simply:
+generate-manpage
+```
+
+This will create a `man/` directory in your project root containing:
+
+- `px2ansi-rs.1` (Main interface)
+
+- `px2ansi-rs-build-index.1` (Subcommand specific)
+
+**Viewing and Installation**
+You can preview the generated pages without installing them:
+
+```bash
+man ./man/px2ansi-rs.1
+```
+
+To make them available system-wide (on most Linux distributions):
+
+```bash
+# Copy to your local manpath
+sudo cp man/*.1 /usr/local/share/man/man1/
+
+# Update the man database
+sudo mandb
+```
+
 ---
 
 ## License
