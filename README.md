@@ -7,9 +7,9 @@
 `px2ansi-rs` is a high-fidelity terminal art engine and asset manager.
 
 It transforms images into terminal-native art using 8 rendering styles, from
-classic ANSI blocks to high-density Braille and Kanji. With built-in indexing
-and manifest support, it is designed to manage and display entire sprite
-libraries with the same ease as `pokemon-colorscripts`.
+classic ANSI blocks to high-density Braille and Kanji.
+With built-in indexing and manifest support, it is designed to manage and
+display entire sprite libraries with the same ease as `pokemon-colorscripts`.
 
 Inspired by the original [px2ansi](https://github.com/Nellousan/px2ansi)
 project, this is a complete reimplementation with indexing, fuzzy search, TUI
@@ -23,9 +23,10 @@ browsing, and advanced filters. It is approximately 25x faster.
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png" width="400" alt="Braille rendering example">
 </p>
 
+<a id="top"></a>
+
 ## Table of contents
 
-<a id="top"></a>
 
 - [Features](#features)
 - [Installation](#installation)
@@ -55,8 +56,6 @@ browsing, and advanced filters. It is approximately 25x faster.
 - **Embedded font rasterization** — `IosevkaCharonMono-Regular.ttf` is bundled
   for rasterization.
 - **Optional monochrome output** — Use `--no-color` where it makes sense.
-
-[Back to TOC](#top)
 
 ---
 
