@@ -16,11 +16,17 @@ pub struct ImageEntry {
     pub dimensions: (u32, u32),
 }
 
-/// Scans a directory for supported image files and builds a JSON index.
+/// Builds a searchable JSON index of image files found within a directory.
 ///
-/// This function converts all relative image paths into absolute paths using
-/// `fs::canonicalize` to ensure the index remains valid regardless of the
-/// current working directory.
+/// # Errors
+///
+/// This function returns an error if:
+/// * **Path Resolution Fails:** Any valid image file encountered cannot be canonicalized
+///   (e.g., due to insufficient permissions or a broken symlink).
+/// * **Serialization Error:** The collected index cannot be serialized into a JSON string
+///   via `serde_json`.
+/// * **I/O Failure:** The final JSON index cannot be written to the `output_path` (e.g.,
+///   the directory doesn't exist, is read-only, or the disk is full).
 pub fn build_index(dir: &Path, output_path: &Path) -> anyhow::Result<String> {
     let mut index = Vec::new();
 
