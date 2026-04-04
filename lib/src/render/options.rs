@@ -65,32 +65,27 @@ pub struct RenderOptionsBuilder {
 impl RenderOptionsBuilder {
     /// Sets a high-level preset, such as ANSI or Braille.
     /// Presets provide baseline charset and style defaults.
-    #[must_use]
-    pub const fn preset(mut self, preset: RenderStylePreset) -> Self {
+    pub const fn preset(&mut self, preset: RenderStylePreset) -> &mut Self {
         self.preset = Some(preset);
         self
     }
 
-    #[must_use]
-    pub const fn density(mut self, density: Density) -> Self {
+    pub const fn density(&mut self, density: Density) -> &mut Self {
         self.density = Some(density);
         self
     }
 
-    #[must_use]
-    pub const fn width(mut self, width: u32) -> Self {
+    pub const fn width(&mut self, width: u32) -> &mut Self {
         self.width = Some(width);
         self
     }
 
-    #[must_use]
-    pub const fn filter(mut self, filter: ResizeFilter) -> Self {
+    pub const fn filter(&mut self, filter: ResizeFilter) -> &mut Self {
         self.filter = Some(filter);
         self
     }
 
-    #[must_use]
-    pub const fn color(mut self, color: bool) -> Self {
+    pub const fn color(&mut self, color: bool) -> &mut Self {
         self.color = color;
         self
     }
@@ -163,6 +158,48 @@ impl RenderOptions {
     pub fn prepare_image(&self, img: &DynamicImage) -> DynamicImage {
         let (width, height) = self.calculate_dimensions(img.width(), img.height());
         img.resize_exact(width, height, self.filter)
+    }
+
+    /// Renders a pre-processed image to the provided writer.
+    ///
+    /// This is a low-level method that bypasses automatic resizing and centering.
+    /// It is ideal for power users who want to handle image scaling or
+    /// layout (like custom padding) manually.
+    ///
+    /// # Arguments
+    ///
+    /// * `prepared_img` - A [`DynamicImage`] that should already be resized to the
+    ///   desired terminal dimensions.
+    /// * `writer` - Any type implementing [`std::io::Write`] (e.g., `stdout`, a file, or a `Vec<u8>`).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use px2ansi::RenderOptions;
+    /// # use image::DynamicImage;
+    /// # fn run(img: DynamicImage) -> anyhow::Result<()> {
+    /// let opts = RenderOptions::default();
+    /// let mut buf = Vec::new();
+    ///
+    /// // Manually resize before rendering
+    /// let resized = img.thumbnail(80, 40);
+    /// opts.render(&resized, &mut buf)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if:
+    /// * The underlying rendering logic fails to process a specific pixel format.
+    /// * An I/O error occurs while writing to the provided `writer`.
+    pub fn render<W: Write>(
+        &self,
+        prepared_img: &DynamicImage,
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
+        crate::render::write_ansi_art(prepared_img, writer, *self)?;
+        Ok(())
     }
 
     /// This method calculates the horizontal padding required to center the output,
