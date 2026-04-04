@@ -3,10 +3,10 @@ members = [
   "lib", # pure library crate
   "cli", # binary + CLI crate
 ]
-resolver = "2"
+resolver = "3"
 
 [workspace.package]
-version = "0.3.18"
+version = "0.4.17"
 edition = "2024"
 authors = ["T. Sawyer <saylesss87@proton.me>", "Nell Fauveau <nellousan@hotmail.fr> (original Python version)"]
 license = "GPL-3.0"
@@ -35,7 +35,6 @@ clap_mangen = "0.3.0"
 # Path dep — px2ansi-cli depends on the lib
 # lib = { path = "lib" }
 px2ansi = { path = "lib" }
-px2ansi-rs = { path = "cli" }
 
 # ── Shared lints ────────────────────────────────────────────────────────────
 [workspace.lints.clippy]
