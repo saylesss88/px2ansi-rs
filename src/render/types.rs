@@ -40,8 +40,7 @@ impl FromStr for CharsetMode {
     }
 }
 
-/// Aesthetic density settings for the rendered output.
-/// WIP
+/// Aesthetic density settings for `--style ascii`
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
 pub enum Density {
     #[default]

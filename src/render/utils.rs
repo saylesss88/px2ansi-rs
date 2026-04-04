@@ -1,27 +1,8 @@
 use super::options::RenderOptions;
 use crate::render::CharsetMode;
+
 use image::imageops::FilterType;
 use terminal_size::{Height, Width, terminal_size};
-
-/// Use Env vars to get the terminal size
-#[must_use]
-pub fn get_terminal_size() -> (u32, u32) {
-    let ts = terminal_size();
-    let env_cols = std::env::var("COLUMNS")
-        .ok()
-        .and_then(|s| s.parse::<u32>().ok());
-    let env_rows = std::env::var("LINES")
-        .ok()
-        .and_then(|s| s.parse::<u32>().ok());
-
-    if let Some((Width(w), Height(h))) = ts {
-        return (u32::from(w), u32::from(h));
-    }
-    if let (Some(c), Some(r)) = (env_cols, env_rows) {
-        return (c, r);
-    }
-    (80, 24)
-}
 
 impl RenderOptions {
     /// Calculates the optimal target dimensions for the terminal.
@@ -73,4 +54,24 @@ impl RenderOptions {
 
         (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE))
     }
+}
+
+/// Use Env vars to get the terminal size
+#[must_use]
+pub fn get_terminal_size() -> (u32, u32) {
+    let ts = terminal_size();
+    let env_cols = std::env::var("COLUMNS")
+        .ok()
+        .and_then(|s| s.parse::<u32>().ok());
+    let env_rows = std::env::var("LINES")
+        .ok()
+        .and_then(|s| s.parse::<u32>().ok());
+
+    if let Some((Width(w), Height(h))) = ts {
+        return (u32::from(w), u32::from(h));
+    }
+    if let (Some(c), Some(r)) = (env_cols, env_rows) {
+        return (c, r);
+    }
+    (80, 24)
 }
