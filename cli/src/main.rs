@@ -164,20 +164,20 @@ fn build_render_options(
 ) -> RenderOptions {
     let mut builder = RenderOptions::builder();
 
-    if let Some(style) = style {
-        builder = builder.preset(style);
+    if let Some(s) = style {
+        builder.preset(s);
     }
-    if let Some(density) = density {
-        builder = builder.density(density);
+    if let Some(d) = density {
+        builder.density(d);
     }
-    if let Some(width) = width {
-        builder = builder.width(width);
+    if let Some(w) = width {
+        builder.width(w);
     }
-    if let Some(filter) = filter {
-        builder = builder.filter(filter);
+    if let Some(f) = filter {
+        builder.filter(f);
     }
     if no_color {
-        builder = builder.color(false);
+        builder.color(false);
     }
 
     builder.build()
