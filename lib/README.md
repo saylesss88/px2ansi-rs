@@ -1,5 +1,9 @@
 # px2ansi library
 
+[![Crates.io](https://img.shields.io/crates/v/px2ansi.svg)](https://crates.io/crates/px2ansi)
+[![Documentation](https://docs.rs/px2ansi/badge.svg)](https://docs.rs/px2ansi)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 If you want the command-line interface, check out [px2ansi-rs](../cli).
 
 The `px2ansi` crate provides a standalone rendering engine with no CLI
@@ -36,7 +40,7 @@ depend on `px2ansi` and reuse your existing image setup.
 
 **Quick Start**
 
-```rs
+```rust
 use image::open;
 use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter, write_ansi_art};
 
@@ -60,7 +64,7 @@ fn main() -> anyhow::Result<()> {
 
 Alternative style:
 
-```rs
+```rust
 let mut builder = RenderOptions::builder();
 builder.preset(RenderStylePreset::FullBlock);
 builder.width(80);
@@ -91,7 +95,6 @@ opts.render_centered(&img, &mut stdout)?;
 | `CharsetMode`       | The character set used to render pixels.  |
 | `Density`           | Output density for ASCII-style rendering. |
 | `RenderStyle`       | Low-level style tweaks.                   |
-
 
 `RenderOptions`
 
@@ -149,7 +152,7 @@ Controls layout-related styling such as full-block mode and density.
 
 **Example: Custom Width and Style**
 
-```rs
+```rust
 use image::open;
 use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter};
 
@@ -173,7 +176,7 @@ fn main() -> anyhow::Result<()> {
 
 **Example: Rendering to a Buffer**
 
-```rs
+```rust
 use image::open;
 use px2ansi::{RenderOptions, write_ansi_art};
 
@@ -199,7 +202,7 @@ fn main() -> anyhow::Result<()> {
 If you render ANSI art into a byte stream, you can turn it back into a PNG with
 rasterize_ansi.
 
-```rs
+```rust
 use px2ansi::rasterize_ansi;
 
 fn main() -> anyhow::Result<()> {
@@ -212,9 +215,26 @@ fn main() -> anyhow::Result<()> {
 
 ---
 
+**Inspecting Options**
+
+```rust
+// Once you have an options object, you can inspect its state:
+let opts = RenderOptions::builder()
+    .preset(RenderStylePreset::FullBlock)
+    .build();
+
+if opts.style().is_full() {
+    println!("Rendering in double-width mode!");
+}
+
+println!("Current density: {:?}", opts.style().density());
+```
+
+---
+
 **Reusing the Builder**
 
-```rs
+```rust
 // New capability: Reusing a builder
 let mut builder = RenderOptions::builder();
 builder.width(100).filter(ResizeFilter::Triangle);
@@ -243,6 +263,71 @@ use px2ansi::{
     write_ansi_art,
 };
 ```
+
+---
+
+**Advanced Usage: Manual Rendering**
+
+For most cases, render_centered is the easiest way to go. However, if you need
+full control over the image scaling or want to skip the terminal size detection,
+you can use the low-level render method.
+
+This is useful for TUI applications or when rendering to non-terminal targets
+like files or network streams.
+
+```rust
+use px2ansi::RenderOptions;
+
+fn custom_pipeline(img: &image::DynamicImage) -> anyhow::Result<()> {
+    let opts = RenderOptions::default();
+
+    // 1. Manually prepare the image (resizing happens here)
+    // You can also use your own resizing logic before passing it to render!
+    let prepared = opts.prepare_image(img);
+
+    // 2. Render directly to a writer (no automatic centering)
+    let mut stdout = std::io::stdout();
+    opts.render(&prepared, &mut stdout)?;
+
+    Ok(())
+}
+```
+
+---
+
+**Error Handling**
+
+Unlike the CLI which uses anyhow for simplicity, the `px2ansi` library provides
+a structured RenderError enum. This allows you to programmatically react to
+specific failure states using `thiserror.`
+
+```rust
+use px2ansi::{RenderOptions, RenderError, CharsetMode};
+use std::str::FromStr;
+
+fn main() {
+    let result = CharsetMode::from_str("invalid_mode");
+
+    match result {
+        Err(RenderError::InvalidCharset(name)) => {
+            eprintln!("User tried to use an unsupported charset: {name}");
+        }
+        Err(RenderError::Io(e)) => {
+            eprintln!("A writing error occurred: {e}");
+        }
+        _ => { /* ... */ }
+    }
+}
+```
+
+**Common Error Variants**
+
+| **Variant**              | **Description**                                                               |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| `InvalidCharset(String)` | Triggered when a string cannot be parsed into a valid `CharsetMode`.          |
+| `InvalidDensity(String)` | Triggered when a string cannot be parsed into a valid `Density`. (ASCII Only) |
+| `Io(std::io::Error)`     | Wrapped standard I/O errors (e.g., pipe broken, disk full).                   |
+| `Image(String)`          | Errors occurred during image manipulation or resizing.                        |
 
 ---
 

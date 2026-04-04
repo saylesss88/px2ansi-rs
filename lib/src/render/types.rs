@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use thiserror::Error;
 
 /// Defines the character set used to represent pixels in the terminal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -21,7 +22,7 @@ pub enum CharsetMode {
 }
 
 impl FromStr for CharsetMode {
-    type Err = anyhow::Error;
+    type Err = RenderError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
@@ -32,9 +33,7 @@ impl FromStr for CharsetMode {
             "kanji" | "jp" => Ok(Self::Kanji),
             "chinese" | "zh" | "hanzi" => Ok(Self::Chinese),
             "ascii" => Ok(Self::Ascii),
-            _ => anyhow::bail!(
-                "Invalid charset '{s}'. Use: ansi, unicode, braille, fade, ascii, kanji"
-            ),
+            _ => Err(RenderError::InvalidCharset(s.to_string())),
         }
     }
 }
@@ -79,4 +78,43 @@ impl Default for RenderStyle {
             density: Density::Medium,
         }
     }
+}
+
+impl RenderStyle {
+    /// Returns `true` if "full-block" rendering is enabled.
+    ///
+    /// # Note
+    /// This setting is a specialty of [`CharsetMode::Unicode`]. When enabled,
+    /// characters are doubled (e.g., `██`) to maintain a 1:1 square aspect ratio
+    /// in terminal fonts. It has no effect on other charset modes like Braille.
+    #[must_use]
+    pub const fn is_full(&self) -> bool {
+        self.full
+    }
+
+    /// Returns the current [`Density`] level.
+    ///
+    /// # Note
+    /// This setting is a specialty of [`CharsetMode::Ascii`]. It determines
+    /// the complexity of the character ramp used to represent grayscale values.
+    /// For all other modes, this value is ignored.
+    #[must_use]
+    pub const fn density(&self) -> Density {
+        self.density
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum RenderError {
+    #[error("Invalid charset mode: {0}")]
+    InvalidCharset(String),
+
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("Image processing error: {0}")]
+    Image(String),
+
+    #[error("Invalid density: {0}. (valid: light, medium, heavy)")]
+    InvalidDensity(String),
 }
