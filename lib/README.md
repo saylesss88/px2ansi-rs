@@ -58,6 +58,20 @@ fn main() -> anyhow::Result<()> {
 }
 ```
 
+Alternative style:
+
+```rs
+let mut builder = RenderOptions::builder();
+builder.preset(RenderStylePreset::FullBlock);
+builder.width(80);
+
+if some_condition {
+    builder.color(false);
+}
+
+let opts = builder.build();
+```
+
 **Automatic Centering and Resizing**
 
 The library can automatically detect terminal size and center the output for
@@ -197,6 +211,19 @@ fn main() -> anyhow::Result<()> {
 ```
 
 ---
+
+**Reusing the Builder**
+
+```rs
+// New capability: Reusing a builder
+let mut builder = RenderOptions::builder();
+builder.width(100).filter(ResizeFilter::Triangle);
+
+let low_res = builder.build();
+
+// Change one thing and build again
+let high_res = builder.width(200).build();
+```
 
 **Re-exports**
 
