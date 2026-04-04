@@ -1,4 +1,3 @@
-// use clap::ValueEnum;
 use std::str::FromStr;
 
 /// Defines the character set used to represent pixels in the terminal.

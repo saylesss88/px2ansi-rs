@@ -17,9 +17,9 @@ impl RenderOptions {
         const MAX_SAFE: u32 = 16384;
         let (term_w, term_h) = get_terminal_size();
         let (max_w, max_h) = if term_w > 0 && term_h > 0 {
-            match self.charset {
+            match self.charset() {
                 CharsetMode::Braille => (term_w * 2, term_h * 4),
-                CharsetMode::Unicode if self.style.full => (term_w / 2, term_h),
+                CharsetMode::Unicode if self.style().full => (term_w / 2, term_h),
                 // CharsetMode::Ascii | CharsetMode::Fade => (term_w.saturating_sub(2), term_h - 2),
                 _ => (term_w.saturating_sub(2), term_h * 2 / 3),
             }
@@ -27,9 +27,9 @@ impl RenderOptions {
             (80, 40)
         };
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let (render_w, render_h) = self.target_width.map_or_else(
+        let (render_w, render_h) = self.width().map_or_else(
             || {
-                if self.filter == FilterType::Nearest && orig_w < 120 {
+                if self.filter() == FilterType::Nearest && orig_w < 120 {
                     let scale_w = (f64::from(max_w) / f64::from(orig_w)).floor();
                     let scale_h = (f64::from(max_h) / f64::from(orig_h)).floor();
                     let scale = scale_w.min(scale_h).max(1.0);

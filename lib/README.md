@@ -1,8 +1,9 @@
-# px2ansi
+# px2ansi library
 
-`px2ansi` is a high-fidelity terminal art engine for Rust. It transforms images
-into terminal-native art using multiple rendering styles, including ANSI blocks,
-Unicode half-blocks, Braille, Fade, ASCII, Chinese, and Kanji.
+If you want the command-line interface, check out [px2ansi-rs](../cli).
+
+The `px2ansi` crate provides a standalone rendering engine with no CLI
+dependencies.
 
 It is designed as the reusable core behind `px2ansi-rs`, but it can also be used
 directly as a library in your own projects.
@@ -37,14 +38,15 @@ depend on `px2ansi` and reuse your existing image setup.
 
 ```rs
 use image::open;
-use px2ansi::{RenderOptions, RenderStylePreset, write_ansi_art};
+use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter, write_ansi_art};
 
 fn main() -> anyhow::Result<()> {
     let img = open("photo.png")?;
 
     let opts = RenderOptions::builder()
-        .style(Some(RenderStylePreset::Braille))
-        .width(Some(120))
+        .preset(RenderStylePreset::Braille)
+        .width(120)
+        .filter(ResizeFilter::Nearest)
         .build();
 
     let prepared = opts.prepare_image(&img);
@@ -56,7 +58,26 @@ fn main() -> anyhow::Result<()> {
 }
 ```
 
+**Automatic Centering and Resizing**
+
+The library can automatically detect terminal size and center the output for
+you:
+
+```rust
+let mut stdout = std::io::stdout();
+opts.render_centered(&img, &mut stdout)?;
+```
+
 **Core Types**
+
+| **Type**            | **Purpose**                               |
+| ------------------- | ----------------------------------------- |
+| `RenderOptions`     | Main render settings.                     |
+| `RenderStylePreset` | Ready-made presets for common styles.     |
+| `CharsetMode`       | The character set used to render pixels.  |
+| `Density`           | Output density for ASCII-style rendering. |
+| `RenderStyle`       | Low-level style tweaks.                   |
+
 
 `RenderOptions`
 
@@ -122,9 +143,9 @@ fn main() -> anyhow::Result<()> {
     let img = open("sprite.png")?;
 
     let opts = RenderOptions::builder()
-        .style(Some(RenderStylePreset::FullBlock))
+        .preset(RenderStylePreset::FullBlock)
         .width(80)
-        .filter(Some(ResizeFilter::Nearest))
+        .filter(ResizeFilter::Nearest)
         .build();
 
     let prepared = opts.prepare_image(&img);

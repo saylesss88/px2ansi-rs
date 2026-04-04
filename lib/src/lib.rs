@@ -1,22 +1,31 @@
 //! # px2ansi
 //!
-//! A high-fidelity terminal art engine. Transforms images into terminal-native
-//! art using 7 rendering styles: ANSI blocks, Braille, Kanji, Unicode, Fade, ASCII, Chinese.
+//! A high-fidelity terminal art engine.
 //!
-//! ## Quick Start
+//! ## Library Usage
+//!
+//! The library provides a flexible [`RenderOptionsBuilder`] to configure the output.
+//! You can start from a [`RenderStylePreset`] and override specific fields like
+//! width or color.
 //!
 //! ```rust,no_run
 //! use px2ansi::{RenderOptions, RenderStylePreset, write_ansi_art};
 //! use image::open;
 //!
-//! let img = open("photo.png").unwrap();
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let img = open("photo.png")?;
+//!
+//! // Create options starting from a preset
 //! let opts = RenderOptions::builder()
-//!     .style(Some(RenderStylePreset::Braille))
-//!     .width(Some(120))
+//!     .preset(RenderStylePreset::Braille)
+//!     .width(120)
+//!     .color(true)
 //!     .build();
 //!
-//! let prepared = opts.prepare_image(&img);
-//! write_ansi_art(&prepared, &mut std::io::stdout(), opts).unwrap();
+//! let mut stdout = std::io::stdout();
+//! opts.render_centered(&img, &mut stdout)?;
+//! # Ok(())
+//! # }
 //! ```
 
 pub mod cli_enums;

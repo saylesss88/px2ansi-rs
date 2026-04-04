@@ -139,7 +139,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                     let blue = u8::try_from(b_sum / lit_count).unwrap_or(0);
                     let ch = char::from_u32(0x2800 + u32::from(byte)).unwrap_or(' ');
 
-                    if self.options.color {
+                    if self.options.color() {
                         write!(self.writer, "\x1b[38;2;{red};{green};{blue}m{ch}")?;
                     } else {
                         write!(self.writer, "{ch}")?;
@@ -247,7 +247,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                 let idx = ((normalized * (num_chars_u32 - 1) / 255) as usize).min(num_chars - 1);
                 let glyph = charset[idx];
 
-                if self.options.color {
+                if self.options.color() {
                     write!(self.writer, "\x1b[38;2;{red};{green};{blue}m{glyph}")?;
                 } else {
                     write!(self.writer, "{glyph}")?;
@@ -273,12 +273,12 @@ pub fn write_ansi_art<W: Write>(
     options: RenderOptions,
 ) -> std::io::Result<()> {
     let mut renderer = Renderer::new(writer, img, options);
-    match options.charset {
+    match options.charset() {
         CharsetMode::Ansi => renderer.ansi_blocks(),
-        CharsetMode::Unicode => renderer.unicode_blocks(options.style.full),
+        CharsetMode::Unicode => renderer.unicode_blocks(options.style().full),
         CharsetMode::Braille => renderer.braille(),
         CharsetMode::Fade => renderer.fade(),
-        CharsetMode::Ascii => renderer.ascii(options.style.density),
+        CharsetMode::Ascii => renderer.ascii(options.style().density),
         CharsetMode::Kanji => renderer.kanji(),
         CharsetMode::Chinese => renderer.chinese(),
     }

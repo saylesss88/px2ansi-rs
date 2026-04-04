@@ -21,18 +21,23 @@
 
 #![deny(missing_docs)]
 
+mod cli;
 mod commands;
 mod config;
 
-use crate::commands::{
-    Command, convert::ConvertCmd, handle_command, index::IndexCmd, list::ListCmd, show::ShowCmd,
+use crate::{
+    cli::{Cli, Commands},
+    commands::{
+        Command, convert::ConvertCmd, handle_command, index::IndexCmd, list::ListCmd, show::ShowCmd,
+    },
+    config::Config,
 };
-use crate::config::Config;
+use px2ansi::{Density, RenderStylePreset, ResizeFilter};
+
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use colored::Colorize;
 use px2ansi::RenderOptions;
-use px2ansi_rs::{Cli, Commands};
 
 use std::{path::PathBuf, time::Instant};
 
@@ -56,7 +61,6 @@ fn main() -> Result<()> {
     // Convert the raw CLI args into a domain-specific Command
     let cmd = build_command(cli, &cfg, &opts)?;
 
-    // Execute the domain logic
     handle_command(&cmd)?;
 
     if opts.latency {
@@ -87,13 +91,7 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             density,
             no_color,
         } => {
-            let render = RenderOptions::builder()
-                .style(style)
-                .density(density)
-                .width(width)
-                .filter(filter)
-                .color(!no_color)
-                .build();
+            let render = build_render_options(style, density, width, filter, no_color);
             let output_image = output_image.or_else(|| cfg.output_image.as_ref().map(Into::into));
             Ok(Command::Convert(ConvertCmd {
                 input,
@@ -118,7 +116,7 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             density,
             no_color,
         } => {
-            let render = RenderOptions::from_cli(style, density, None, filter, no_color)?;
+            let render = build_render_options(style, density, None, filter, no_color);
             Ok(Command::Show(ShowCmd {
                 name,
                 index_path: opts.index_path.clone(),
@@ -155,6 +153,34 @@ impl ResolvedOptions {
                 .map_or_else(|| PathBuf::from(&cfg.index), PathBuf::from),
         }
     }
+}
+
+fn build_render_options(
+    style: Option<RenderStylePreset>,
+    density: Option<Density>,
+    width: Option<u32>,
+    filter: Option<ResizeFilter>,
+    no_color: bool,
+) -> RenderOptions {
+    let mut builder = RenderOptions::builder();
+
+    if let Some(style) = style {
+        builder = builder.preset(style);
+    }
+    if let Some(density) = density {
+        builder = builder.density(density);
+    }
+    if let Some(width) = width {
+        builder = builder.width(width);
+    }
+    if let Some(filter) = filter {
+        builder = builder.filter(filter);
+    }
+    if no_color {
+        builder = builder.color(false);
+    }
+
+    builder.build()
 }
 
 /// Prints a colored performance summary to stderr.

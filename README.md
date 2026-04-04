@@ -392,61 +392,7 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
 
 ## 📦 Using px2ansi as a Library
 
-
-The core rendering engine of px2ansi is available as a standalone crate. It is designed to be lightweight, and it does not include any CLI-related dependencies like clap or confy.
-
-1. **Add to your `Cargo.toml`**
-
-If you are using it from crates.io:
-
-```TOML
-[dependencies]
-px2ansi = "0.3"
-image = "0.25" # Required to pass images to the renderer
-```
-2. **Basic Usage**
-
-The library follows a Prepare → Render workflow. You first define your options, let the library resize/process the image, and then write the ANSI strings to any target that implements std::io::Write.
-
-```rust
-use px2ansi::{RenderOptions, RenderStylePreset, write_ansi_art};
-use image::open;
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Load your image using the 'image' crate
-    let img = open("my_image.png")?;
-
-    // 2. Configure the renderer
-    let opts = RenderOptions::builder()
-        .style(Some(RenderStylePreset::Braille)) // Use Braille dots
-        .width(Some(100))                       // Target width in characters
-        .color(true)                            // Use 24-bit ANSI colors
-        .build();
-
-    // 3. Prepare the image (handles resizing and aspect ratio)
-    let prepared = opts.prepare_image(&img);
-
-    // 4. Render to stdout (or a file, or a Vec<u8>)
-    let mut stdout = std::io::stdout();
-    write_ansi_art(&prepared, &mut stdout, opts)?;
-
-    Ok(())
-}
-```
-
-3. **Rendering Styles**
-
-The library provides several high-fidelity modes:
-
-- `Ansi`: Uses half-blocks (`▀/▄`) to pack two pixels per character cell.
-
-- `Braille`: Uses Unicode Braille patterns for high-density 2×4 pixel mapping.
-
-- `Ascii` / `Fade`: Classic character density ramps.
-
-- `Kanji` / `Chinese`: Unique double-width character rendering based on visual
- density.
-
+If you want to check out the `px2ansi` library, see [px2ansi](../lib)
 
 > **Note on Project Structure**: This project is organized as a Cargo Workspace:
 >
@@ -483,6 +429,8 @@ other projects without pulling in unnecessary CLI dependencies.
   be greater than `1.0`.
 
 [Back to TOC](#top)
+
+---
 
 ### 📖 Man Page Generation
 

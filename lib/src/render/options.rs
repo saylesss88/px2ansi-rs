@@ -10,18 +10,18 @@ use std::io::Write;
 /// and how it eventually looks in the terminal.
 #[derive(Clone, Copy, Debug)]
 pub struct RenderOptions {
-    pub target_width: Option<u32>,
-    pub filter: FilterType,
-    pub charset: CharsetMode,
-    pub style: RenderStyle,
-    pub color: bool,
+    width: Option<u32>,
+    filter: FilterType,
+    charset: CharsetMode,
+    style: RenderStyle,
+    color: bool,
 }
 
 impl Default for RenderOptions {
     fn default() -> Self {
         Self {
-            target_width: None,
-            filter: FilterType::Lanczos3,
+            width: None,
+            filter: FilterType::Nearest,
             charset: CharsetMode::Ansi,
             style: RenderStyle::default(),
             color: true, // color on by default
@@ -52,9 +52,10 @@ impl From<RenderStylePreset> for RenderOptions {
         opts
     }
 }
+
 #[derive(Default)]
 pub struct RenderOptionsBuilder {
-    style: Option<RenderStylePreset>,
+    preset: Option<RenderStylePreset>,
     density: Option<Density>,
     width: Option<u32>,
     filter: Option<ResizeFilter>,
@@ -62,29 +63,29 @@ pub struct RenderOptionsBuilder {
 }
 
 impl RenderOptionsBuilder {
-    /// Sets the base preset style (e.g. Ansi, Braille).
-    /// This provides the baseline defaults for the build process.
+    /// Sets a high-level preset, such as ANSI or Braille.
+    /// Presets provide baseline charset and style defaults.
     #[must_use]
-    pub const fn style(mut self, style: Option<RenderStylePreset>) -> Self {
-        self.style = style;
+    pub const fn preset(mut self, preset: RenderStylePreset) -> Self {
+        self.preset = Some(preset);
         self
     }
 
     #[must_use]
-    pub const fn density(mut self, density: Option<Density>) -> Self {
-        self.density = density;
+    pub const fn density(mut self, density: Density) -> Self {
+        self.density = Some(density);
         self
     }
 
     #[must_use]
-    pub const fn width(mut self, width: Option<u32>) -> Self {
-        self.width = width;
+    pub const fn width(mut self, width: u32) -> Self {
+        self.width = Some(width);
         self
     }
 
     #[must_use]
-    pub const fn filter(mut self, filter: Option<ResizeFilter>) -> Self {
-        self.filter = filter;
+    pub const fn filter(mut self, filter: ResizeFilter) -> Self {
+        self.filter = Some(filter);
         self
     }
 
@@ -97,14 +98,14 @@ impl RenderOptionsBuilder {
     #[must_use]
     pub fn build(self) -> RenderOptions {
         // 1. Start with the preset's defaults, or the global defaults if no preset
-        let mut opts = self.style.map(RenderOptions::from).unwrap_or_default();
+        let mut opts = self.preset.map(RenderOptions::from).unwrap_or_default();
 
-        // 2. Apply granular overrides from CLI flags
+        // 2. Apply explicit builder overrides
         if let Some(d) = self.density {
             opts.style.density = d;
         }
         if let Some(w) = self.width {
-            opts.target_width = Some(w);
+            opts.width = Some(w);
         }
         if let Some(f) = self.filter {
             opts.filter = f.into();
@@ -123,8 +124,39 @@ impl RenderOptions {
             ..Default::default()
         }
     }
-}
-impl RenderOptions {
+    #[must_use]
+    pub fn with_preset(preset: RenderStylePreset) -> Self {
+        Self::from(preset)
+    }
+    #[must_use]
+    pub const fn width(&self) -> Option<u32> {
+        self.width
+    }
+
+    #[must_use]
+    pub const fn filter(&self) -> FilterType {
+        self.filter
+    }
+
+    #[must_use]
+    pub const fn charset(&self) -> CharsetMode {
+        self.charset
+    }
+
+    #[must_use]
+    pub const fn style(&self) -> RenderStyle {
+        self.style
+    }
+
+    #[must_use]
+    pub const fn color(&self) -> bool {
+        self.color
+    }
+    #[must_use]
+    pub const fn no_color(mut self) -> Self {
+        self.color = false;
+        self
+    }
     /// Prepares a `DynamicImage` for the terminal by resizing it to fit the
     /// calculated constraints.  
     #[must_use]
@@ -142,9 +174,7 @@ impl RenderOptions {
     /// This function will return an error if:
     /// * The underlying rendering engine ([`write_ansi_art`][crate::render::write_ansi_art])
     ///   fails to process the image.
-    /// * An I/O error occurs while writing the padding or the image data to the `writer`.
-    /// * The system fails to allocate memory for the internal buffer used to
-    ///   calculate line breaks for centering.rendering if terminal width can't be determined.
+    /// * An allocation or I/O error occurs while buffering or writing the rendered output.
     pub fn render_centered<W: Write>(
         &self,
         img: &DynamicImage,
@@ -183,39 +213,5 @@ impl RenderOptions {
         }
 
         Ok(())
-    }
-    /// Creates a new configuration instance by overriding default values with
-    /// optional CLI arguments.
-    ///
-    /// This serves as a bridge between raw command-line input and the internal
-    /// configuration state, mapping presets to specific charset and style behaviors.
-    ///
-    /// # Arguments
-    ///
-    /// * `style` - An optional preset that defines the character set and rendering density.
-    /// * `width` - An optional target width in columns.
-    /// * `filter` - An optional sampling filter used for resizing the input.
-    ///
-    /// # Errors
-    ///
-    /// Currently, this function is infallible and will always return `Ok`. However,
-    /// it returns a [`anyhow::Result`] to maintain API compatibility for future
-    /// validations, such as:
-    /// * Validating that `width` is within a supported range.
-    /// * Checking for terminal capability conflicts with the selected `RenderStylePreset`.
-    pub fn from_cli(
-        style: Option<RenderStylePreset>,
-        density: Option<Density>,
-        width: Option<u32>,
-        filter: Option<ResizeFilter>,
-        no_color: bool,
-    ) -> anyhow::Result<Self> {
-        Ok(Self::builder()
-            .style(style)
-            .density(density)
-            .width(width)
-            .filter(filter)
-            .color(!no_color)
-            .build())
     }
 }
