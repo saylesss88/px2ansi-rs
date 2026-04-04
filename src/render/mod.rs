@@ -1,11 +1,30 @@
+//! The core rendering engine for `px2ansi`.
+//!
+//! This module provides the specialized logic for transforming image pixel data into
+//! various terminal-native formats. It handles the complexities of:
+//!
+//! * **Spatial Mapping**: Converting 2D pixel grids into character cells (e.g., 2x4 pixels into one Braille character).
+//! * **Luminance Normalization**: Mapping pixel brightness to character density ramps for ASCII and Kanji styles.
+//! * **Color Accuracy**: Utilizing ANSI truecolor (24-bit RGB) escapes to preserve original image fidelity.
+//! * **Transparency**: Respecting alpha channels by falling back to terminal default backgrounds.
+//!
+//! # Main Entry Point
+//!
+//! The primary way to use this module is through [`write_ansi_art`], which abstracts
+//! away the internal [`Renderer`] state and dispatches the image to the correct
+//! rendering strategy based on the provided [`RenderOptions`].
+
 use image::{DynamicImage, GenericImageView, Rgba};
 
 use std::io::Write;
 
-use crate::{
-    Density,
-    options::{CharsetMode, RenderOptions},
-};
+pub mod options;
+pub mod types;
+pub mod utils;
+
+pub use options::*;
+pub use types::*;
+pub use utils::*;
 
 /// The alpha threshold below which a pixel is considered transparent.
 const ALPHA_THRESHOLD: u8 = 128;
@@ -159,7 +178,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         self.charset_colored(charset, false)
     }
 
-    /// Renders using double-width Kanji characters ordered by approximate visual density.
+    /// Renders using double-width Japanese(kanji) characters ordered by approximate visual density.
     fn kanji(&mut self) -> std::io::Result<()> {
         self.charset_colored(
             &[
@@ -169,6 +188,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         )
     }
 
+    /// Renders using double-width Chinese(hanzi) characters ordered by approximate visual density.
     fn chinese(&mut self) -> std::io::Result<()> {
         self.charset_colored(
             &[
@@ -263,7 +283,6 @@ pub fn write_ansi_art<W: Write>(
         CharsetMode::Chinese => renderer.chinese(),
     }
 }
-
 /// Writes a single half-block character cell representing two vertical pixels.
 fn write_half_block<W: Write>(out: &mut W, top: Rgba<u8>, bot: Rgba<u8>) -> std::io::Result<()> {
     match (top[3] > 0, bot[3] > 0) {

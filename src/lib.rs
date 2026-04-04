@@ -16,17 +16,13 @@
 pub mod cli;
 pub mod cli_enums;
 pub mod indexer;
-pub mod options;
 pub mod rasterize;
-mod render;
+pub mod render;
 
 pub use crate::cli::{Cli, Commands};
+pub use crate::render::{CharsetMode, Density, RenderOptions, RenderStyle, write_ansi_art};
 /// CLI-specific enums for style presets and image resizing filters.
 pub use cli_enums::{RenderStylePreset, ResizeFilter};
-
-/// Configuration types for fine-tuning the output, including
-/// density, charset modes, and overall render styles.
-pub use options::{CharsetMode, Density, RenderOptions, RenderStyle};
 
 /// The primary entry point for turning ANSI byte streams into PNG buffers.
 pub use rasterize::rasterize_ansi;

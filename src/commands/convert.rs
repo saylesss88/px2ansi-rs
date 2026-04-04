@@ -1,5 +1,5 @@
 use anyhow::Result;
-use px2ansi_rs::RenderOptions;
+use px2ansi_rs::render::RenderOptions;
 use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
 

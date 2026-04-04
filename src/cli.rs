@@ -9,7 +9,7 @@ use clap_complete::aot::Shell;
 
 use std::path::PathBuf;
 
-use crate::{Density, RenderStylePreset, ResizeFilter};
+use crate::{RenderStylePreset, ResizeFilter, render::Density};
 
 #[derive(Parser)]
 #[command(

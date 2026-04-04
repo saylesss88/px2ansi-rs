@@ -31,7 +31,7 @@ use crate::config::Config;
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use colored::Colorize;
-use px2ansi_rs::{Cli, Commands, RenderOptions};
+use px2ansi_rs::{Cli, Commands, render::RenderOptions};
 
 use std::{path::PathBuf, time::Instant};
 
