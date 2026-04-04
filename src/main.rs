@@ -1,4 +1,24 @@
-#![allow(clippy::multiple_crate_versions)]
+//! # px2ansi-rs CLI
+//!
+//! The binary entry point for `px2ansi-rs`. This module handles the command-line
+//! interface, configuration merging, and execution flow.
+//!
+//! ## Execution Flow
+//! 1. **Parse CLI**: Captures raw arguments using `clap`.
+//! 2. **Load Config**: Loads persistent settings (like default index paths) via `confy`.
+//! 3. **Resolve Options**: Merges CLI flags and Config settings into [`ResolvedOptions`].
+//! 4. **Build Command**: Maps the CLI subcommand to a specific [`Command`] logic block.
+//! 5. **Execute**: Calls the specialized `run()` method for the selected command.
+//!
+//! ## Examples
+//!
+//! ```bash
+//! # Convert an image using the ANSI block style
+//! px2ansi-rs convert input.png --style ansi
+//!
+//! # Show a previously indexed image by name
+//! px2ansi-rs show "my_cool_avatar"
+
 mod commands;
 mod config;
 
@@ -15,17 +35,47 @@ use px2ansi_rs::{Cli, Commands, RenderOptions};
 use std::path::PathBuf;
 use std::time::Instant;
 
+/// The entry point for the `px2ansi-rs` CLI tool.
+///
+/// It handles timing, configuration loading, and command delegation.
 fn main() -> Result<()> {
     let start = Instant::now();
     let cli = Cli::parse();
+
+    // Special handling for shell completions as they require the CommandFactory
     if let Commands::Completions { shell } = &cli.command {
         let mut cmd = Cli::command();
         clap_complete::generate(*shell, &mut cmd, "px2ansi-rs", &mut std::io::stdout());
         return Ok(());
     }
+
     let cfg: Config = confy::load("px2ansi-rs", None)?;
     let opts = ResolvedOptions::from_cli_and_config(&cli, &cfg);
-    let cmd = match cli.command {
+
+    // Convert the raw CLI args into a domain-specific Command
+    let cmd = build_command(cli, &cfg, &opts)?;
+
+    // Execute the domain logic
+    handle_command(&cmd)?;
+
+    if opts.latency {
+        print_summary(start.elapsed());
+    }
+
+    Ok(())
+}
+
+/// Translates the raw [Cli] arguments into a specific [Command] variant.
+///
+/// This function acts as a bridge between the command-line interface and
+/// the internal command processing logic, merging user flags with
+/// system configuration.
+///
+/// # Errors
+///
+/// Returns an error if the rendering options cannot be validated (e.g., invalid width).
+fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Command> {
+    match cli.command {
         Commands::Convert {
             input,
             output,
@@ -38,21 +88,21 @@ fn main() -> Result<()> {
         } => {
             let render = RenderOptions::from_cli(style, density, width, filter, no_color)?;
             let output_image = output_image.or_else(|| cfg.output_image.as_ref().map(Into::into));
-            Command::Convert(ConvertCmd {
+            Ok(Command::Convert(ConvertCmd {
                 input,
                 output,
                 output_image,
                 render,
-            })
+            }))
         }
         Commands::Index { dir, output } => {
             let output = output.map_or_else(|| opts.index_path.clone(), PathBuf::from);
-            Command::Index(IndexCmd { dir, output })
+            Ok(Command::Index(IndexCmd { dir, output }))
         }
-        Commands::List { count } => Command::List(ListCmd {
-            index_path: opts.index_path,
+        Commands::List { count } => Ok(Command::List(ListCmd {
+            index_path: opts.index_path.clone(),
             count,
-        }),
+        })),
         Commands::Show {
             name,
             filter,
@@ -62,29 +112,33 @@ fn main() -> Result<()> {
             no_color,
         } => {
             let render = RenderOptions::from_cli(style, density, None, filter, no_color)?;
-            Command::Show(ShowCmd {
+            Ok(Command::Show(ShowCmd {
                 name,
-                index_path: opts.index_path,
+                index_path: opts.index_path.clone(),
                 render,
                 interactive,
-            })
+            }))
         }
         Commands::Completions { .. } => unreachable!(),
-    };
-    handle_command(&cmd)?;
-    if opts.latency {
-        print_summary(start.elapsed());
     }
-    Ok(())
 }
 
+/// A unified view of program settings, resolved from both CLI flags and config files.
 #[derive(Debug)]
 struct ResolvedOptions {
+    /// Whether to print performance timing data.
     latency: bool,
+    /// The final path to the image index JSON.
     index_path: PathBuf,
 }
 
 impl ResolvedOptions {
+    /// Merges [Cli] flags and [Config] settings, prioritizing CLI input.
+    ///
+    /// # Examples
+    ///
+    /// If a user passes `--index local.json` via CLI, it will override
+    /// whatever is defined in the configuration file.
     fn from_cli_and_config(cli: &Cli, cfg: &Config) -> Self {
         Self {
             latency: cli.latency || cfg.latency,
@@ -96,6 +150,7 @@ impl ResolvedOptions {
     }
 }
 
+/// Prints a colored performance summary to stderr.
 fn print_summary(duration: std::time::Duration) {
     eprintln!(
         "\n{} took {}ms",
