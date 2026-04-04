@@ -19,21 +19,21 @@
 //! # Show a previously indexed image by name
 //! px2ansi-rs show "my_cool_avatar"
 
+#![deny(missing_docs)]
+
 mod commands;
 mod config;
 
-use crate::commands::convert::ConvertCmd;
-use crate::commands::index::IndexCmd;
-use crate::commands::list::ListCmd;
-use crate::commands::show::ShowCmd;
-use crate::commands::{Command, handle_command};
+use crate::commands::{
+    Command, convert::ConvertCmd, handle_command, index::IndexCmd, list::ListCmd, show::ShowCmd,
+};
 use crate::config::Config;
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use colored::Colorize;
 use px2ansi_rs::{Cli, Commands, RenderOptions};
-use std::path::PathBuf;
-use std::time::Instant;
+
+use std::{path::PathBuf, time::Instant};
 
 /// The entry point for the `px2ansi-rs` CLI tool.
 ///
@@ -86,7 +86,13 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             density,
             no_color,
         } => {
-            let render = RenderOptions::from_cli(style, density, width, filter, no_color)?;
+            let render = RenderOptions::builder()
+                .style(style)
+                .density(density)
+                .width(width)
+                .filter(filter)
+                .color(!no_color)
+                .build();
             let output_image = output_image.or_else(|| cfg.output_image.as_ref().map(Into::into));
             Ok(Command::Convert(ConvertCmd {
                 input,

@@ -2,8 +2,7 @@ use std::io::Write;
 use std::str::FromStr;
 
 use clap::ValueEnum;
-use image::DynamicImage;
-use image::imageops::FilterType;
+use image::{DynamicImage, imageops::FilterType};
 use terminal_size::{Height, Width, terminal_size};
 
 use crate::cli_enums::{RenderStylePreset, ResizeFilter};
@@ -208,19 +207,15 @@ impl RenderOptions {
         filter: Option<ResizeFilter>,
         no_color: bool,
     ) -> anyhow::Result<Self> {
-        let mut opts = style.map(Self::from).unwrap_or_default();
-        if let Some(d) = density {
-            opts.style.density = d;
-        }
-        if let Some(width) = width {
-            opts.target_width = Some(width);
-        }
-        if let Some(filter) = filter {
-            opts.filter = filter.into();
-        }
-        opts.color = !no_color;
-        Ok(opts)
+        Ok(Self::builder()
+            .style(style)
+            .density(density)
+            .width(width)
+            .filter(filter)
+            .color(!no_color)
+            .build())
     }
+
     /// Calculates the optimal target dimensions for the terminal.
     ///
     /// This is the most complex part of the renderer, as it has to account for:
@@ -269,6 +264,78 @@ impl RenderOptions {
         );
 
         (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE))
+    }
+}
+
+#[derive(Default)]
+pub struct RenderOptionsBuilder {
+    style: Option<RenderStylePreset>,
+    density: Option<Density>,
+    width: Option<u32>,
+    filter: Option<ResizeFilter>,
+    color: bool,
+}
+
+impl RenderOptionsBuilder {
+    /// Sets the base preset style (e.g. Ansi, Braille).
+    /// This provides the baseline defaults for the build process.
+    #[must_use]
+    pub const fn style(mut self, style: Option<RenderStylePreset>) -> Self {
+        self.style = style;
+        self
+    }
+
+    #[must_use]
+    pub const fn density(mut self, density: Option<Density>) -> Self {
+        self.density = density;
+        self
+    }
+
+    #[must_use]
+    pub const fn width(mut self, width: Option<u32>) -> Self {
+        self.width = width;
+        self
+    }
+
+    #[must_use]
+    pub const fn filter(mut self, filter: Option<ResizeFilter>) -> Self {
+        self.filter = filter;
+        self
+    }
+
+    #[must_use]
+    pub const fn color(mut self, color: bool) -> Self {
+        self.color = color;
+        self
+    }
+
+    pub fn build(self) -> RenderOptions {
+        // 1. Start with the preset's defaults, or the global defaults if no preset
+        let mut opts = self.style.map(RenderOptions::from).unwrap_or_default();
+
+        // 2. Apply granular overrides from CLI flags
+        if let Some(d) = self.density {
+            opts.style.density = d;
+        }
+        if let Some(w) = self.width {
+            opts.target_width = Some(w);
+        }
+        if let Some(f) = self.filter {
+            opts.filter = f.into();
+        }
+
+        opts.color = self.color;
+        opts
+    }
+}
+
+impl RenderOptions {
+    #[must_use]
+    pub fn builder() -> RenderOptionsBuilder {
+        RenderOptionsBuilder {
+            color: true, // default to color on
+            ..Default::default()
+        }
     }
 }
 

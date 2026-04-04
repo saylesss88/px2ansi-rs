@@ -1,8 +1,11 @@
 use image::{DynamicImage, GenericImageView, Rgba};
+
 use std::io::Write;
 
-use crate::Density;
-use crate::options::{CharsetMode, RenderOptions};
+use crate::{
+    Density,
+    options::{CharsetMode, RenderOptions},
+};
 
 /// The alpha threshold below which a pixel is considered transparent.
 const ALPHA_THRESHOLD: u8 = 128;

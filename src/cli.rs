@@ -4,10 +4,10 @@
 //! It handles the mapping between user input and the internal data structures
 //! used by the rendering and indexing engines.
 
-use std::path::PathBuf;
-
 use clap::{Parser, Subcommand};
 use clap_complete::aot::Shell;
+
+use std::path::PathBuf;
 
 use crate::{Density, RenderStylePreset, ResizeFilter};
 

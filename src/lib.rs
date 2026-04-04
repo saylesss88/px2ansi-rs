@@ -13,14 +13,12 @@
 
 #![allow(clippy::multiple_crate_versions)]
 
-// pub mod cli;
-mod cli;
+pub mod cli;
 pub mod cli_enums;
 pub mod indexer;
 pub mod options;
 pub mod rasterize;
 mod render;
-// pub mod render;
 
 pub use crate::cli::{Cli, Commands};
 /// CLI-specific enums for style presets and image resizing filters.
