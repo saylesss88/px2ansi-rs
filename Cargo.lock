@@ -526,7 +526,7 @@ dependencies = [
 
 [[package]]
 name = "px2ansi"
-version = "0.3.18"
+version = "0.4.17"
 dependencies = [
  "anyhow",
  "colored",
@@ -540,7 +540,7 @@ dependencies = [
 
 [[package]]
 name = "px2ansi-rs"
-version = "0.3.18"
+version = "0.4.17"
 dependencies = [
  "anyhow",
  "clap",

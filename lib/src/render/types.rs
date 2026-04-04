@@ -68,8 +68,8 @@ impl FromStr for Density {
 #[derive(Clone, Copy, Debug)]
 pub struct RenderStyle {
     /// If true, uses double-width characters (██) to force a 1:1 pixel aspect ratio.
-    pub full: bool,
-    pub density: Density,
+    pub(crate) full: bool,
+    pub(crate) density: Density,
 }
 
 impl Default for RenderStyle {
