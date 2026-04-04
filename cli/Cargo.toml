@@ -1,0 +1,41 @@
+[package]
+name = "px2ansi-rs"
+default-run = "px2ansi-rs"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "CLI frontend for the px2ansi terminal art engine"
+include = ["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
+
+[[bin]]
+name = "px2ansi-rs"
+path = "src/main.rs"
+
+[[bin]]
+name = "generate-manpage"
+path = "src/bin/generate_manpage.rs"
+
+[dependencies]
+px2ansi = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+clap_complete = { workspace = true }
+clap_mangen = { workspace = true }
+serde_json = { workspace = true }
+rand = { workspace = true }
+colored = { workspace = true }
+fuzzy-matcher = { workspace = true }
+walkdir = { workspace = true }
+dialoguer = { workspace = true }
+image = { workspace = true }
+serde = { workspace = true }
+confy = "2.0.0"                      # CLI-only config, not shared
+clap_builder = "4.6.0"
+
+[lints]
+workspace = true

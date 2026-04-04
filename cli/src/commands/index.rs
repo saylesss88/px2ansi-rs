@@ -13,7 +13,7 @@ pub struct IndexCmd {
 impl IndexCmd {
     /// Scans the source directory and writes a JSON manifest to the output path.
     pub fn run(&self) -> Result<()> {
-        px2ansi_rs::indexer::build_index(&self.dir, &self.output)?;
+        px2ansi::indexer::build_index(&self.dir, &self.output)?;
         Ok(())
     }
 }

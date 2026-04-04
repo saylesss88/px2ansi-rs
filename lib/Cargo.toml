@@ -1,0 +1,29 @@
+[package]
+name = "px2ansi"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "High-fidelity terminal art engine — ANSI, Braille, Kanji, and more"
+include = ["src/**/*", "assets/IosevkaCharonMono-Regular.ttf", "Cargo.toml", "README.md", "LICENSE"]
+
+[lib]
+name = "px2ansi"
+path = "src/lib.rs"
+
+[dependencies]
+image = { workspace = true }
+anyhow = { workspace = true }
+terminal_size = { workspace = true }
+serde_json = { workspace = true }
+serde = { workspace = true }
+fontdue = { workspace = true }
+colored = { workspace = true }
+walkdir = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use px2ansi_rs::render::RenderOptions;
+use px2ansi::render::RenderOptions;
 use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
 
@@ -40,7 +40,7 @@ impl ConvertCmd {
 
         // 4. Handle optional PNG rasterization
         if let Some(png_path) = &self.output_image {
-            let rasterized = px2ansi_rs::rasterize::rasterize_ansi(&buf)?;
+            let rasterized = px2ansi::rasterize::rasterize_ansi(&buf)?;
             rasterized.save(png_path)?;
             println!("✅ Saved preview to {}", png_path.display());
         }

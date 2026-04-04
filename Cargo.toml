@@ -1,18 +1,23 @@
-[package]
-name = "px2ansi-rs"
+[workspace]
+members = [
+  "lib", # pure library crate
+  "cli", # binary + CLI crate
+]
+resolver = "2"
+
+[workspace.package]
 version = "0.3.18"
 edition = "2024"
 authors = ["T. Sawyer <saylesss87@proton.me>", "Nell Fauveau <nellousan@hotmail.fr> (original Python version)"]
 license = "GPL-3.0"
-description = "High-Fidelity terminal art engine and asset manager with built in rasterization"
 repository = "https://github.com/saylesss88/px2ansi-rs"
 readme = "README.md"
 keywords = ["ansi", "pixel-art", "terminal", "rasterize", "cli"]
 categories = ["command-line-utilities", "multimedia::images", "rendering"]
-include = ["src/**/*", "assets/IosevkaCharonMono-Regular.ttf", "Cargo.toml", "README.md", "LICENSE"]
-[dependencies]
+
+# ── Shared dependencies ─────────────────────────────────────────────────────
+[workspace.dependencies]
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
-clap = { version = "4.5", features = ["derive"] }
 anyhow = "1.0"
 terminal_size = "0.4.3"
 serde_json = "1.0.149"
@@ -22,39 +27,33 @@ colored = "3.1.1"
 fuzzy-matcher = "0.3.7"
 walkdir = "2.5.0"
 dialoguer = { version = "0.12.0", features = ["fuzzy-select"] }
-clap_complete = "4.5.66"
-confy = "2.0.0"
 fontdue = "0.9.3"
+# CLI-only — only px2ansi-cli inherits these
+clap = { version = "4.5", features = ["derive"] }
+clap_complete = "4.5.66"
 clap_mangen = "0.3.0"
+# Path dep — px2ansi-cli depends on the lib
+# lib = { path = "lib" }
+px2ansi = { path = "lib" }
+px2ansi-rs = { path = "cli" }
 
-[[bin]]
-name = "px2ansi-rs"
-path = "src/main.rs"
-
-[[bin]]
-name = "generate-manpage"
-path = "src/bin/generate_manpage.rs"
-
-[lib]
-name = "px2ansi_rs"
-path = "src/lib.rs"
-
-[lints.clippy]
+# ── Shared lints ────────────────────────────────────────────────────────────
+[workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
-# missing_const_for_fn = "allow"
 multiple_crate_versions = "allow"
 cargo = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+todo = "warn"
+dbg_macro = "warn"
+panic = "warn"
 
-unwrap_used = "warn" # Forces you to use .expect() or handle errors
-todo = "warn"        # Prevents accidental commits of unfinished code
-dbg_macro = "warn"   # Ensures no debug print statements leak to production
-panic = "warn"       # Warns on code that can panic
-
+# ── Shared release profile ──────────────────────────────────────────────────
+# Profiles are always workspace-level — members automatically inherit them
 [profile.release]
-opt-level = 3     # Maximum optimization
-lto = true        # Link Time Optimization (smaller/faster binary)
-codegen-units = 1 # Better optimization at the cost of slower compile time
-panic = 'abort'   # Remove stack unwinding (smaller binary)
-strip = true      # Automatically strip symbols (significantly smaller file)
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = 'abort'
+strip = true

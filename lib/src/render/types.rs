@@ -1,4 +1,4 @@
-use clap::ValueEnum;
+// use clap::ValueEnum;
 use std::str::FromStr;
 
 /// Defines the character set used to represent pixels in the terminal.
@@ -41,12 +41,28 @@ impl FromStr for CharsetMode {
 }
 
 /// Aesthetic density settings for `--style ascii`
-#[derive(Clone, Copy, Debug, Default, ValueEnum)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum Density {
     #[default]
     Medium,
     Light,
     Heavy,
+}
+
+impl FromStr for Density {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // We normalize to lowercase so "Medium", "medium", and "MEDIUM" all work
+        match s.to_lowercase().as_str() {
+            "medium" => Ok(Self::Medium),
+            "light" => Ok(Self::Light),
+            "heavy" => Ok(Self::Heavy),
+            _ => Err(format!(
+                "invalid density: '{s}'. (valid: light, medium, heavy)"
+            )),
+        }
+    }
 }
 
 /// Combines physical character choice with layout logic (like full-width vs half-width).
