@@ -102,6 +102,8 @@ Options:
   -V, --version        Print version
 ```
 
+`px2ansi-rs` now defaults to using the nearest filter with ansi style.
+
 [Back to TOC](#top)
 
 ---
