@@ -20,7 +20,7 @@ project, this is a complete reimplementation with indexing, fuzzy search, TUI
 browsing, and advanced filters. It is approximately 25x faster.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px2ansi_demo.gif" width="600" alt="px2ansi-rs demo">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/output.gif" width="600" alt="px2ansi-rs demo">
 </p>
 
 <p align="center">
