@@ -5,6 +5,22 @@ use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
 /// Represents a single image discovered during the indexing process.
+///
+/// Entries are produced by [`build_index`] and can be deserialized from
+/// the generated JSON index file for use in search and display workflows.
+///
+/// # Examples
+///
+/// ```no_run
+/// use px2ansi_rs::indexer::ImageEntry;
+///
+/// let json = std::fs::read_to_string("index.json").unwrap();
+/// let entries: Vec<ImageEntry> = serde_json::from_str(&json).unwrap();
+///
+/// for entry in &entries {
+///     println!("{}: {}x{}", entry.name, entry.dimensions.0, entry.dimensions.1);
+/// }
+/// ```
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ImageEntry {
     /// The filename without its extension (e.g., "charizard" instead of "charizard.png")
@@ -16,6 +32,24 @@ pub struct ImageEntry {
 }
 
 /// Builds a searchable JSON index of image files found within a directory.
+///
+/// Recursively scans `dir` for supported image formats (`png`, `jpg`, `jpeg`,
+/// `webp`, `bmp`), extracts their dimensions, and writes a sorted JSON manifest
+/// to `output_path`. Returns the JSON string on success.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::path::Path;
+/// use px2ansi_rs::indexer::build_index;
+///
+/// let json = build_index(
+///     Path::new("/home/user/sprites"),
+///     Path::new("/home/user/sprites/index.json"),
+/// ).expect("failed to build index");
+///
+/// println!("Index contains {} bytes of JSON", json.len());
+/// ```
 ///
 /// # Errors
 ///

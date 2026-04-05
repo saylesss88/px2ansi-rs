@@ -35,8 +35,8 @@ Add `px2ansi` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-px2ansi = "0.3.18"
-image = "0.25"
+px2ansi = "0.1.0"
+image = "0.25.10"
 ```
 
 If you only want the core engine and already have `image` in your project, just
@@ -154,7 +154,9 @@ Controls layout-related styling such as full-block mode and density.
 
 ---
 
-**Example: Custom Width and Style**
+## Examples
+
+### Custom Width and Style
 
 ```rust
 use image::open;
@@ -178,7 +180,7 @@ fn main() -> anyhow::Result<()> {
 
 ---
 
-**Example: Rendering to a Buffer**
+### Example: Rendering to a Buffer
 
 ```rust
 use image::open;
@@ -201,7 +203,7 @@ fn main() -> anyhow::Result<()> {
 
 ---
 
-**Rasterization**
+### Rasterization
 
 If you render ANSI art into a byte stream, you can turn it back into a PNG with
 rasterize_ansi.
@@ -219,7 +221,7 @@ fn main() -> anyhow::Result<()> {
 
 ---
 
-**Inspecting Options**
+### Inspecting Options
 
 ```rust
 // Once you have an options object, you can inspect its state:
@@ -236,7 +238,7 @@ println!("Current density: {:?}", opts.style().density());
 
 ---
 
-**Reusing the Builder**
+### Reusing the Builder
 
 ```rust
 // New capability: Reusing a builder
@@ -249,28 +251,94 @@ let low_res = builder.build();
 let high_res = builder.width(200).build();
 ```
 
-**Re-exports**
+## Re-exports
 
 The crate root re-exports the most common types so users do not need to dig
 through internal modules:
 
 ```rust
 use px2ansi::{
-    CharsetMode,
-    Density,
-    RenderOptions,
-    RenderOptionsBuilder,
-    RenderStyle,
-    RenderStylePreset,
-    ResizeFilter,
-    rasterize_ansi,
-    write_ansi_art,
+    cli_enums::{RenderStylePreset, ResizeFilter},
+    indexer::{ImageEntry, build_index},
+    rasterize::rasterize_ansi,
+    render::{
+        CharsetMode, Density, RenderOptions, RenderOptionsBuilder, RenderStyle, write_ansi_art,
+    },
 };
 ```
 
 ---
 
-**Advanced Usage: Manual Rendering**
+## Image Indexing
+
+px2ansi-rs includes a built-in indexer that recursively scans a directory of
+images and builds a searchable JSON manifest. This enables the fast, fuzzy-search
+powered `show` command.
+
+### Building an Index
+```bash
+# Index a directory of sprites
+px2ansi-rs index ~/sprites --output ~/sprites/index.json
+
+# Then show any sprite by name (supports fuzzy matching)
+px2ansi-rs show pikachu
+px2ansi-rs show random
+px2ansi-rs show pika --style braille  # fuzzy matches "pikachu"
+```
+
+---
+
+### Using the Indexer as a Library
+
+The indexer is part of the public `px2ansi` library API and can be used
+independently in your own Rust projects:
+
+```rust
+use px2ansi::indexer::{build_index, ImageEntry};
+use std::path::Path;
+
+// Build the index
+build_index(
+    Path::new("/home/user/sprites"),
+    Path::new("/home/user/sprites/index.json"),
+)?;
+
+// Load and use it
+let json = std::fs::read_to_string("index.json")?;
+let entries: Vec<ImageEntry> = serde_json::from_str(&json)?;
+
+for entry in &entries {
+    println!("{}: {}x{}px at {}", 
+        entry.name, 
+        entry.dimensions.0, 
+        entry.dimensions.1,
+        entry.path
+    );
+}
+```
+
+### Index Format
+
+The index is a plain JSON file. Easy to inspect, version control, or process
+with other tools:
+```json
+[
+  {
+    "name": "pikachu",
+    "path": "/home/user/sprites/pikachu.png",
+    "dimensions": [96, 96]
+  },
+  {
+    "name": "charizard",
+    "path": "/home/user/sprites/charizard.png", 
+    "dimensions": [128, 128]
+  }
+]
+```
+
+---
+
+### Advanced Usage: Manual Rendering
 
 For most cases, render_centered is the easiest way to go. However, if you need
 full control over the image scaling or want to skip the terminal size detection,
@@ -299,7 +367,7 @@ fn custom_pipeline(img: &image::DynamicImage) -> anyhow::Result<()> {
 
 ---
 
-**Error Handling**
+### Error Handling
 
 Unlike the CLI which uses anyhow for simplicity, the `px2ansi` library provides
 a structured RenderError enum. This allows you to programmatically react to
@@ -335,7 +403,7 @@ fn main() {
 
 ---
 
-**Library vs CLI**
+## Library vs CLI
 
 `px2ansi` is the reusable rendering library.
 
