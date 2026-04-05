@@ -1010,6 +1010,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "px2ansi"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cf6dda11e7f004782ee68c87d603563b671d3030f917ac88d651d4f6d408f81"
+dependencies = [
+ "anyhow",
+ "colored",
+ "fontdue",
+ "image",
+ "serde",
+ "serde_json",
+ "terminal_size",
+ "thiserror",
+ "walkdir",
+]
+
+[[package]]
 name = "px2ansi-rs"
 version = "0.4.17"
 dependencies = [
@@ -1023,7 +1040,7 @@ dependencies = [
  "dialoguer",
  "fuzzy-matcher",
  "image",
- "px2ansi",
+ "px2ansi 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.10.0",
  "serde",
  "serde_json",
