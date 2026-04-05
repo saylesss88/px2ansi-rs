@@ -6,6 +6,10 @@
 
 If you want the command-line interface, check out [px2ansi-rs](../cli).
 
+`px2ansi` converts images into terminal art by resizing them to character‑cell
+proportions, mapping pixels to Unicode, ASCII, Braille, Fade, and other
+character sets, and applying ANSI TrueColor escape sequences for color.
+
 The `px2ansi` crate provides a standalone rendering engine with no CLI
 dependencies.
 
