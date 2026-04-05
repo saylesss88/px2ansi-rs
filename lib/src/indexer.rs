@@ -12,7 +12,7 @@ use walkdir::WalkDir;
 /// # Examples
 ///
 /// ```no_run
-/// use px2ansi_rs::indexer::ImageEntry;
+/// use px2ansi::indexer::ImageEntry;
 ///
 /// let json = std::fs::read_to_string("index.json").unwrap();
 /// let entries: Vec<ImageEntry> = serde_json::from_str(&json).unwrap();
@@ -41,7 +41,7 @@ pub struct ImageEntry {
 ///
 /// ```no_run
 /// use std::path::Path;
-/// use px2ansi_rs::indexer::build_index;
+/// use px2ansi::indexer::build_index;
 ///
 /// let json = build_index(
 ///     Path::new("/home/user/sprites"),
@@ -92,7 +92,6 @@ pub fn build_index(dir: &Path, output_path: &Path) -> anyhow::Result<String> {
     index.sort_by(|a, b| a.name.cmp(&b.name));
     let json_data = serde_json::to_string_pretty(&index)?;
 
-    // fs::write handles &Path perfectly
     fs::write(output_path, &json_data)?;
 
     Ok(json_data)

@@ -7,20 +7,25 @@
 //! The library provides a flexible [`RenderOptionsBuilder`] to configure the output.
 //! You can start from a [`RenderStylePreset`] and override specific fields like
 //! width or color.
-//!
 //! ```rust,no_run
-//! use px2ansi::{RenderOptions, RenderStylePreset, write_ansi_art};
-//! use image::open;
+//! use px2ansi::{RenderOptions, RenderStylePreset};
+//! # use image::DynamicImage;
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! let img = open("photo.png")?;
+//! # let img: DynamicImage = unimplemented!();
 //!
-//! // Create options starting from a preset
+//! // Option A: The "One-Liner" (Ensure setters return `Self`)
 //! let opts = RenderOptions::builder()
 //!     .preset(RenderStylePreset::Braille)
 //!     .width(120)
 //!     .color(true)
 //!     .build();
+//!
+//! // Option B: If your builder uses &mut self, do this:
+//! let mut builder = RenderOptions::builder();
+//! builder.preset(RenderStylePreset::Braille);
+//! builder.width(120);
+//! let opts = builder.build();
 //!
 //! let mut stdout = std::io::stdout();
 //! opts.render_centered(&img, &mut stdout)?;
