@@ -62,6 +62,10 @@ browsing, and advanced filters. It is approximately 25x faster.
   for rasterization.
 - **Optional monochrome output** — Use `--no-color` where it makes sense.
 
+`px2ansi-rs` is built on top of [`px2ansi`](https://crates.io/crates/px2ansi), 
+a standalone Rust library that exposes the full rendering engine as a public
+API.
+
 ---
 
 ## Installation
