@@ -1,19 +1,8 @@
-//! The core rendering engine for `px2ansi`.
-//!
-//! This module provides the specialized logic for transforming image pixel data into
-//! various terminal-native formats. It handles the complexities of:
-//!
-//! * **Spatial Mapping**: Converting 2D pixel grids into character cells (e.g., 2x4 pixels into one Braille character).
-//! * **Luminance Normalization**: Mapping pixel brightness to character density ramps for ASCII and Kanji styles.
-//! * **Color Accuracy**: Utilizing ANSI truecolor (24-bit RGB) escapes to preserve original image fidelity.
-//! * **Transparency**: Respecting alpha channels by falling back to terminal default backgrounds.
-//!
 //! # Main Entry Point
 //!
-//! The primary way to use this module is through [`write_ansi_art`], which abstracts
-//! away the internal [`Renderer`] state and dispatches the image to the correct
-//! rendering strategy based on the provided [`RenderOptions`].
-
+//! The primary way to use this module is through [`write_ansi_art`], which
+//! handles the internal rendering state and dispatches the image data
+//! to the appropriate strategy based on the provided [`RenderOptions`].
 use image::{DynamicImage, GenericImageView, Rgba};
 
 use std::io::Write;
@@ -261,12 +250,13 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
 
 /// Renders a prepared image to `writer` using the mode specified in `options`.
 ///
-/// This is the public entry point — it constructs a [`Renderer`] and dispatches
-/// to the appropriate method based on [`CharsetMode`].
+/// This is the primary entry point for the rendering engine. It handles the
+/// internal state management and dispatches the image data to the
+/// appropriate rendering strategy based on the chosen [`CharsetMode`].
 ///
 /// # Errors
 ///
-/// Returns a [`std::io::Result`] error if the writer fails.
+/// Returns a [`std::io::Result`] error if the writer fails./ Returns a [`std::io::Result`] error if the writer fails.
 pub fn write_ansi_art<W: Write>(
     img: &DynamicImage,
     writer: &mut W,
