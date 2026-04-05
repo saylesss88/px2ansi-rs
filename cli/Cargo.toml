@@ -21,7 +21,6 @@ name = "generate-manpage"
 path = "src/bin/generate_manpage.rs"
 
 [dependencies]
-# px2ansi = { version = "0.1.0" }
 px2ansi = { workspace = true }
 anyhow = { version = "1.0" }
 clap = { version = "4.5", features = ["derive"] }
