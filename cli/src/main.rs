@@ -21,23 +21,14 @@
 
 #![deny(missing_docs)]
 
-mod cli;
-mod commands;
-mod config;
-
-use crate::{
-    cli::{Cli, Commands},
-    commands::{
-        Command, convert::ConvertCmd, handle_command, index::IndexCmd, list::ListCmd, show::ShowCmd,
-    },
-    config::Config,
+use px2ansi_rs::{
+    Cli, Commands, Config, ConvertCmd, IndexCmd, ListCmd, ResolvedOptions, ShowCmd,
+    build_render_options, commands::Command, handle_command, print_summary,
 };
-use px2ansi::{Density, RenderStylePreset, ResizeFilter};
+
+use clap::{CommandFactory, Parser};
 
 use anyhow::Result;
-use clap::{CommandFactory, Parser};
-use colored::Colorize;
-use px2ansi::RenderOptions;
 
 use std::{path::PathBuf, time::Instant};
 
@@ -126,68 +117,4 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
         }
         Commands::Completions { .. } => unreachable!(),
     }
-}
-
-/// A unified view of program settings, resolved from both CLI flags and config files.
-#[derive(Debug)]
-struct ResolvedOptions {
-    /// Whether to print performance timing data.
-    latency: bool,
-    /// The final path to the image index JSON.
-    index_path: PathBuf,
-}
-
-impl ResolvedOptions {
-    /// Merges [Cli] flags and [Config] settings, prioritizing CLI input.
-    ///
-    /// # Examples
-    ///
-    /// If a user passes `--index local.json` via CLI, it will override
-    /// whatever is defined in the configuration file.
-    fn from_cli_and_config(cli: &Cli, cfg: &Config) -> Self {
-        Self {
-            latency: cli.latency || cfg.latency,
-            index_path: cli
-                .index
-                .as_deref()
-                .map_or_else(|| PathBuf::from(&cfg.index), PathBuf::from),
-        }
-    }
-}
-
-fn build_render_options(
-    style: Option<RenderStylePreset>,
-    density: Option<Density>,
-    width: Option<u32>,
-    filter: Option<ResizeFilter>,
-    no_color: bool,
-) -> RenderOptions {
-    let mut builder = RenderOptions::builder();
-
-    if let Some(s) = style {
-        builder.preset(s);
-    }
-    if let Some(d) = density {
-        builder.density(d);
-    }
-    if let Some(w) = width {
-        builder.width(w);
-    }
-    if let Some(f) = filter {
-        builder.filter(f);
-    }
-    if no_color {
-        builder.color(false);
-    }
-
-    builder.build()
-}
-
-/// Prints a colored performance summary to stderr.
-fn print_summary(duration: std::time::Duration) {
-    eprintln!(
-        "\n{} took {}ms",
-        "Execution".bright_blue().bold(),
-        duration.as_millis()
-    );
 }
