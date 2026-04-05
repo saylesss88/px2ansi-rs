@@ -34,8 +34,11 @@ pub mod rasterize;
 pub mod render;
 
 // re-exports
-pub use crate::cli_enums::{RenderStylePreset, ResizeFilter};
-pub use crate::rasterize::rasterize_ansi;
-pub use crate::render::{
-    CharsetMode, Density, RenderOptions, RenderOptionsBuilder, RenderStyle, write_ansi_art,
+pub use crate::{
+    cli_enums::{RenderStylePreset, ResizeFilter},
+    indexer::{ImageEntry, build_index},
+    rasterize::rasterize_ansi,
+    render::{
+        CharsetMode, Density, RenderOptions, RenderOptionsBuilder, RenderStyle, write_ansi_art,
+    },
 };
