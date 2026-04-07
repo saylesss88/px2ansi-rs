@@ -22,8 +22,8 @@
 #![deny(missing_docs)]
 
 use px2ansi_rs::{
-    Cli, Commands, Config, ConvertCmd, IndexCmd, ListCmd, ResolvedOptions, ShowCmd,
-    build_render_options, commands::Command, handle_command, print_summary,
+    Cli, Commands, Config, ConvertCmd, IndexCmd, ListCmd, ResolvedOptions, ShowCmd, commands,
+    commands::Command, output, render,
 };
 
 use clap::{CommandFactory, Parser};
@@ -52,10 +52,10 @@ fn main() -> Result<()> {
     // Convert the raw CLI args into a domain-specific Command
     let cmd = build_command(cli, &cfg, &opts)?;
 
-    handle_command(&cmd)?;
+    commands::handle_command(&cmd)?;
 
     if opts.latency {
-        print_summary(start.elapsed());
+        output::print_summary(start.elapsed());
     }
 
     Ok(())
@@ -82,13 +82,14 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             density,
             no_color,
         } => {
-            let render = build_render_options(style, density, width, filter, no_color);
+            let render_opts = render::build_render_options(style, density, width, filter, no_color);
+
             let output_image = output_image.or_else(|| cfg.output_image.as_ref().map(Into::into));
             Ok(Command::Convert(ConvertCmd {
                 input,
                 output,
                 output_image,
-                render,
+                render: render_opts,
             }))
         }
         Commands::Index { dir, output } => {
@@ -107,11 +108,11 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             density,
             no_color,
         } => {
-            let render = build_render_options(style, density, None, filter, no_color);
+            let render_opts = render::build_render_options(style, density, None, filter, no_color);
             Ok(Command::Show(ShowCmd {
                 name,
                 index_path: opts.index_path.clone(),
-                render,
+                render: render_opts,
                 interactive,
             }))
         }
