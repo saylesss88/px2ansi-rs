@@ -30,7 +30,7 @@ use clap::{CommandFactory, Parser};
 
 use anyhow::Result;
 
-use std::{path::PathBuf, time::Instant};
+use std::{io::Write, path::PathBuf, time::Instant};
 
 /// The entry point for the `px2ansi-rs` CLI tool.
 ///
@@ -52,7 +52,14 @@ fn main() -> Result<()> {
     // Convert the raw CLI args into a domain-specific Command
     let cmd = build_command(cli, &cfg, &opts)?;
 
-    commands::handle_command(&cmd)?;
+    let out = std::io::stdout();
+    let mut lock = out.lock();
+
+    let mut writer = std::io::BufWriter::with_capacity(128 * 1024, &mut lock);
+
+    commands::handle_command(&cmd, &mut writer)?;
+
+    writer.flush()?;
 
     if opts.latency {
         output::print_summary(start.elapsed());
