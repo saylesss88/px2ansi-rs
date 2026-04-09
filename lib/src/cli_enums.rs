@@ -13,6 +13,7 @@ pub enum RenderStylePreset {
     Dense,
     Kanji,
     Chinese,
+    Sixel,
 }
 
 impl FromStr for RenderStylePreset {
@@ -29,6 +30,7 @@ impl FromStr for RenderStylePreset {
             "chinese" => Ok(Self::Chinese),
             "fullblock" => Ok(Self::FullBlock),
             "dense" => Ok(Self::Dense),
+            "sixel" => Ok(Self::Sixel),
             _ => Err(format!(
                 "invalid style: '{s}'. (valid: ansi, unicode, braille, fade, ascii, kanji, chinese, full-block, dense)"
             )),

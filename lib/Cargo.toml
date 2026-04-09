@@ -25,3 +25,7 @@ fontdue = { version = "0.9.3" }
 colored = { version = "3.1.1" }
 walkdir = { version = "2.5.0" }
 thiserror = "2.0.18"
+viuer = { version = "0.11.0", optional = true }
+
+[features]
+sixel = ["dep:viuer"]

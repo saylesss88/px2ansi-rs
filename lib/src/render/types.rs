@@ -19,6 +19,8 @@ pub enum CharsetMode {
     Kanji,
 
     Chinese,
+
+    Sixel,
 }
 
 impl FromStr for CharsetMode {

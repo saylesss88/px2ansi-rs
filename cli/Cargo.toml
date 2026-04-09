@@ -37,6 +37,9 @@ serde = { version = "1.0.228", features = ["derive"] }
 confy = "2.0.0"                                                                    # CLI-only config, not shared
 clap_builder = "4.6.0"
 
+[features]
+sixel = ["px2ansi/sixel"]
+
 
 [profile.release]
 opt-level = 3

@@ -21,6 +21,7 @@ impl RenderOptions {
                 CharsetMode::Braille => (term_w * 2, term_h * 4),
                 CharsetMode::Unicode if self.style().full => (term_w / 2, term_h),
                 // CharsetMode::Ascii | CharsetMode::Fade => (term_w.saturating_sub(2), term_h - 2),
+                CharsetMode::Sixel => (term_w * 8, term_h * 16), // pixel dimensions, not cells
                 _ => (term_w.saturating_sub(2), term_h * 2 / 3),
             }
         } else {

@@ -4,6 +4,8 @@
 //! handles the internal rendering state and dispatches the image data
 //! to the appropriate strategy based on the provided [`RenderOptions`].
 use image::{DynamicImage, GenericImageView, Rgba};
+#[cfg(feature = "sixel")]
+use viuer;
 
 use std::io::Write;
 
@@ -271,6 +273,14 @@ pub fn write_ansi_art<W: Write>(
         CharsetMode::Ascii => renderer.ascii(options.style().density),
         CharsetMode::Kanji => renderer.kanji(),
         CharsetMode::Chinese => renderer.chinese(),
+        #[cfg(feature = "sixel")]
+        CharsetMode::Sixel => write_sixel(img),
+        #[cfg(not(feature = "sixel"))]
+        CharsetMode::Sixel => {
+            eprintln!("Sixel support requires the 'sixel' feature.");
+            eprintln!("Rebuild with: cargo build --features sixel");
+            Ok(())
+        }
     }
 }
 /// Writes a single half-block character cell representing two vertical pixels.
@@ -294,4 +304,17 @@ fn write_full_block<W: Write>(out: &mut W, px: Rgba<u8>) -> std::io::Result<()> 
     } else {
         write!(out, "  ")
     }
+}
+
+/// Renders an image using the Sixel graphics protocol.
+///
+/// Sixel encodes pixel data directly into the terminal escape sequence stream,
+/// allowing true pixel-accurate images in supported terminals (foot, WezTerm,
+/// iTerm2, etc.). Falls back gracefully — if the terminal doesn't support
+/// Sixel the output will appear as garbage characters.
+#[cfg(feature = "sixel")]
+pub fn write_sixel(img: &image::DynamicImage) -> std::io::Result<()> {
+    viuer::print(img, &viuer::Config::default())
+        .map(|_| ())
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
 }

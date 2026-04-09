@@ -48,6 +48,7 @@ impl From<RenderStylePreset> for RenderOptions {
                 opts.charset = CharsetMode::Ascii;
                 opts.style.density = Density::Heavy;
             }
+            RenderStylePreset::Sixel => opts.charset = CharsetMode::Sixel,
         }
         opts
     }

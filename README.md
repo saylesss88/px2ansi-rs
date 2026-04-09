@@ -58,6 +58,22 @@ browsing, and advanced filters. It is approximately 25x faster.
   for rasterization.
 - **Optional monochrome output** — Use `--no-color` where it makes sense.
 
+## Optional Features
+
+### Sixel Support
+
+**Sixel** (short for six pixels), 
+
+Sixel renders true pixel images in supported terminals (foot, WezTerm, iTerm2,
+ghosTTY).
+
+```sh
+cargo build --features sixel
+px2ansi-rs convert image.png --style sixel
+```
+
+Requires a Sixel-compatible terminal. Falls back gracefully if not supported.
+
 ---
 
 ## Installation
