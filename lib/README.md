@@ -367,6 +367,28 @@ fn custom_pipeline(img: &image::DynamicImage) -> anyhow::Result<()> {
 
 ---
 
+## Optional Features
+
+### Sixel
+
+Renders true pixel images in Sixel-compatible terminals (foot, WezTerm, iTerm2):
+
+```toml
+px2ansi = { version = "0.1", features = ["sixel"] }
+```
+
+```rust
+use px2ansi::{RenderOptions, RenderStylePreset};
+
+let opts = RenderOptions::builder()
+    .preset(RenderStylePreset::Sixel)
+    .build();
+
+opts.render_centered(&img, &mut stdout())?;
+```
+
+---
+
 ### Error Handling
 
 Unlike the CLI which uses anyhow for simplicity, the `px2ansi` library provides

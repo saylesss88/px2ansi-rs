@@ -62,13 +62,13 @@ browsing, and advanced filters. It is approximately 25x faster.
 
 ### Sixel Support
 
-**Sixel** (short for six pixels), 
+**Sixel** (short for six pixels),
 
 Sixel renders true pixel images in supported terminals (foot, WezTerm, iTerm2,
 ghosTTY).
 
 ```sh
-cargo build --features sixel
+cargo install px2ansi-rs --features sixel
 px2ansi-rs convert image.png --style sixel
 ```
 
