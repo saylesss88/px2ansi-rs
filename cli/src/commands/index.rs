@@ -1,5 +1,6 @@
 use anyhow::Result;
-use std::path::PathBuf;
+use colored::Colorize;
+use std::{io::Write, path::PathBuf};
 
 /// Parameters for creating a new asset index from a directory.
 #[derive(Debug)]
@@ -11,9 +12,17 @@ pub struct IndexCmd {
 }
 
 impl IndexCmd {
-    /// Scans the source directory and writes a JSON manifest to the output path.
-    pub fn run(&self) -> Result<()> {
+    pub fn run<W: Write>(&self, writer: &mut W) -> Result<()> {
         px2ansi::indexer::build_index(&self.dir, &self.output)?;
+
+        writeln!(
+            writer,
+            "{} Successfully indexed {} to {}",
+            "Success:".green().bold(),
+            self.dir.display(),
+            self.output.display()
+        )?;
+
         Ok(())
     }
 }
