@@ -5,7 +5,7 @@ use fuzzy_matcher::skim::SkimMatcherV2;
 use px2ansi::indexer::ImageEntry;
 use px2ansi::render::RenderOptions;
 use rand::prelude::IndexedRandom;
-use std::io::{self, BufWriter};
+use std::io::Write;
 use std::path::PathBuf;
 
 #[derive(Debug)]
@@ -26,23 +26,29 @@ impl ShowCmd {
     /// 1. `interactive`: A fuzzy-search TUI for when you don't know the exact name.
     /// 2. `random`: For when you're feeling adventurous.
     /// 3. `name`: Tries an exact match, then falls back to a fuzzy search.
-    pub fn run(&self) -> Result<()> {
+    pub fn run<W: Write>(&self, writer: &mut W) -> Result<()> {
         let entries: Vec<ImageEntry> =
             serde_json::from_str(&std::fs::read_to_string(&self.index_path)?)?;
         anyhow::ensure!(!entries.is_empty(), "Index is empty.");
+
         let entry_opt = if self.interactive {
             prompt_search(&entries)?
         } else {
             search_index(&entries, &self.name)?
         };
-        if let Some(e) = entry_opt {
-            if self.interactive {
-                println!("Showing: {}", e.name.cyan().bold());
+
+        match entry_opt {
+            Some(e) => {
+                if self.interactive {
+                    println!("Showing: {}", e.name.cyan().bold());
+                }
+                let img = image::open(&e.path)?;
+                self.render.render_centered(&img, writer)?;
             }
-            let img = image::ImageReader::open(&e.path)?.decode()?;
-            let stdout = io::stdout();
-            let mut writer = BufWriter::new(stdout.lock());
-            self.render.render_centered(&img, &mut writer)?;
+            None => {
+                // User pressed Esc in FuzzySelect, just exit
+                return Ok(());
+            }
         }
         Ok(())
     }
