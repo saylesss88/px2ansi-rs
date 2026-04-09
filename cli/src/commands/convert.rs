@@ -1,6 +1,6 @@
 use anyhow::Result;
 use px2ansi::render::RenderOptions;
-use std::io::{self, BufWriter, Write};
+use std::io::Write;
 use std::path::PathBuf;
 
 /// Parameters for converting a single image file to ANSI art
@@ -15,35 +15,54 @@ pub struct ConvertCmd {
     /// Visual settings (width, filter, style).
     pub render: RenderOptions,
 }
-
 impl ConvertCmd {
-    /// Reads the input image, renders it to ANSI using the provided options,
-    /// and handles routing the result to the filesystem or standard output.
-    pub fn run(&self) -> Result<()> {
-        // 1. Load and decode the image
+    pub fn run<W: Write>(&self, external_writer: &mut W) -> Result<()> {
+        // 1. Load and decode
         let img = image::ImageReader::open(&self.input)?.decode()?;
 
-        // 2. Render to a buffer (we use a buffer so we can reuse it for PNG rasterization)
-        let mut buf = Vec::new();
-        self.render.render_centered(&img, &mut buf)?;
+        // 2. Setup the file writer if needed
+        let mut file_writer = self
+            .output
+            .as_ref()
+            .map(|path| std::fs::File::create(path).map(std::io::BufWriter::new))
+            .transpose()?;
 
-        // 3. Handle Output (File vs Stdout)
-        if let Some(path) = &self.output {
-            let file = std::fs::File::create(path)?;
-            let mut writer = BufWriter::new(file);
-            writer.write_all(&buf)?;
-        } else {
-            let stdout = io::stdout();
-            let mut writer = BufWriter::new(stdout.lock());
-            writer.write_all(&buf)?;
-        }
+        // 3. Render and Rasterize logic
+        if let Some(png_path) = self.output_image.as_ref() {
+            // Buffer is required for PNG rasterization
+            let mut buf = Vec::with_capacity(img.width() as usize * img.height() as usize * 2);
+            self.render.render_centered(&img, &mut buf)?;
 
-        // 4. Handle optional PNG rasterization
-        if let Some(png_path) = &self.output_image {
+            // Resolve where to write the buffer (File or External)
+            let target: &mut dyn Write = match file_writer.as_mut() {
+                Some(fw) => fw,
+                None => external_writer,
+            };
+
+            target.write_all(&buf)?;
+            target.flush()?;
+
+            // Handle optional PNG rasterization
             let rasterized = px2ansi::rasterize::rasterize_ansi(&buf)?;
             rasterized.save(png_path)?;
-            println!("✅ Saved preview to {}", png_path.display());
-        }
+
+            // Log to terminal
+            writeln!(
+                external_writer,
+                "✅ Saved preview to {}",
+                png_path.display()
+            )?;
+        } else {
+            // FAST PATH: No preview image needed, stream directly
+            let mut target: &mut dyn Write = match file_writer.as_mut() {
+                Some(fw) => fw,
+                None => external_writer,
+            };
+
+            self.render.render_centered(&img, &mut target)?;
+            target.flush()?;
+        } 
+
         Ok(())
     }
 }
