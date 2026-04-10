@@ -4,7 +4,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 #[cfg(feature = "rasterize")]
-use px2ansi::RasterTheme;
+use px2ansi::themes::RasterTheme;
 
 /// Parameters for converting a single image file to ANSI art
 #[derive(Debug)]
@@ -57,14 +57,15 @@ impl ConvertCmd {
             target.flush()?;
 
             // Handle optional PNG rasterization
-            let rasterized = px2ansi::rasterize_ansi(&buf)?;
+            let rasterized = px2ansi::rasterize_ansi_with_theme(&buf, self.raster_theme)?;
             rasterized.save(png_path)?;
 
             // Log to terminal
             writeln!(
                 external_writer,
-                "✅ Saved preview to {}",
-                png_path.display()
+                "✅ Saved preview to {} (theme: {})",
+                png_path.display(),
+                self.raster_theme.hex()
             )?;
         }
 

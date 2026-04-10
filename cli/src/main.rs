@@ -88,15 +88,21 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             style,
             density,
             no_color,
+            #[cfg(feature = "rasterize")]
+            raster_theme,
         } => {
             let render_opts = render::build_render_options(style, density, width, filter, no_color);
 
             let output_image = output_image.or_else(|| cfg.output_image.as_ref().map(Into::into));
+
+            let theme = raster_theme.unwrap_or(cfg.raster_theme);
+
             Ok(Command::Convert(ConvertCmd {
                 input,
                 output,
                 output_image,
                 render: render_opts,
+                raster_theme: theme,
             }))
         }
         Commands::Index { dir, output } => {
@@ -114,13 +120,21 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             style,
             density,
             no_color,
+            #[cfg(feature = "rasterize")]
+            raster_theme,
         } => {
             let render_opts = render::build_render_options(style, density, None, filter, no_color);
+
+            #[cfg(feature = "rasterize")]
+            let theme = raster_theme.unwrap_or(cfg.raster_theme);
+
             Ok(Command::Show(ShowCmd {
                 name,
                 index_path: opts.index_path.clone(),
                 render: render_opts,
                 interactive,
+                #[cfg(feature = "rasterize")]
+                raster_theme: theme,
             }))
         }
         Commands::Completions { .. } => unreachable!(),

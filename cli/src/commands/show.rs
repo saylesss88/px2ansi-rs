@@ -14,6 +14,8 @@ pub struct ShowCmd {
     pub index_path: PathBuf,
     pub render: RenderOptions,
     pub interactive: bool,
+    #[cfg(feature = "rasterize")]
+    pub raster_theme: RasterTheme,
 }
 
 impl ShowCmd {

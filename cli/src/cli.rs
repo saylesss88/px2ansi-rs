@@ -11,6 +11,9 @@ use std::path::PathBuf;
 
 use px2ansi::{RenderStylePreset, ResizeFilter, render::Density};
 
+#[cfg(feature = "rasterize")]
+use px2ansi::themes::RasterTheme;
+
 #[derive(Parser)]
 #[command(
     name = "px2ansi-rs",
@@ -73,6 +76,11 @@ pub enum Commands {
             long_help = "Nearest is best for pixel art. Lanczos3 is best for high-resolution images."
         )]
         filter: Option<ResizeFilter>,
+
+        /// Background theme for rasterization
+        #[arg(long, value_enum)]
+        #[cfg(feature = "rasterize")]
+        raster_theme: Option<RasterTheme>,
     },
     /// Create a JSON index of a directory
     Index {
@@ -103,6 +111,11 @@ pub enum Commands {
 
         #[arg(short = 'i', long)]
         interactive: bool,
+
+        /// Background theme for rasterization
+        #[arg(long, value_enum)]
+        #[cfg(feature = "rasterize")]
+        raster_theme: Option<RasterTheme>,
     },
     /// List entries in the index
     List {
