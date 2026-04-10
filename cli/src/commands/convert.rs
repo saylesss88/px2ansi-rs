@@ -3,6 +3,9 @@ use px2ansi::render::RenderOptions;
 use std::io::Write;
 use std::path::PathBuf;
 
+#[cfg(feature = "rasterize")]
+use px2ansi::RasterTheme;
+
 /// Parameters for converting a single image file to ANSI art
 #[derive(Debug)]
 pub struct ConvertCmd {
@@ -14,6 +17,9 @@ pub struct ConvertCmd {
     pub output_image: Option<PathBuf>,
     /// Visual settings (width, filter, style).
     pub render: RenderOptions,
+    /// Background theme for rasterization
+    #[cfg(feature = "rasterize")]
+    pub raster_theme: RasterTheme,
 }
 
 impl ConvertCmd {

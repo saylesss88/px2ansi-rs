@@ -1,15 +1,12 @@
+#![cfg(feature = "rasterize")]
+
+use crate::themes::RasterTheme;
 use fontdue::{Font, FontSettings};
 use image::{Rgba, RgbaImage};
 
 const FONT_SIZE: f32 = 14.0;
 const CELL_W: u32 = 8;
 const CELL_H: u32 = 16;
-
-/// Tokyo Night background color (#1A1B26)
-const BG: Rgba<u8> = Rgba([26, 27, 38, 255]);
-
-#[cfg(feature = "rasterize")]
-const DEFAULT_FONT: &[u8] = include_bytes!("../assets/IosevkaCharonMono-Regular.ttf");
 
 /// Processes a raw byte slice of ANSI escape sequences and renders it into an
 /// RGBA image buffer.
@@ -18,6 +15,9 @@ const DEFAULT_FONT: &[u8] = include_bytes!("../assets/IosevkaCharonMono-Regular.
 /// rasterize terminal art. It calculates the final image dimensions based on
 /// the parsed grid of characters and applies a background-to-foreground
 /// pixel blending pass.
+///
+/// Uses the Tokyo Night theme by default. To use a different theme, call
+/// [`rasterize_ansi_with_theme`] instead.
 ///
 /// # Errors
 ///
@@ -30,8 +30,33 @@ const DEFAULT_FONT: &[u8] = include_bytes!("../assets/IosevkaCharonMono-Regular.
 /// Character glyphs not present in the primary embedded font are skipped
 /// silently during the rasterization process.
 pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
-    let font = Font::from_bytes(DEFAULT_FONT, FontSettings::default())
-        .map_err(|e| anyhow::anyhow!("Font error: {e}"))?;
+    rasterize_ansi_with_theme(ansi, RasterTheme::default())
+}
+
+/// Processes ANSI escape sequences into an image with a custom background theme.
+///
+/// # Examples
+///
+/// ```no_run
+/// # use px2ansi::{rasterize_ansi_with_theme, RasterTheme};
+/// # let ansi_bytes = b"Hello";
+/// let img = rasterize_ansi_with_theme(ansi_bytes, RasterTheme::Dracula)?;
+/// img.save("output.png")?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+///
+/// # Errors
+///
+/// Returns an error if:
+/// * The embedded font fails to initialize.
+/// * The input produces an empty grid (no renderable content).
+pub fn rasterize_ansi_with_theme(ansi: &[u8], theme: RasterTheme) -> anyhow::Result<RgbaImage> {
+    let font = Font::from_bytes(
+        include_bytes!("../assets/IosevkaCharonMono-Regular.ttf") as &[u8],
+        FontSettings::default(),
+    )
+    .map_err(|e| anyhow::anyhow!("Font error: {e}"))?;
+
     let cells = parse_ansi(ansi);
     anyhow::ensure!(!cells.is_empty(), "No cells to render");
 
@@ -46,8 +71,9 @@ pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
         .saturating_mul(CELL_H);
 
     let mut img = RgbaImage::new(img_w, img_h);
+    let bg_color = theme.color();
     for pixel in img.pixels_mut() {
-        *pixel = BG;
+        *pixel = bg_color;
     }
 
     for (row_idx, row) in cells.iter().enumerate() {
@@ -90,7 +116,7 @@ pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
                     let px_y = base_y.saturating_add(y_offset).saturating_add(glyph_u32);
 
                     if px_x < img_w && px_y < img_h {
-                        img.put_pixel(px_x, px_y, blend_pixel([r, g, b], coverage));
+                        img.put_pixel(px_x, px_y, blend_pixel([r, g, b], coverage, bg_color));
                     }
                 }
             }
@@ -99,15 +125,16 @@ pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
 
     Ok(img)
 }
-/// Alpha-blends a foreground color against the Tokyo Night background.
-fn blend_pixel([r, g, b]: [u8; 3], coverage: u8) -> Rgba<u8> {
+
+/// Alpha-blends a foreground color against a background color.
+fn blend_pixel([r, g, b]: [u8; 3], coverage: u8, bg: Rgba<u8>) -> Rgba<u8> {
     let alpha = f32::from(coverage) / 255.0;
-    let blend = |fg: u8, bg: u8| -> u8 {
+    let blend = |fg: u8, bg_val: u8| -> u8 {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let result = f32::from(bg).mul_add(1.0 - alpha, f32::from(fg) * alpha) as u8;
+        let result = f32::from(bg_val).mul_add(1.0 - alpha, f32::from(fg) * alpha) as u8;
         result
     };
-    let [br, bg_c, bb, _] = BG.0;
+    let [br, bg_c, bb, _] = bg.0;
     Rgba([blend(r, br), blend(g, bg_c), blend(b, bb), 255])
 }
 
@@ -170,9 +197,4 @@ fn parse_color_params(params: &str, color: &mut [u8; 3]) {
     if let [38, 2, r, g, b, ..] = parts.as_slice() {
         *color = [*r, *g, *b];
     }
-}
-
-#[cfg(not(feature = "rasterize"))]
-pub fn rasterize_ansi(_ansi: &[u8]) -> anyhow::Result<RgbaImage> {
-    anyhow::bail!("Rasterization feature is disabled. Recompile with --features rasterize")
 }

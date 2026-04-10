@@ -38,6 +38,8 @@ pub mod indexer;
 #[cfg(feature = "rasterize")]
 pub mod rasterize;
 pub mod render;
+#[cfg(feature = "rasterize")]
+pub mod themes;
 
 // re-exports
 pub use crate::{

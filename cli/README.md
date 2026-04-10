@@ -394,6 +394,20 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
 > Some styles look better than others. The default background is Tokyo Night,
 > and that may change in the future.
 
+```bash
+# Use default Tokyo Night theme
+px2ansi-rs convert input.png -O output.png
+
+# Use Dracula theme
+px2ansi-rs convert input.png -O output.png --raster-theme dracula
+
+# Use Nord theme
+px2ansi-rs convert input.png -O output.png --raster-theme nord
+
+# Set default in config (~/.config/px2ansi-rs/default-config.toml)
+raster_theme = "gruvbox-dark"
+```
+
 [Back to TOC](#top)
 
 ---
