@@ -1,3 +1,4 @@
+#![allow(clippy::missing_const_for_fn)]
 use super::types::{CharsetMode, Density, RenderStyle};
 use crate::cli_enums::{RenderStylePreset, ResizeFilter};
 use crate::render::get_terminal_size;
@@ -66,31 +67,30 @@ pub struct RenderOptionsBuilder {
 impl RenderOptionsBuilder {
     /// Sets a high-level preset, such as ANSI or Braille.
     /// Presets provide baseline charset and style defaults.
-    pub const fn preset(&mut self, preset: RenderStylePreset) -> &mut Self {
+    pub fn preset(&mut self, preset: RenderStylePreset) -> &mut Self {
         self.preset = Some(preset);
         self
     }
 
-    pub const fn density(&mut self, density: Density) -> &mut Self {
+    pub fn density(&mut self, density: Density) -> &mut Self {
         self.density = Some(density);
         self
     }
 
-    pub const fn width(&mut self, width: u32) -> &mut Self {
+    pub fn width(&mut self, width: u32) -> &mut Self {
         self.width = Some(width);
         self
     }
 
-    pub const fn filter(&mut self, filter: ResizeFilter) -> &mut Self {
+    pub fn filter(&mut self, filter: ResizeFilter) -> &mut Self {
         self.filter = Some(filter);
         self
     }
 
-    pub const fn color(&mut self, color: bool) -> &mut Self {
+    pub fn color(&mut self, color: bool) -> &mut Self {
         self.color = color;
         self
     }
-
     #[must_use]
     pub fn build(self) -> RenderOptions {
         // 1. Start with the preset's defaults, or the global defaults if no preset
