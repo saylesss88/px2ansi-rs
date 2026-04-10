@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use px2ansi::{RenderStylePreset, ResizeFilter};
+use px2ansi::{RenderStylePreset, ResizeFilter, themes::RasterTheme};
 
 /// Global configuration for the px2ansi engine.
 ///
@@ -26,6 +26,8 @@ pub struct Config {
     pub style: RenderStylePreset,
 
     pub output_image: Option<String>,
+
+    pub raster_theme: RasterTheme,
 }
 
 impl Default for Config {
@@ -37,6 +39,7 @@ impl Default for Config {
             index: "index.json".into(),
             style: RenderStylePreset::Ansi,
             output_image: None,
+            raster_theme: RasterTheme::default(),
         }
     }
 }

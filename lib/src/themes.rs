@@ -8,10 +8,11 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 /// A background color theme for rasterization.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum RasterTheme {
     /// Tokyo Night theme (#1A1B26)
+    #[default]
     TokyoNight,
     /// Dracula theme (#282A36)
     Dracula,
@@ -31,6 +32,7 @@ pub enum RasterTheme {
 
 impl RasterTheme {
     /// Returns the RGBA color for this theme.
+    #[must_use]
     pub const fn color(self) -> Rgba<u8> {
         match self {
             Self::TokyoNight => Rgba([26, 27, 38, 255]),   // #1A1B26
@@ -45,6 +47,7 @@ impl RasterTheme {
     }
 
     /// Returns the hex color code for display purposes.
+    #[must_use]
     pub const fn hex(self) -> &'static str {
         match self {
             Self::TokyoNight => "#1A1B26",
@@ -59,11 +62,11 @@ impl RasterTheme {
     }
 }
 
-impl Default for RasterTheme {
-    fn default() -> Self {
-        Self::TokyoNight
-    }
-}
+// impl Default for RasterTheme {
+//     fn default() -> Self {
+//         Self::TokyoNight
+//     }
+// }
 
 impl FromStr for RasterTheme {
     type Err = String;

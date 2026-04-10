@@ -9,10 +9,7 @@ use clap_complete::aot::Shell;
 
 use std::path::PathBuf;
 
-use px2ansi::{RenderStylePreset, ResizeFilter, render::Density};
-
-#[cfg(feature = "rasterize")]
-use px2ansi::themes::RasterTheme;
+use px2ansi::{RenderStylePreset, ResizeFilter, render::Density, themes::RasterTheme};
 
 #[derive(Parser)]
 #[command(
@@ -77,9 +74,8 @@ pub enum Commands {
         )]
         filter: Option<ResizeFilter>,
 
-        /// Background theme for rasterization
-        #[arg(long, value_enum)]
-        #[cfg(feature = "rasterize")]
+        /// Background theme for rasterized PNG output
+        #[arg(long, value_enum, default_value = "tokyo-night")]
         raster_theme: Option<RasterTheme>,
     },
     /// Create a JSON index of a directory
@@ -111,11 +107,6 @@ pub enum Commands {
 
         #[arg(short = 'i', long)]
         interactive: bool,
-
-        /// Background theme for rasterization
-        #[arg(long, value_enum)]
-        #[cfg(feature = "rasterize")]
-        raster_theme: Option<RasterTheme>,
     },
     /// List entries in the index
     List {

@@ -1,10 +1,7 @@
 use anyhow::Result;
-use px2ansi::render::RenderOptions;
+use px2ansi::{render::RenderOptions, themes::RasterTheme};
 use std::io::Write;
 use std::path::PathBuf;
-
-#[cfg(feature = "rasterize")]
-use px2ansi::themes::RasterTheme;
 
 /// Parameters for converting a single image file to ANSI art
 #[derive(Debug)]
@@ -17,8 +14,6 @@ pub struct ConvertCmd {
     pub output_image: Option<PathBuf>,
     /// Visual settings (width, filter, style).
     pub render: RenderOptions,
-    /// Background theme for rasterization
-    #[cfg(feature = "rasterize")]
     pub raster_theme: RasterTheme,
 }
 
@@ -57,15 +52,14 @@ impl ConvertCmd {
             target.flush()?;
 
             // Handle optional PNG rasterization
-            let rasterized = px2ansi::rasterize_ansi_with_theme(&buf, self.raster_theme)?;
+            let rasterized = px2ansi::rasterize_ansi(&buf)?;
             rasterized.save(png_path)?;
 
             // Log to terminal
             writeln!(
                 external_writer,
-                "✅ Saved preview to {} (theme: {})",
-                png_path.display(),
-                self.raster_theme.hex()
+                "✅ Saved preview to {}",
+                png_path.display()
             )?;
         }
 

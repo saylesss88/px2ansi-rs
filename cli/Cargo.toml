@@ -21,7 +21,7 @@ name = "generate-manpage"
 path = "src/bin/generate_manpage.rs"
 
 [dependencies]
-px2ansi = { workspace = true }
+px2ansi = { path = "../lib", features = ["rasterize", "sixel"] }
 anyhow = { version = "1.0" }
 clap = { version = "4.5", features = ["derive"] }
 clap_complete = "4.5.66"
