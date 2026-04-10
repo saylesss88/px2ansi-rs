@@ -21,11 +21,14 @@ anyhow = { version = "1.0" }
 terminal_size = { version = "0.4.3" }
 serde_json = { version = "1.0.149" }
 serde = { version = "1.0.228", features = ["derive"] }
-fontdue = { version = "0.9.3" }
+fontdue = { version = "0.9.3", optional = true }
 colored = { version = "3.1.1" }
 walkdir = { version = "2.5.0" }
 thiserror = "2.0.18"
 viuer = { version = "0.11.0", optional = true }
 
 [features]
+default = ["rasterize", "sixel"]
 sixel = ["dep:viuer"]
+rasterize = ["dep:fontdue"]
+full = ["rasterize", "sixel"]

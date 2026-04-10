@@ -39,6 +39,7 @@ clap_builder = "4.6.0"
 
 [features]
 sixel = ["px2ansi/sixel"]
+rasterize = ["px2ansi/rasterize"]
 
 
 [profile.release]

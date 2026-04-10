@@ -8,6 +8,9 @@ const CELL_H: u32 = 16;
 /// Tokyo Night background color (#1A1B26)
 const BG: Rgba<u8> = Rgba([26, 27, 38, 255]);
 
+#[cfg(feature = "rasterize")]
+const DEFAULT_FONT: &[u8] = include_bytes!("../assets/IosevkaCharonMono-Regular.ttf");
+
 /// Processes a raw byte slice of ANSI escape sequences and renders it into an
 /// RGBA image buffer.
 ///
@@ -27,12 +30,8 @@ const BG: Rgba<u8> = Rgba([26, 27, 38, 255]);
 /// Character glyphs not present in the primary embedded font are skipped
 /// silently during the rasterization process.
 pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
-    let font = Font::from_bytes(
-        include_bytes!("../assets/IosevkaCharonMono-Regular.ttf") as &[u8],
-        FontSettings::default(),
-    )
-    .map_err(|e| anyhow::anyhow!("Font error: {e}"))?;
-
+    let font = Font::from_bytes(DEFAULT_FONT, FontSettings::default())
+        .map_err(|e| anyhow::anyhow!("Font error: {e}"))?;
     let cells = parse_ansi(ansi);
     anyhow::ensure!(!cells.is_empty(), "No cells to render");
 
@@ -171,4 +170,9 @@ fn parse_color_params(params: &str, color: &mut [u8; 3]) {
     if let [38, 2, r, g, b, ..] = parts.as_slice() {
         *color = [*r, *g, *b];
     }
+}
+
+#[cfg(not(feature = "rasterize"))]
+pub fn rasterize_ansi(_ansi: &[u8]) -> anyhow::Result<RgbaImage> {
+    anyhow::bail!("Rasterization feature is disabled. Recompile with --features rasterize")
 }

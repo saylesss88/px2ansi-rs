@@ -15,6 +15,7 @@ pub struct ConvertCmd {
     /// Visual settings (width, filter, style).
     pub render: RenderOptions,
 }
+
 impl ConvertCmd {
     /// Runs the command.
     ///
@@ -34,6 +35,7 @@ impl ConvertCmd {
             .transpose()?;
 
         // 3. Render and Rasterize logic
+        #[cfg(feature = "rasterize")]
         if let Some(png_path) = self.output_image.as_ref() {
             // Buffer is required for PNG rasterization
             let mut buf = Vec::with_capacity(img.width() as usize * img.height() as usize * 2);
@@ -49,7 +51,7 @@ impl ConvertCmd {
             target.flush()?;
 
             // Handle optional PNG rasterization
-            let rasterized = px2ansi::rasterize::rasterize_ansi(&buf)?;
+            let rasterized = px2ansi::rasterize_ansi(&buf)?;
             rasterized.save(png_path)?;
 
             // Log to terminal
@@ -58,16 +60,23 @@ impl ConvertCmd {
                 "✅ Saved preview to {}",
                 png_path.display()
             )?;
-        } else {
-            // FAST PATH: No preview image needed, stream directly
-            let mut target: &mut dyn Write = match file_writer.as_mut() {
-                Some(fw) => fw,
-                None => external_writer,
-            };
-
-            self.render.render_centered(&img, &mut target)?;
-            target.flush()?;
         }
+
+        #[cfg(not(feature = "rasterize"))]
+        if self.output_image.is_some() {
+            anyhow::bail!(
+                "PNG rasterization requires the 'rasterize' feature. Rebuild with: cargo build --features rasterize"
+            );
+        }
+
+        // FAST PATH: No preview image needed, stream directly
+        let mut target: &mut dyn Write = match file_writer.as_mut() {
+            Some(fw) => fw,
+            None => external_writer,
+        };
+
+        self.render.render_centered(&img, &mut target)?;
+        target.flush()?;
 
         Ok(())
     }
