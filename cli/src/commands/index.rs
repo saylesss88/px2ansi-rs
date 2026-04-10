@@ -12,6 +12,12 @@ pub struct IndexCmd {
 }
 
 impl IndexCmd {
+    /// Runs the command.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if writing to the provided writer fails or if
+    /// the command logic encounters a processing error.
     pub fn run<W: Write>(&self, writer: &mut W) -> Result<()> {
         px2ansi::indexer::build_index(&self.dir, &self.output)?;
 

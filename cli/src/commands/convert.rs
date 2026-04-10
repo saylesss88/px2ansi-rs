@@ -16,6 +16,12 @@ pub struct ConvertCmd {
     pub render: RenderOptions,
 }
 impl ConvertCmd {
+    /// Runs the command.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if writing to the provided writer fails or if
+    /// the command logic encounters a processing error.
     pub fn run<W: Write>(&self, external_writer: &mut W) -> Result<()> {
         // 1. Load and decode
         let img = image::ImageReader::open(&self.input)?.decode()?;
@@ -61,7 +67,7 @@ impl ConvertCmd {
 
             self.render.render_centered(&img, &mut target)?;
             target.flush()?;
-        } 
+        }
 
         Ok(())
     }

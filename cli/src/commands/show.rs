@@ -26,6 +26,11 @@ impl ShowCmd {
     /// 1. `interactive`: A fuzzy-search TUI for when you don't know the exact name.
     /// 2. `random`: For when you're feeling adventurous.
     /// 3. `name`: Tries an exact match, then falls back to a fuzzy search.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if writing to the provided writer fails or if
+    /// the command logic encounters a processing error.
     pub fn run<W: Write>(&self, writer: &mut W) -> Result<()> {
         let entries: Vec<ImageEntry> =
             serde_json::from_str(&std::fs::read_to_string(&self.index_path)?)?;
@@ -99,7 +104,8 @@ fn search_index<'a>(entries: &'a [ImageEntry], name: &str) -> Result<Option<&'a 
 ///
 /// Returns `Ok(None)` if the user cancels the selection (e.g., by pressing Esc).
 fn prompt_search(entries: &[ImageEntry]) -> Result<Option<&ImageEntry>> {
-    let items: Vec<&String> = entries.iter().map(|e| &e.name).collect();
+    // let items: Vec<&String> = entries.iter().map(|e| &e.name).collect();
+    let items: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
     let selection = dialoguer::FuzzySelect::with_theme(&dialoguer::theme::ColorfulTheme::default())
         .with_prompt("Search for a sprite")
         .items(&items)

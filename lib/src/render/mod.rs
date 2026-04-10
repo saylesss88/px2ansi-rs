@@ -309,12 +309,15 @@ fn write_full_block<W: Write>(out: &mut W, px: Rgba<u8>) -> std::io::Result<()> 
 /// Renders an image using the Sixel graphics protocol.
 ///
 /// Sixel encodes pixel data directly into the terminal escape sequence stream,
-/// allowing true pixel-accurate images in supported terminals (foot, WezTerm,
-/// iTerm2, etc.). Falls back gracefully — if the terminal doesn't support
-/// Sixel the output will appear as garbage characters.
+/// allowing true pixel-accurate images in supported terminals.
+///
+/// # Errors
+///
+/// This function will return an error if `viuer` fails to write to the terminal
+/// buffer or if the image cannot be encoded into the Sixel format.
 #[cfg(feature = "sixel")]
 pub fn write_sixel(img: &image::DynamicImage) -> std::io::Result<()> {
     viuer::print(img, &viuer::Config::default())
         .map(|_| ())
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+        .map_err(|e| std::io::Error::other(e.to_string()))
 }

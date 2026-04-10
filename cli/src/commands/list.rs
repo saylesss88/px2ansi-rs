@@ -12,6 +12,12 @@ pub struct ListCmd {
 }
 
 impl ListCmd {
+    /// Runs the command.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if writing to the provided writer fails or if
+    /// the command logic encounters a processing error.
     pub fn run<W: Write>(&self, writer: &mut W) -> Result<()> {
         let content = std::fs::read_to_string(&self.index_path)?;
         let entries: Vec<px2ansi::indexer::ImageEntry> = serde_json::from_str(&content)?;

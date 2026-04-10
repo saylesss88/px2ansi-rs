@@ -19,6 +19,20 @@ pub enum Command {
     Show(ShowCmd),
 }
 
+/// Dispatches the provided command to its respective handler.
+///
+/// This is the central entry point for executing CLI logic. It routes the
+/// [`Command`] variant to the appropriate `run` method, passing the
+/// mutable writer along for output.
+///
+/// # Errors
+///
+/// This function returns an error if the underlying command execution fails.
+/// Common failure points include:
+///
+/// * **I/O Errors**: Issues writing to the provided `writer` (e.g., broken pipe).
+/// * **Processing Errors**: Command-specific failures such as file not found
+///   during conversion or invalid index references.
 pub fn handle_command<W: Write>(cmd: &Command, writer: &mut W) -> Result<()> {
     match cmd {
         Command::Convert(convert) => convert.run(writer),
