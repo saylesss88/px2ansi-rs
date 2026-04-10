@@ -21,7 +21,7 @@ name = "generate-manpage"
 path = "src/bin/generate_manpage.rs"
 
 [dependencies]
-px2ansi = { path = "../lib", features = ["rasterize", "sixel"] }
+px2ansi = { path = "../lib" }
 anyhow = { version = "1.0" }
 clap = { version = "4.5", features = ["derive"] }
 clap_complete = "4.5.66"
@@ -38,6 +38,7 @@ confy = "2.0.0"                                                                 
 clap_builder = "4.6.0"
 
 [features]
+default = ["rasterize", "sixel"]
 sixel = ["px2ansi/sixel"]
 rasterize = ["px2ansi/rasterize"]
 

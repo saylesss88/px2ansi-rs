@@ -52,7 +52,8 @@ impl ConvertCmd {
             target.flush()?;
 
             // Handle optional PNG rasterization
-            let rasterized = px2ansi::rasterize_ansi(&buf)?;
+            let rasterized =
+                px2ansi::rasterize::rasterize_ansi_with_theme(&buf, self.raster_theme)?;
             rasterized.save(png_path)?;
 
             // Log to terminal
@@ -61,8 +62,10 @@ impl ConvertCmd {
                 "✅ Saved preview to {}",
                 png_path.display()
             )?;
+            return Ok(());
         }
 
+        // Handle case where user wants a PNG but didn't compile with the feature
         #[cfg(not(feature = "rasterize"))]
         if self.output_image.is_some() {
             anyhow::bail!(
