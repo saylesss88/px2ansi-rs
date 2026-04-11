@@ -17,9 +17,22 @@ use px2ansi::{Density, RenderOptions, ResizeFilter};
 ///
 /// # Examples
 ///
-/// ```
-/// let options = build_render_options(None, None, Some(80), None, false);
-/// assert_eq!(options.width, Some(80));
+/// ```rust
+/// use px2ansi_rs::build_render_options;
+/// use px2ansi::RenderStylePreset;
+///
+/// // Width is passed through
+/// let opts = build_render_options(None, None, Some(80), None, false);
+/// assert_eq!(opts.width(), Some(80));
+///
+/// // No-op when all None/false
+/// let opts = build_render_options(None, None, None, None, false);
+/// assert_eq!(opts.width(), None);
+/// assert!(opts.color()); // color is on by default
+///
+/// // no_color disables color
+/// let opts = build_render_options(None, None, None, None, true);
+/// assert!(!opts.color());
 /// ```
 #[must_use]
 pub fn build_render_options(

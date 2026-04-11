@@ -5,6 +5,8 @@ pub mod output;
 pub mod render;
 
 // Re-export types
+pub use crate::commands::Command;
+pub use crate::render::build_render_options;
 pub use cli::{Cli, Commands};
 pub use commands::convert::ConvertCmd;
 pub use commands::index::IndexCmd;

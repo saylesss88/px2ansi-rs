@@ -22,8 +22,8 @@
 #![deny(missing_docs)]
 
 use px2ansi_rs::{
-    Cli, Commands, Config, ConvertCmd, IndexCmd, ListCmd, ResolvedOptions, ShowCmd, commands,
-    commands::Command, output, render,
+    Cli, Command, Commands, Config, ConvertCmd, IndexCmd, ListCmd, ResolvedOptions, ShowCmd,
+    commands, output, render,
 };
 
 use clap::{CommandFactory, Parser};

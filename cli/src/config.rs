@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use px2ansi::{RenderStylePreset, ResizeFilter, themes::RasterTheme};
+use px2ansi::{RasterTheme, RenderStylePreset, ResizeFilter};
 
 /// Global configuration for the px2ansi engine.
 ///

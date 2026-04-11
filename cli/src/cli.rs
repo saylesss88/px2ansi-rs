@@ -9,7 +9,7 @@ use clap_complete::aot::Shell;
 
 use std::path::PathBuf;
 
-use px2ansi::{RenderStylePreset, ResizeFilter, render::Density, themes::RasterTheme};
+use px2ansi::{Density, RasterTheme, RenderStylePreset, ResizeFilter};
 
 #[derive(Parser)]
 #[command(

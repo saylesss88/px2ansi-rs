@@ -1,5 +1,5 @@
 use anyhow::Result;
-use px2ansi::{render::RenderOptions, themes::RasterTheme};
+use px2ansi::{RasterTheme, RenderOptions};
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -52,8 +52,7 @@ impl ConvertCmd {
             target.flush()?;
 
             // Handle optional PNG rasterization
-            let rasterized =
-                px2ansi::rasterize::rasterize_ansi_with_theme(&buf, self.raster_theme)?;
+            let rasterized = px2ansi::rasterize_ansi_with_theme(&buf, self.raster_theme)?;
             rasterized.save(png_path)?;
 
             // Log to terminal

@@ -177,16 +177,18 @@ impl RenderOptions {
     ///
     /// ```rust
     /// use px2ansi::RenderOptions;
-    /// # use image::DynamicImage;
-    /// # fn run(img: DynamicImage) -> anyhow::Result<()> {
+    /// use image::{DynamicImage, RgbaImage};
+    ///
     /// let opts = RenderOptions::default();
     /// let mut buf = Vec::new();
     ///
-    /// // Manually resize before rendering
-    /// let resized = img.thumbnail(80, 40);
-    /// opts.render(&resized, &mut buf)?;
-    /// # Ok(())
-    /// # }
+    /// // Construct a tiny 4x4 synthetic image
+    /// let raw = RgbaImage::new(4, 4);
+    /// let img = DynamicImage::ImageRgba8(raw);
+    /// opts.render(&img, &mut buf).unwrap();
+    ///
+    /// // Output should be non-empty ANSI bytes
+    /// assert!(!buf.is_empty());
     /// ```
     ///
     /// # Errors
