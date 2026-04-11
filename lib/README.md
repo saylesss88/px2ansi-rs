@@ -6,7 +6,6 @@
 
 If you want the command-line interface, check out [px2ansi-rs](../cli).
 
-
 `px2ansi` converts images into terminal art by resizing them to terminal cell
 proportions, mapping pixels to several character sets, and writing ANSI-colored
 output to any `Write` target.
@@ -19,8 +18,8 @@ in other Rust projects.
 
 ## Features
 
-- Multiple rendering styles: `ansi`, `unicode`, `braille`, `fade`, `ascii`,
-  `chinese`, `kanji`, `sixel`.
+- Multiple rendering styles: `Ansi`, `Unicode`, `Braille`, `Fade`, `Ascii`,
+  `Chinese`, `Kanji`, `FullBlock`, `Dense`, `Sixel`.
 
 - Configurable resize filters.
 
@@ -28,9 +27,9 @@ in other Rust projects.
 
 - Write ANSI art to any `std::io::Write` target.
 
-- Optionally rasterize ANSI output back into PNG
+- Optionally rasterize ANSI output back into PNG (with selectable themes).
 
-- Optional Sixel output for terminals that support it
+- Optional Sixel output for terminals that support it.
 
 ## Installation
 
@@ -38,18 +37,18 @@ Add `px2ansi` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-px2ansi = "0.1.2"
-image = "0.25.10"
+px2ansi = "0.1.1"
+image = "0.25"
 ```
 
 If you only want the core engine and already have `image` in your project, just
 depend on `px2ansi` and reuse your existing image setup.
 
-**Quick Start**
+## Quick Start
 
 ```rust
 use image::open;
-use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter, write_ansi_art};
+use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter};
 
 fn main() -> anyhow::Result<()> {
     let img = open("photo.png")?;
@@ -60,16 +59,169 @@ fn main() -> anyhow::Result<()> {
         .filter(ResizeFilter::Nearest)
         .build();
 
-    let prepared = opts.prepare_image(&img);
-
     let mut out = std::io::stdout();
-    write_ansi_art(&prepared, &mut out, opts)?;
+    opts.render(&img, &mut out)?;
 
     Ok(())
 }
 ```
 
-Alternative style:
+### Automatic Centering
+
+The library can automatically detect terminal size, center the output, and
+handle resizing for you:
+
+```rust
+let mut stdout = std::io::stdout();
+opts.render_centered(&img, &mut stdout)?;
+```
+
+### Rendering to a Buffer
+
+You can render to any `std::io::Write` target, including an in-memory buffer:
+
+```rust
+use image::open;
+use px2ansi::RenderOptions;
+
+fn main() -> anyhow::Result<()> {
+    let img = open("photo.png")?;
+    let opts = RenderOptions::default();
+
+    let mut buf = Vec::new();
+    opts.render(&img, &mut buf)?;
+
+    let ansi = String::from_utf8(buf)?;
+    println!("{ansi}");
+
+    Ok(())
+}
+```
+
+`render` also works with a `std::io::Cursor`:
+
+```rust
+use std::io::Cursor;
+use px2ansi::RenderOptions;
+
+let opts = RenderOptions::default();
+let mut cursor = Cursor::new(Vec::new());
+opts.render(&img, &mut cursor)?;
+```
+
+### Manual Image Preparation
+
+If you need control over the image scaling step, use `prepare_image` separately.
+This is useful for TUI applications or when rendering to non-terminal targets
+like files or network streams:
+
+```rust
+use px2ansi::RenderOptions;
+
+fn custom_pipeline(img: &image::DynamicImage) -> anyhow::Result<()> {
+    let opts = RenderOptions::builder().width(40).build();
+
+    // 1. Manually prepare the image (resizing happens here)
+    let prepared = opts.prepare_image(img);
+    assert_eq!(prepared.width(), 40);
+
+    // 2. Render directly to a writer (no automatic centering)
+    let mut stdout = std::io::stdout();
+    opts.render(&prepared, &mut stdout)?;
+
+    Ok(())
+}
+```
+
+---
+
+## Core Types
+
+| **Type**              | **Purpose**                                                  |
+| --------------------- | ------------------------------------------------------------ |
+| `RenderOptions`       | Main render settings (width, filter, charset, color, etc.).  |
+| `RenderOptionsBuilder`| Builder for constructing `RenderOptions` step-by-step.       |
+| `RenderStylePreset`   | Ready-made presets for common styles.                        |
+| `CharsetMode`         | The character set used to render pixels.                     |
+| `Density`             | Output density for ASCII-style rendering (`Light`, `Medium`, `Heavy`). |
+| `RenderStyle`         | Low-level style tweaks (`is_full()`, `density()`).           |
+| `ResizeFilter`        | Controls image resampling quality.                           |
+| `ColorMode`           | Color output mode: `TrueColor`, `Ansi256`, or `None`.       |
+| `RenderError`         | Structured error type for rendering failures.                |
+
+### `RenderOptions`
+
+The main configuration object for rendering. Controls target width, resize
+filter, charset mode, density, and color output.
+
+Default configuration:
+- Charset: `Ansi`
+- Color: `true`
+- Width: `None` (auto-detect from terminal)
+
+```rust
+let opts = RenderOptions::default();
+assert_eq!(opts.charset(), CharsetMode::Ansi);
+assert!(opts.color());
+assert_eq!(opts.width(), None);
+```
+
+### `RenderStylePreset`
+
+A convenience enum for quickly choosing a style:
+
+| Preset      | Charset     | Notes                              |
+| ----------- | ----------- | ---------------------------------- |
+| `Ansi`      | `Ansi`      | Half-block characters (▀/▄)        |
+| `Unicode`   | `Unicode`   | Half or full blocks                |
+| `Braille`   | `Braille`   | 2×4 Braille dot patterns           |
+| `Fade`      | `Fade`      | Block-shade ramp (░▒▓█)            |
+| `Ascii`     | `Ascii`     | 92-character density ramp          |
+| `Kanji`     | `Kanji`     | Double-width Japanese characters   |
+| `Chinese`   | `Chinese`   | Double-width Chinese characters    |
+| `FullBlock` | `Unicode`   | Forces double-width full blocks (██), sets `is_full() = true` |
+| `Dense`     | `Ascii`     | ASCII with `Density::Heavy`        |
+| `Sixel`     | `Sixel`     | Pixel-accurate Sixel output        |
+
+### `Density`
+
+Controls the complexity of the ASCII character ramp. Only affects `Ascii` mode:
+
+- `Light` — Sparse, minimal characters
+- `Medium` — Default 92-character ramp
+- `Heavy` — Dense ramp including block elements
+
+### `ResizeFilter`
+
+Controls image resampling quality:
+
+| Filter       | Description                          |
+| ------------ | ------------------------------------ |
+| `Nearest`    | Best for pixel art                   |
+| `Triangle`   | Linear interpolation                 |
+| `CatmullRom` | Sharp cubic filter                   |
+| `Gaussian`   | Blurry cubic filter                  |
+| `Lanczos3`   | High-quality resampling (slowest)    |
+
+---
+
+## Builder API
+
+The builder supports chaining:
+
+```rust
+use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter, Density};
+
+let opts = RenderOptions::builder()
+    .preset(RenderStylePreset::Ascii)
+    .density(Density::Light)
+    .width(120)
+    .filter(ResizeFilter::Nearest)
+    .color(false)
+    .build();
+```
+
+Or a mutable style:
 
 ```rust
 let mut builder = RenderOptions::builder();
@@ -83,153 +235,11 @@ if some_condition {
 let opts = builder.build();
 ```
 
-**Automatic Centering and Resizing**
-
-The library can automatically detect terminal size and center the output for
-you:
-
-```rust
-let mut stdout = std::io::stdout();
-opts.render_centered(&img, &mut stdout)?;
-```
-
-**Core Types**
-
-| **Type**            | **Purpose**                               |
-| ------------------- | ----------------------------------------- |
-| `RenderOptions`     | Main render settings.                     |
-| `RenderStylePreset` | Ready-made presets for common styles.     |
-| `CharsetMode`       | The character set used to render pixels.  |
-| `Density`           | Output density for ASCII-style rendering. |
-| `RenderStyle`       | Low-level style tweaks.                   |
-
-`RenderOptions`
-
-The main configuration object for rendering. It controls:
-
-- target width,
-
-- resize filter,
-
-- charset mode,
-
-- density,
-
-- color output.
-
----
-
-`RenderStylePreset`
-
-A convenience enum for quickly choosing a style preset such as:
-
-- `Ansi`
-
-- `Unicode`
-
-- `Braille`
-
-- `Fade`
-
-- `Ascii`
-
-- `Kanji`
-
-- `Chinese`
-
-- `Sixel`
-
----
-
-`CharsetMode`
-
-Defines the character family used for rendering.
-
----
-
-`ResizeFilter`
-
-Controls image resampling quality.
-
----
-
-`RenderStyle`
-
-Controls layout-related styling such as full-block mode and density.
-
----
-
-## Examples
-
-### Custom Width and Style
-
-```rust
-use image::open;
-use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter};
-
-fn main() -> anyhow::Result<()> {
-    let img = open("sprite.png")?;
-
-    let opts = RenderOptions::builder()
-        .preset(RenderStylePreset::FullBlock)
-        .width(80)
-        .filter(ResizeFilter::Nearest)
-        .build();
-
-    let prepared = opts.prepare_image(&img);
-    prepared.save("preview.png")?;
-
-    Ok(())
-}
-```
-
----
-
-### Example: Rendering to a Buffer
-
-```rust
-use image::open;
-use px2ansi::{RenderOptions, write_ansi_art};
-
-fn main() -> anyhow::Result<()> {
-    let img = open("photo.png")?;
-    let opts = RenderOptions::default();
-    let prepared = opts.prepare_image(&img);
-
-    let mut buf = Vec::new();
-    write_ansi_art(&prepared, &mut buf, opts)?;
-
-    let ansi = String::from_utf8(buf)?;
-    println!("{ansi}");
-
-    Ok(())
-}
-```
-
----
-
-### Rasterization
-
-If you render ANSI art into a byte stream, you can turn it back into a PNG with
-`rasterize_ansi`.
-
-```rust
-use px2ansi::rasterize_ansi;
-
-fn main() -> anyhow::Result<()> {
-    let input = b"\x1b[31m██\x1b[0m\n";
-    let png = rasterize_ansi(input)?;
-    std::fs::write("out.png", png)?;
-    Ok(())
-}
-```
-
----
-
 ### Inspecting Options
 
 ```rust
-// Once you have an options object, you can inspect its state:
+use px2ansi::{RenderOptions, RenderStylePreset};
+
 let opts = RenderOptions::builder()
     .preset(RenderStylePreset::FullBlock)
     .build();
@@ -243,47 +253,16 @@ println!("Current density: {:?}", opts.style().density());
 
 ---
 
-### Reusing the Builder
+## Indexer
 
-```rust
-// New capability: Reusing a builder
-let mut builder = RenderOptions::builder();
-builder.width(100).filter(ResizeFilter::Triangle);
-
-let low_res = builder.build();
-
-// Change one thing and build again
-let high_res = builder.width(200).build();
-```
-
-## Re-exports
-
-The crate root re-exports the most common types so users do not need to dig
-through internal modules:
-
-```rust
-use px2ansi::{
-    cli_enums::{RenderStylePreset, ResizeFilter},
-    indexer::{ImageEntry, build_index},
-    rasterize::rasterize_ansi,
-    render::{
-        CharsetMode, Density, RenderOptions, RenderOptionsBuilder, RenderStyle, write_ansi_art,
-    },
-};
-```
-
----
-
-### Using the Indexer as a Library
-
-The indexer is part of the public `px2ansi` library API and can be used
-independently in your own Rust projects:
+The indexer scans a directory for image files and produces a JSON index. It is
+part of the public `px2ansi` library API:
 
 ```rust
 use px2ansi::indexer::{build_index, ImageEntry};
 use std::path::Path;
 
-// Build the index
+// Build the index — scans subdirectories, ignores non-image files
 build_index(
     Path::new("/home/user/sprites"),
     Path::new("/home/user/sprites/index.json"),
@@ -303,10 +282,15 @@ for entry in &entries {
 }
 ```
 
-### Index Format
+**Indexer behavior:**
 
-The index is a plain JSON file. Easy to inspect, version control, or process
-with other tools:
+- Recursively scans subdirectories for images.
+- Ignores non-image files (`.txt`, `.json`, etc.).
+- Entries are sorted alphabetically by name.
+- An empty directory produces an empty JSON array (`[]`).
+- Image names are derived from the file stem (without extension).
+
+### Index Format
 
 ```json
 [
@@ -325,49 +309,21 @@ with other tools:
 
 ---
 
-### Advanced Usage: Manual Rendering
-
-For most cases, render_centered is the easiest way to go. However, if you need
-full control over the image scaling or want to skip the terminal size detection,
-you can use the low-level render method.
-
-This is useful for TUI applications or when rendering to non-terminal targets
-like files or network streams.
-
-```rust
-use px2ansi::RenderOptions;
-
-fn custom_pipeline(img: &image::DynamicImage) -> anyhow::Result<()> {
-    let opts = RenderOptions::default();
-
-    // 1. Manually prepare the image (resizing happens here)
-    // You can also use your own resizing logic before passing it to render!
-    let prepared = opts.prepare_image(img);
-
-    // 2. Render directly to a writer (no automatic centering)
-    let mut stdout = std::io::stdout();
-    opts.render(&prepared, &mut stdout)?;
-
-    Ok(())
-}
-```
-
----
-
 ## Optional Features
 
-Both features are **enabled by default**. Disable them individually or together
+All features are **enabled by default**. Disable them individually or together
 for minimal builds.
 
 | Feature     | Dependency | What it does                                                         |
 | ----------- | ---------- | -------------------------------------------------------------------- |
-| `rasterize` | `fontdue`  | Renders ANSI art to a PNG image using an embedded monospace font     |
+| `rasterize` | `fontdue`  | Renders ANSI art to a PNG image using an embedded monospace font      |
 | `sixel`     | `viuer`    | Streams pixel-accurate images directly to Sixel-compatible terminals |
+| `parallel`  | `rayon`    | Enables parallel processing for performance                          |
 
-### Controlling features
+### Controlling Features
 
 ```bash
-# Minimal - pure ANSI text output only
+# Minimal — pure ANSI text output only
 cargo add px2ansi --no-default-features
 
 # Sixel terminal output, no PNG rasterization
@@ -376,21 +332,21 @@ cargo add px2ansi --no-default-features --features sixel
 # PNG rasterization, no Sixel output
 cargo add px2ansi --no-default-features --features rasterize
 
-# Everything (Full feature set)
+# Everything (full feature set)
 cargo add px2ansi --features full
 ```
 
 In `Cargo.toml`:
 
 ```toml
-# Default (both features on)
-px2ansi = "0.1.2"
+# Default (rasterize + sixel + parallel)
+px2ansi = "0.2.1"
 
 # Minimal
-px2ansi = { version = "0.1.2", default-features = false }
+px2ansi = { version = "0.2.1", default-features = false }
 
 # Pick what you need
-px2ansi = { version = "0.1.2", default-features = false, features = ["rasterize"] }
+px2ansi = { version = "0.2.1", default-features = false, features = ["rasterize"] }
 ```
 
 ---
@@ -406,9 +362,9 @@ Renders pixel-accurate images inline in the terminal using the
 use px2ansi::{RenderOptions, RenderStylePreset};
 use std::io::stdout;
 
-let mut builder = RenderOptions::builder();
-builder.preset(RenderStylePreset::Sixel);
-let opts = builder.build();
+let opts = RenderOptions::builder()
+    .preset(RenderStylePreset::Sixel)
+    .build();
 
 opts.render_centered(&img, &mut stdout())?;
 ```
@@ -421,48 +377,73 @@ Converts ANSI art to a PNG image using an embedded
 [Iosevka Charon Mono](https://github.com/nicowillis/iosevka-charon) font. Useful
 for saving previews or sharing output as an image.
 
-Use the default TokyoNight Theme:
-
-If you render ANSI art into a byte stream, you can turn it back into a PNG with
-`rasterize_ansi`.
+**With the default TokyoNight theme:**
 
 ```rust
-use px2ansi::rasterize_ansi;
+use px2ansi::{RenderOptions, rasterize_ansi_with_theme, RasterTheme};
 
-fn main() -> anyhow::Result<()> {
-    let input = b"\x1b[31m██\x1b[0m\n";
-    let png = rasterize_ansi(input)?;
-    std::fs::write("out.png", png)?;
-    Ok(())
-}
+let img = image::open("photo.png")?;
+let opts = RenderOptions::default();
+
+// Render to an ANSI buffer
+let mut buf = Vec::new();
+opts.render(&img, &mut buf)?;
+
+// Rasterize to a PNG image
+let png = rasterize_ansi_with_theme(&buf, RasterTheme::TokyoNight)?;
+png.save("output.png")?;
 ```
 
+**With a different theme:**
 
 ```rust
 use px2ansi::{RasterTheme, rasterize_ansi_with_theme};
 
-// First render to an ANSI buffer
-let mut buf = Vec::new();
-opts.render_centered(&img, &mut buf)?;
-
-// Then rasterize to PNG with a theme background
 let png = rasterize_ansi_with_theme(&buf, RasterTheme::Dracula)?;
 png.save("output.png")?;
 ```
 
-Available themes: `TokyoNight` (default), `Dracula`, `Nord`, `GruvboxDark`,
+**Available themes:** `TokyoNight` (default), `Dracula`, `Nord`, `GruvboxDark`,
 `OneDark`, `SolarizedDark`, `Black`, `White`
+
+> Different themes produce different background colors. For example, `TokyoNight`
+> and `White` will render visibly different backgrounds.
 
 ---
 
-### Error Handling
+## Re-exports
 
-Unlike the CLI which uses anyhow for simplicity, the `px2ansi` library provides
-a structured RenderError enum. This allows you to programmatically react to
-specific failure states using `thiserror.`
+The crate root re-exports the most common types so users do not need to dig
+through internal modules:
 
 ```rust
-use px2ansi::{RenderOptions, RenderError, CharsetMode};
+use px2ansi::{
+    // Core rendering
+    RenderOptions, RenderOptionsBuilder, RenderStyle,
+    CharsetMode, Density,
+    write_ansi_art,
+
+    // Presets and filters
+    RenderStylePreset, ResizeFilter,
+
+    // Indexer
+    indexer::{ImageEntry, build_index},
+
+    // Rasterization (requires "rasterize" feature)
+    // rasterize_ansi, rasterize_ansi_with_theme, RasterTheme,
+};
+```
+
+---
+
+## Error Handling
+
+Unlike the CLI which uses `anyhow` for simplicity, the `px2ansi` library provides
+a structured `RenderError` enum. This allows you to programmatically react to
+specific failure states.
+
+```rust
+use px2ansi::{CharsetMode, RenderError};
 use std::str::FromStr;
 
 fn main() {
@@ -470,7 +451,7 @@ fn main() {
 
     match result {
         Err(RenderError::InvalidCharset(name)) => {
-            eprintln!("User tried to use an unsupported charset: {name}");
+            eprintln!("Unsupported charset: {name}");
         }
         Err(RenderError::Io(e)) => {
             eprintln!("A writing error occurred: {e}");
@@ -480,14 +461,14 @@ fn main() {
 }
 ```
 
-**Common Error Variants**
+**Error Variants**
 
 | **Variant**              | **Description**                                                               |
 | ------------------------ | ----------------------------------------------------------------------------- |
 | `InvalidCharset(String)` | Triggered when a string cannot be parsed into a valid `CharsetMode`.          |
-| `InvalidDensity(String)` | Triggered when a string cannot be parsed into a valid `Density`. (ASCII Only) |
+| `InvalidDensity(String)` | Triggered when a string cannot be parsed into a valid `Density`.              |
 | `Io(std::io::Error)`     | Wrapped standard I/O errors (e.g., pipe broken, disk full).                   |
-| `Image(String)`          | Errors occurred during image manipulation or resizing.                        |
+| `Image(String)`          | Errors during image manipulation or resizing.                                 |
 
 ---
 
@@ -499,4 +480,5 @@ If you want the command-line interface, install `px2ansi-rs` instead.
 
 ## License
 
-GPL-3.0
+[GNU General Public License 3.0](https://github.com/saylesss88/px2ansi-rs/blob/main/LICENSE)
+
