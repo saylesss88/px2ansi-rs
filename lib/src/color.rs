@@ -159,9 +159,9 @@ mod tests {
     use super::*;
 
     fn is_neutral([r, g, b]: [u8; 3]) -> bool {
-        let rg = (r as i16 - g as i16).abs();
-        let gb = (g as i16 - b as i16).abs();
-        let rb = (r as i16 - b as i16).abs();
+        let rg = (i16::from(r) - i16::from(g)).abs();
+        let gb = (i16::from(g) - i16::from(b)).abs();
+        let rb = (i16::from(r) - i16::from(b)).abs();
         rg <= 20 && gb <= 20 && rb <= 20
     }
 
