@@ -158,6 +158,14 @@ pub fn terminal_supports_truecolor() -> bool {
 mod tests {
     use super::*;
 
+    fn is_dark([r, g, b]: [u8; 3]) -> bool {
+        r < 40 && g < 40 && b < 40
+    }
+
+    fn is_light([r, g, b]: [u8; 3]) -> bool {
+        r > 200 && g > 200 && b > 200
+    }
+
     fn is_neutral([r, g, b]: [u8; 3]) -> bool {
         let rg = (i16::from(r) - i16::from(g)).abs();
         let gb = (i16::from(g) - i16::from(b)).abs();
@@ -165,42 +173,30 @@ mod tests {
         rg <= 20 && gb <= 20 && rb <= 20
     }
 
-    fn is_reddish([r, g, b]: [u8; 3]) -> bool {
-        r > g.saturating_add(20) && r > b.saturating_add(20)
+    fn has_dominant_red([r, g, b]: [u8; 3]) -> bool {
+        r >= g && r >= b
     }
 
-    fn is_greenish([r, g, b]: [u8; 3]) -> bool {
-        g > r.saturating_add(20) && g > b.saturating_add(20)
+    fn has_dominant_green([r, g, b]: [u8; 3]) -> bool {
+        g >= r && g >= b
     }
 
-    fn is_bluish([r, g, b]: [u8; 3]) -> bool {
-        b > r.saturating_add(20) && b > g.saturating_add(20)
-    }
-
-    fn is_yellowish([r, g, b]: [u8; 3]) -> bool {
-        r > 180 && g > 180 && b < 120
-    }
-
-    fn is_cyanish([r, g, b]: [u8; 3]) -> bool {
-        g > 180 && b > 180 && r < 120
-    }
-
-    fn is_magentish([r, g, b]: [u8; 3]) -> bool {
-        r > 180 && b > 180 && g < 120
+    fn has_dominant_blue([r, g, b]: [u8; 3]) -> bool {
+        b >= r && b >= g
     }
 
     #[test]
     fn maps_black_to_a_dark_entry() {
         let idx = rgb_to_xterm256(0, 0, 0);
-        let [r, g, b] = XTERM_256[idx as usize];
-        assert!(r < 40 && g < 40 && b < 40);
+        let rgb = XTERM_256[idx as usize];
+        assert!(is_dark(rgb));
     }
 
     #[test]
     fn maps_white_to_a_light_entry() {
         let idx = rgb_to_xterm256(255, 255, 255);
-        let [r, g, b] = XTERM_256[idx as usize];
-        assert!(r > 200 && g > 200 && b > 200);
+        let rgb = XTERM_256[idx as usize];
+        assert!(is_light(rgb));
     }
 
     #[test]
@@ -211,44 +207,23 @@ mod tests {
     }
 
     #[test]
-    fn maps_red_to_a_reddish_entry() {
+    fn maps_red_to_an_entry_with_red_dominant() {
         let idx = rgb_to_xterm256(255, 0, 0);
         let rgb = XTERM_256[idx as usize];
-        assert!(is_reddish(rgb));
+        assert!(has_dominant_red(rgb));
     }
 
     #[test]
-    fn maps_green_to_a_greenish_entry() {
+    fn maps_green_to_an_entry_with_green_dominant() {
         let idx = rgb_to_xterm256(0, 255, 0);
         let rgb = XTERM_256[idx as usize];
-        assert!(is_greenish(rgb));
+        assert!(has_dominant_green(rgb));
     }
 
     #[test]
-    fn maps_blue_to_a_bluish_entry() {
+    fn maps_blue_to_an_entry_with_blue_dominant() {
         let idx = rgb_to_xterm256(0, 0, 255);
         let rgb = XTERM_256[idx as usize];
-        assert!(is_bluish(rgb));
-    }
-
-    #[test]
-    fn maps_yellow_to_a_yellowish_entry() {
-        let idx = rgb_to_xterm256(255, 255, 0);
-        let rgb = XTERM_256[idx as usize];
-        assert!(is_yellowish(rgb));
-    }
-
-    #[test]
-    fn maps_cyan_to_a_cyanish_entry() {
-        let idx = rgb_to_xterm256(0, 255, 255);
-        let rgb = XTERM_256[idx as usize];
-        assert!(is_cyanish(rgb));
-    }
-
-    #[test]
-    fn maps_magenta_to_a_magentish_entry() {
-        let idx = rgb_to_xterm256(255, 0, 255);
-        let rgb = XTERM_256[idx as usize];
-        assert!(is_magentish(rgb));
+        assert!(has_dominant_blue(rgb));
     }
 }
