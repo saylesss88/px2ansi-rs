@@ -240,8 +240,12 @@ impl RenderOptions {
 
         let pad_str = " ".repeat(padding as usize);
 
-        // Capture the render into a buffer, then prefix each line with padding
-        let mut buf = Vec::new();
+        // Capture the render into a pre-sized buffer, then prefix each line
+        // with padding.  The capacity estimate (25 bytes per source pixel) is a
+        // conservative upper bound that covers truecolor ANSI escape sequences
+        // and avoids repeated reallocations for large images.
+        let estimated_capacity = prepared.width() as usize * prepared.height() as usize * 25;
+        let mut buf = Vec::with_capacity(estimated_capacity);
         crate::render::write_ansi_art(&prepared, &mut buf, *self)?;
 
         for line in buf.split(|&b| b == b'\n') {

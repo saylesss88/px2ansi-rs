@@ -31,11 +31,46 @@ pub struct ImageEntry {
     pub dimensions: (u32, u32),
 }
 
+/// Attempts to decode a single directory entry into an [`ImageEntry`].
+///
+/// Returns `Ok(None)` for non-image files or entries that should be skipped,
+/// and `Ok(Some(_))` on success.  Image-open failures are silently skipped;
+/// canonicalization failures are propagated.
+fn try_index_entry(entry: walkdir::DirEntry) -> anyhow::Result<Option<ImageEntry>> {
+    let path = entry.path().to_owned();
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let ext = path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    if !matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp" | "bmp") {
+        return Ok(None);
+    }
+    let Ok(img) = image::open(&path) else {
+        return Ok(None);
+    };
+    let absolute_path = fs::canonicalize(&path)?;
+    let Some(stem) = path.file_stem() else {
+        return Ok(None);
+    };
+    Ok(Some(ImageEntry {
+        name: stem.to_string_lossy().into_owned(),
+        path: absolute_path.to_string_lossy().into_owned(),
+        dimensions: img.dimensions(),
+    }))
+}
+
 /// Builds a searchable JSON index of image files found within a directory.
 ///
 /// Recursively scans `dir` for supported image formats (`png`, `jpg`, `jpeg`,
 /// `webp`, `bmp`), extracts their dimensions, and writes a sorted JSON manifest
 /// to `output_path`. Returns the JSON string on success.
+///
+/// When the `parallel` feature is enabled, image decoding is performed
+/// concurrently across all available CPU cores via rayon.
 ///
 /// # Examples
 ///
@@ -63,30 +98,34 @@ pub struct ImageEntry {
 pub fn build_index(dir: &Path, output_path: &Path) -> anyhow::Result<String> {
     let mut index = Vec::new();
 
-    // Iterate through the directory entries
+    #[cfg(feature = "parallel")]
+    {
+        use rayon::prelude::{ParallelBridge, ParallelIterator};
+
+        // par_bridge drives the WalkDir iterator from a single thread and
+        // distributes DirEntry items to the rayon thread pool.  Each
+        // try_index_entry call opens and decodes an image independently, so
+        // CPU-bound decoding work is parallelised while the iterator stays
+        // sequential.
+        let results: Vec<anyhow::Result<Option<ImageEntry>>> = WalkDir::new(dir)
+            .into_iter()
+            .filter_map(Result::ok)
+            .par_bridge()
+            .map(try_index_entry)
+            .collect();
+
+        for result in results {
+            if let Some(entry) = result? {
+                index.push(entry);
+            }
+        }
+    }
+
+    #[cfg(not(feature = "parallel"))]
     for entry in WalkDir::new(dir).into_iter().filter_map(Result::ok) {
-        let path = entry.path();
-        if !path.is_file() {
-            continue;
+        if let Some(e) = try_index_entry(entry)? {
+            index.push(e);
         }
-        let ext = path
-            .extension()
-            .and_then(|s| s.to_str())
-            .unwrap_or("")
-            .to_lowercase();
-        if !matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp" | "bmp") {
-            continue;
-        }
-        let Ok(img) = image::open(path) else { continue };
-        let absolute_path = fs::canonicalize(path)?;
-        let Some(stem) = path.file_stem() else {
-            continue;
-        };
-        index.push(ImageEntry {
-            name: stem.to_string_lossy().into_owned(),
-            path: absolute_path.to_string_lossy().into_owned(),
-            dimensions: img.dimensions(),
-        });
     }
 
     index.sort_by(|a, b| a.name.cmp(&b.name));

@@ -3,7 +3,9 @@
 //! The primary way to use this module is through [`write_ansi_art`], which
 //! handles the internal rendering state and dispatches the image data
 //! to the appropriate strategy based on the provided [`RenderOptions`].
-use image::{DynamicImage, GenericImageView, Rgba};
+use std::borrow::Cow;
+
+use image::{DynamicImage, GenericImageView, Rgba, RgbaImage};
 #[cfg(feature = "sixel")]
 use viuer;
 
@@ -83,7 +85,12 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
     /// Renders using Braille dot patterns (U+2800–U+28FF).
     /// Each 2×4 pixel region maps to one Braille character cell.
     fn braille(&mut self) -> std::io::Result<()> {
-        let rgba = self.img.to_rgba8();
+        // Borrow the inner RgbaImage when the image is already in that format
+        // (e.g. PNG with alpha), avoiding an unnecessary clone/conversion.
+        let rgba: Cow<'_, RgbaImage> = self
+            .img
+            .as_rgba8()
+            .map_or_else(|| Cow::Owned(self.img.to_rgba8()), Cow::Borrowed);
         let (width, height) = rgba.dimensions();
         let dots: [(u32, u32, u8); 8] = [
             (0, 0, 0x01),
@@ -198,7 +205,12 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
     /// steps the x iterator by 2 and uses two spaces for transparent cells so
     /// the grid stays aligned.
     fn charset_colored(&mut self, charset: &[&str], wide: bool) -> std::io::Result<()> {
-        let rgba = self.img.to_rgba8();
+        // Borrow the inner RgbaImage when the image is already in that format
+        // (e.g. PNG with alpha), avoiding an unnecessary clone/conversion.
+        let rgba: Cow<'_, RgbaImage> = self
+            .img
+            .as_rgba8()
+            .map_or_else(|| Cow::Owned(self.img.to_rgba8()), Cow::Borrowed);
         let (width, height) = rgba.dimensions();
         let num_chars_u32 = u32::try_from(charset.len()).unwrap_or(1);
         let num_chars = charset.len();

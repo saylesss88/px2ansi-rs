@@ -1,5 +1,6 @@
 #![cfg(feature = "rasterize")]
 
+use arrayvec::ArrayVec;
 use crate::themes::RasterTheme;
 use fontdue::{Font, FontSettings};
 use image::{Rgba, RgbaImage};
@@ -33,6 +34,9 @@ pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
 /// `ansi_blocks` renderer: both the foreground **and** background colors of each
 /// terminal cell are decoded and used to fill the top/bottom halves of each
 /// pixel cell directly, without going through the font rasterizer.
+///
+/// When the `parallel` feature is enabled, each row of terminal cells is
+/// rendered concurrently via rayon.
 ///
 /// # Examples
 ///
@@ -73,95 +77,43 @@ pub fn rasterize_ansi_with_theme(ansi: &[u8], theme: RasterTheme) -> anyhow::Res
         *pixel = bg_color;
     }
 
-    for (row_idx, row) in cells.iter().enumerate() {
+    // Number of bytes in the flat pixel buffer occupied by one row of cells.
+    // img_h == rows * CELL_H so this divides evenly.
+    let bytes_per_cell_row = CELL_H as usize * img_w as usize * 4;
+
+    #[cfg(feature = "parallel")]
+    {
+        use rayon::prelude::{ParallelBridge, ParallelIterator};
+
+        // Split the flat pixel buffer into per-cell-row chunks and process
+        // them concurrently.  Each chunk is a distinct, non-overlapping region
+        // so there are no data races.
+        img.as_mut()
+            .chunks_mut(bytes_per_cell_row)
+            .zip(cells.iter())
+            .enumerate()
+            .par_bridge()
+            .for_each(|(row_idx, (row_buf, row_cells))| {
+                let Ok(row_u32) = u32::try_from(row_idx) else {
+                    return;
+                };
+                let base_y = row_u32.saturating_mul(CELL_H);
+                render_cell_row_to_buf(row_buf, row_cells, img_w, img_h, base_y, &font, bg_color);
+            });
+    }
+
+    #[cfg(not(feature = "parallel"))]
+    for (row_idx, (row_buf, row_cells)) in img
+        .as_mut()
+        .chunks_mut(bytes_per_cell_row)
+        .zip(cells.iter())
+        .enumerate()
+    {
         let Ok(row_u32) = u32::try_from(row_idx) else {
             continue;
         };
         let base_y = row_u32.saturating_mul(CELL_H);
-
-        for (col_idx, cell) in row.iter().enumerate() {
-            let Ok(col_u32) = u32::try_from(col_idx) else {
-                continue;
-            };
-            let base_x = col_u32.saturating_mul(CELL_W);
-
-            match cell {
-                // Transparent / space — already filled with bg, nothing to do.
-                Cell::Transparent => {}
-
-                // Half-block ▀: top half = fg color, bottom half = bg color.
-                Cell::HalfBlock { top, bot } => {
-                    fill_rect(
-                        &mut img,
-                        base_x,
-                        base_y,
-                        CELL_W,
-                        CELL_H / 2,
-                        *top,
-                        img_w,
-                        img_h,
-                    );
-                    fill_rect(
-                        &mut img,
-                        base_x,
-                        base_y + CELL_H / 2,
-                        CELL_W,
-                        CELL_H - CELL_H / 2,
-                        *bot,
-                        img_w,
-                        img_h,
-                    );
-                }
-
-                // Half-block ▄: bottom half only (top stays bg).
-                Cell::HalfBlockBot { color } => {
-                    fill_rect(
-                        &mut img,
-                        base_x,
-                        base_y + CELL_H / 2,
-                        CELL_W,
-                        CELL_H - CELL_H / 2,
-                        *color,
-                        img_w,
-                        img_h,
-                    );
-                }
-
-                // Ordinary text glyph — rasterize through fontdue.
-                Cell::Glyph(ch, [r, g, b]) => {
-                    let (metrics, bitmap) = font.rasterize(*ch, FONT_SIZE);
-                    if metrics.width == 0 {
-                        continue; // glyph not in font, skip silently
-                    }
-                    let glyph_h = u32::try_from(metrics.height).unwrap_or(0);
-                    let y_offset = CELL_H.saturating_sub(glyph_h) / 2;
-
-                    for gy in 0..metrics.height {
-                        for gx in 0..metrics.width {
-                            let coverage = bitmap[gy * metrics.width + gx];
-                            if coverage == 0 {
-                                continue;
-                            }
-                            let Ok(gx_u32) = u32::try_from(gx) else {
-                                continue;
-                            };
-                            let Ok(gy_u32) = u32::try_from(gy) else {
-                                continue;
-                            };
-                            let px_x = base_x.saturating_add(gx_u32);
-                            let px_y = base_y.saturating_add(y_offset).saturating_add(gy_u32);
-                            if px_x < img_w && px_y < img_h {
-                                img.put_pixel(
-                                    px_x,
-                                    px_y,
-                                    blend_pixel([*r, *g, *b], coverage, bg_color),
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        render_cell_row_to_buf(row_buf, row_cells, img_w, img_h, base_y, &font, bg_color);
     }
 
     Ok(img)
@@ -182,6 +134,103 @@ enum Cell {
     HalfBlockBot { color: Rgba<u8> },
     /// Any other printable character with its foreground color.
     Glyph(char, [u8; 3]),
+}
+
+// ---------------------------------------------------------------------------
+// Cell row renderer (buffer-based)
+// ---------------------------------------------------------------------------
+
+/// Renders one row of terminal cells directly into `row_buf`.
+///
+/// `row_buf` is a flat RGBA byte slice covering exactly `CELL_H` pixel rows for
+/// the full image width (`img_w`).  `base_y` is the absolute y-coordinate of
+/// the first row in `row_buf` and is used only for glyph bounds checking.
+fn render_cell_row_to_buf(
+    row_buf: &mut [u8],
+    row_cells: &[Cell],
+    img_w: u32,
+    img_h: u32,
+    base_y: u32,
+    font: &Font,
+    bg_color: Rgba<u8>,
+) {
+    for (col_idx, cell) in row_cells.iter().enumerate() {
+        let Ok(col_u32) = u32::try_from(col_idx) else {
+            continue;
+        };
+        let base_x = col_u32.saturating_mul(CELL_W);
+
+        match cell {
+            // Transparent / space — already filled with bg, nothing to do.
+            Cell::Transparent => {}
+
+            // Half-block ▀: top half = fg color, bottom half = bg color.
+            Cell::HalfBlock { top, bot } => {
+                fill_rect_buf(row_buf, base_x, base_y, CELL_W, CELL_H / 2, *top, img_w, base_y);
+                fill_rect_buf(
+                    row_buf,
+                    base_x,
+                    base_y + CELL_H / 2,
+                    CELL_W,
+                    CELL_H - CELL_H / 2,
+                    *bot,
+                    img_w,
+                    base_y,
+                );
+            }
+
+            // Half-block ▄: bottom half only (top stays bg).
+            Cell::HalfBlockBot { color } => {
+                fill_rect_buf(
+                    row_buf,
+                    base_x,
+                    base_y + CELL_H / 2,
+                    CELL_W,
+                    CELL_H - CELL_H / 2,
+                    *color,
+                    img_w,
+                    base_y,
+                );
+            }
+
+            // Ordinary text glyph — rasterize through fontdue.
+            Cell::Glyph(ch, [r, g, b]) => {
+                let (metrics, bitmap) = font.rasterize(*ch, FONT_SIZE);
+                if metrics.width == 0 {
+                    continue; // glyph not in font, skip silently
+                }
+                let glyph_h = u32::try_from(metrics.height).unwrap_or(0);
+                let y_offset = CELL_H.saturating_sub(glyph_h) / 2;
+
+                for gy in 0..metrics.height {
+                    for gx in 0..metrics.width {
+                        let coverage = bitmap[gy * metrics.width + gx];
+                        if coverage == 0 {
+                            continue;
+                        }
+                        let Ok(gx_u32) = u32::try_from(gx) else {
+                            continue;
+                        };
+                        let Ok(gy_u32) = u32::try_from(gy) else {
+                            continue;
+                        };
+                        let px_x = base_x.saturating_add(gx_u32);
+                        let px_y = base_y.saturating_add(y_offset).saturating_add(gy_u32);
+                        if px_x < img_w && px_y < img_h {
+                            put_pixel_buf(
+                                row_buf,
+                                px_x,
+                                px_y,
+                                blend_pixel([*r, *g, *b], coverage, bg_color),
+                                img_w,
+                                base_y,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -274,7 +323,13 @@ fn parse_color_params(params: &str, fg: &mut [u8; 3], bg: &mut Rgba<u8>, theme_b
 
     // A single SGR sequence can contain multiple sub-commands separated by ';'.
     // We scan through them so compound sequences like "0;38;2;R;G;B" work too.
-    let parts: Vec<u8> = params.split(';').filter_map(|s| s.parse().ok()).collect();
+    // Use a stack-allocated array (cap=16) to avoid a heap allocation; SGR
+    // sequences in practice have at most 5–6 numeric fields.
+    let parts: ArrayVec<u8, 16> = params
+        .split(';')
+        .filter_map(|s| s.parse().ok())
+        .take(16)
+        .collect();
     let mut idx = 0;
     while idx < parts.len() {
         match parts[idx] {
@@ -303,26 +358,45 @@ fn parse_color_params(params: &str, fg: &mut [u8; 3], bg: &mut Rgba<u8>, theme_b
 // Pixel helpers
 // ---------------------------------------------------------------------------
 
-/// Fills a rectangular region of the image with a solid color, clamped to bounds.
-fn fill_rect(
-    img: &mut RgbaImage,
+/// Writes a single pixel into the flat row buffer.
+///
+/// `abs_py` is the pixel's absolute y in the full image; `base_py` is the
+/// absolute y of the first row in the buffer.  Writes are silently skipped
+/// when the computed offset falls outside `buf`.
+fn put_pixel_buf(buf: &mut [u8], px: u32, abs_py: u32, color: Rgba<u8>, img_w: u32, base_py: u32) {
+    let rel_y = abs_py.saturating_sub(base_py);
+    let offset = (rel_y * img_w + px) as usize * 4;
+    if let Some(slot) = buf.get_mut(offset..offset + 4) {
+        slot.copy_from_slice(&color.0);
+    }
+}
+
+/// Fills a rectangular region within the flat row buffer with a solid color.
+///
+/// `abs_y` is the absolute y of the rectangle's top edge in the full image;
+/// `base_py` is the absolute y of the first row in the buffer.  Writes that
+/// fall outside `buf` or beyond `img_w` are silently skipped.
+#[allow(clippy::too_many_arguments)]
+fn fill_rect_buf(
+    buf: &mut [u8],
     x: u32,
-    y: u32,
+    abs_y: u32,
     w: u32,
     h: u32,
     color: Rgba<u8>,
     img_w: u32,
-    img_h: u32,
+    base_py: u32,
 ) {
-    for py in y..y.saturating_add(h) {
-        if py >= img_h {
-            break;
-        }
+    for py in abs_y..abs_y.saturating_add(h) {
+        let rel_y = py.saturating_sub(base_py);
         for px in x..x.saturating_add(w) {
             if px >= img_w {
                 break;
             }
-            img.put_pixel(px, py, color);
+            let offset = (rel_y * img_w + px) as usize * 4;
+            if let Some(slot) = buf.get_mut(offset..offset + 4) {
+                slot.copy_from_slice(&color.0);
+            }
         }
     }
 }

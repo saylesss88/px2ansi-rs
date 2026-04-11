@@ -41,6 +41,7 @@ clap_builder = "4.6.0"
 default = ["rasterize", "sixel"]
 sixel = ["px2ansi/sixel"]
 rasterize = ["px2ansi/rasterize"]
+parallel = ["px2ansi/parallel"]
 
 
 [profile.release]
