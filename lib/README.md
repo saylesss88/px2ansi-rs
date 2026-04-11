@@ -6,36 +6,36 @@
 
 If you want the command-line interface, check out [px2ansi-rs](../cli).
 
-`px2ansi` converts images into terminal art by resizing them to character‑cell
-proportions, mapping pixels to Unicode, ASCII, Braille, Fade, and other
-character sets, and applying ANSI TrueColor escape sequences for color.
 
-The `px2ansi` crate provides a standalone rendering engine with no CLI
-dependencies.
+`px2ansi` converts images into terminal art by resizing them to terminal cell
+proportions, mapping pixels to several character sets, and writing ANSI-colored
+output to any `Write` target.
 
-It is designed as the reusable core behind `px2ansi-rs`, but it can also be used
-directly as a library in your own projects.
+It is the rendering core behind `px2ansi-rs`, but it can also be used directly
+in other Rust projects.
 
-**Features**
+## Features
 
 - Multiple rendering styles: `ansi`, `unicode`, `braille`, `fade`, `ascii`,
-  `chinese`, `kanji`.
+  `chinese`, `kanji`, `sixel`.
 
 - Configurable resize filters.
 
 - Automatic terminal-friendly dimension calculation.
 
-- ANSI art rendering to any `Write` target.
+- Write ANSI art to any `std::io::Write` target.
 
-- Rasterization support for converting ANSI output back into PNG.
+- Optionally rasterize ANSI output back into PNG
 
-**Installation**
+- Optional Sixel output for terminals that support it
+
+## Installation
 
 Add `px2ansi` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-px2ansi = "0.1.0"
+px2ansi = "0.1.2"
 image = "0.25.10"
 ```
 
@@ -133,6 +133,8 @@ A convenience enum for quickly choosing a style preset such as:
 - `Kanji`
 
 - `Chinese`
+
+- `Sixel`
 
 ---
 
@@ -265,26 +267,6 @@ use px2ansi::{
         CharsetMode, Density, RenderOptions, RenderOptionsBuilder, RenderStyle, write_ansi_art,
     },
 };
-```
-
----
-
-## Image Indexing
-
-px2ansi-rs includes a built-in indexer that recursively scans a directory of
-images and builds a searchable JSON manifest. This enables the fast,
-fuzzy-search powered `show` command.
-
-### Building an Index
-
-```bash
-# Index a directory of sprites
-px2ansi-rs index ~/sprites --output ~/sprites/index.json
-
-# Then show any sprite by name (supports fuzzy matching)
-px2ansi-rs show pikachu
-px2ansi-rs show random
-px2ansi-rs show pika --style braille  # fuzzy matches "pikachu"
 ```
 
 ---
@@ -438,7 +420,6 @@ for saving previews or sharing output as an image.
 
 Use the default TokyoNight Theme:
 
-```rust
 If you render ANSI art into a byte stream, you can turn it back into a PNG with
 `rasterize_ansi`.
 
