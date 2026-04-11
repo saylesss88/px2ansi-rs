@@ -4,6 +4,9 @@ use image::GenericImageView;
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
 /// Represents a single image discovered during the indexing process.
 ///
 /// Entries are produced by [`build_index`] and can be deserialized from
@@ -61,38 +64,50 @@ pub struct ImageEntry {
 /// * **I/O Failure:** The final JSON index cannot be written to the `output_path` (e.g.,
 ///   the directory doesn't exist, is read-only, or the disk is full).
 pub fn build_index(dir: &Path, output_path: &Path) -> anyhow::Result<String> {
-    let mut index = Vec::new();
+    // Collect valid paths first — WalkDir is not Send so can't be parallelized directly
+    let paths: Vec<_> = WalkDir::new(dir)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|e| e.path().is_file())
+        .filter(|e| {
+            let ext = e
+                .path()
+                .extension()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+            matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp" | "bmp")
+        })
+        .collect();
 
-    // Iterate through the directory entries
-    for entry in WalkDir::new(dir).into_iter().filter_map(Result::ok) {
-        let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-        let ext = path
-            .extension()
-            .and_then(|s| s.to_str())
-            .unwrap_or("")
-            .to_lowercase();
-        if !matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp" | "bmp") {
-            continue;
-        }
-        let Ok(img) = image::open(path) else { continue };
-        let absolute_path = fs::canonicalize(path)?;
-        let Some(stem) = path.file_stem() else {
-            continue;
-        };
-        index.push(ImageEntry {
-            name: stem.to_string_lossy().into_owned(),
-            path: absolute_path.to_string_lossy().into_owned(),
-            dimensions: img.dimensions(),
-        });
-    }
+    // Process images in parallel with parallel feature (rayon), sequential otherwise
+    #[cfg(feature = "parallel")]
+    let mut index: Vec<ImageEntry> = paths
+        .par_iter()
+        .filter_map(|entry| process_entry(entry.path()))
+        .collect();
+
+    #[cfg(not(feature = "parallel"))]
+    let mut index: Vec<ImageEntry> = paths
+        .iter()
+        .filter_map(|entry| process_entry(entry.path()))
+        .collect();
 
     index.sort_by(|a, b| a.name.cmp(&b.name));
     let json_data = serde_json::to_string_pretty(&index)?;
-
     fs::write(output_path, &json_data)?;
-
     Ok(json_data)
+}
+
+/// Processes a single image path into an [`ImageEntry`].
+/// Returns `None` if the image cannot be opened or the path has no stem.
+fn process_entry(path: &Path) -> Option<ImageEntry> {
+    let img = image::open(path).ok()?;
+    let absolute_path = fs::canonicalize(path).ok()?;
+    let stem = path.file_stem()?;
+    Some(ImageEntry {
+        name: stem.to_string_lossy().into_owned(),
+        path: absolute_path.to_string_lossy().into_owned(),
+        dimensions: img.dimensions(),
+    })
 }

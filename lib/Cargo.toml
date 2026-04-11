@@ -26,9 +26,11 @@ colored = { version = "3.1.1" }
 walkdir = { version = "2.5.0" }
 thiserror = "2.0.18"
 viuer = { version = "0.11.0", optional = true }
+rayon = { version = "1.11.0", optional = true }
 
 [features]
-default = ["rasterize", "sixel"]
+default = ["rasterize", "sixel", "parallel"]
 sixel = ["dep:viuer"]
 rasterize = ["dep:fontdue"]
-full = ["rasterize", "sixel"]
+full = ["rasterize", "sixel", "parallel"]
+parallel = ["dep:rayon"]

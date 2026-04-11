@@ -6,7 +6,7 @@ use image::{Rgba, RgbaImage};
 
 const FONT_SIZE: f32 = 14.0;
 const CELL_W: u32 = 8;
-/// Must match FONT_SIZE to avoid per-row gaps.
+/// Must match `FONT_SIZE` to avoid per-row gaps.
 const CELL_H: u32 = 14;
 
 const DEFAULT_FONT: &[u8] = include_bytes!("../assets/IosevkaCharonMono-Regular.ttf");
@@ -145,11 +145,11 @@ pub fn rasterize_ansi_with_theme(ansi: &[u8], theme: RasterTheme) -> anyhow::Res
                             let Ok(gx_u32) = u32::try_from(gx) else {
                                 continue;
                             };
-                            let Ok(gy_u32) = u32::try_from(gy) else {
+                            let Ok(glyph_u32) = u32::try_from(gy) else {
                                 continue;
                             };
                             let px_x = base_x.saturating_add(gx_u32);
-                            let px_y = base_y.saturating_add(y_offset).saturating_add(gy_u32);
+                            let px_y = base_y.saturating_add(y_offset).saturating_add(glyph_u32);
                             if px_x < img_w && px_y < img_h {
                                 img.put_pixel(
                                     px_x,
@@ -304,6 +304,7 @@ fn parse_color_params(params: &str, fg: &mut [u8; 3], bg: &mut Rgba<u8>, theme_b
 // ---------------------------------------------------------------------------
 
 /// Fills a rectangular region of the image with a solid color, clamped to bounds.
+#[allow(clippy::too_many_arguments)]
 fn fill_rect(
     img: &mut RgbaImage,
     x: u32,

@@ -212,7 +212,7 @@ impl RenderOptions {
     /// # Errors
     ///
     /// This function will return an error if:
-    /// * The underlying rendering engine ([`write_ansi_art`][crate::render::write_ansi_art])
+    /// * The underlying rendering engine ([`write_ansi_art`][crate::write_ansi_art])
     ///   fails to process the image.
     /// * An allocation or I/O error occurs while buffering or writing the rendered output.
     pub fn render_centered<W: Write>(
@@ -220,6 +220,7 @@ impl RenderOptions {
         img: &DynamicImage,
         writer: &mut W,
     ) -> anyhow::Result<()> {
+        const BYTES_PER_PIXEL_ESTIMATE: usize = 25;
         let prepared = self.prepare_image(img);
 
         // Get rendered width in terminal columns
@@ -240,9 +241,18 @@ impl RenderOptions {
 
         let pad_str = " ".repeat(padding as usize);
 
-        // Capture the render into a buffer, then prefix each line with padding
-        let mut buf = Vec::new();
-        crate::render::write_ansi_art(&prepared, &mut buf, *self)?;
+        // Capture the render into a pre-sized buffer, then prefix each line
+        // with padding.
+        //
+        // Capacity estimate: a truecolor ANSI cell (▀/▄) with both fg and bg
+        // escape sequences is roughly `\x1b[38;2;255;255;255m\x1b[48;2;255;255;255m▀`
+        // ≈ 40 bytes, and each cell represents 2 source pixels, giving ~20 bytes
+        // per pixel.  A 25-byte estimate adds a comfortable margin for resets
+        // ("\x1b[0m") and newlines without over-allocating for other modes.
+        let estimated_capacity =
+            prepared.width() as usize * prepared.height() as usize * BYTES_PER_PIXEL_ESTIMATE;
+        let mut buf = Vec::with_capacity(estimated_capacity);
+        crate::write_ansi_art(&prepared, &mut buf, *self)?;
 
         for line in buf.split(|&b| b == b'\n') {
             if !line.is_empty() {

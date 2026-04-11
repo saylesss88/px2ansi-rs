@@ -38,9 +38,10 @@ confy = "2.0.0"                                                                 
 clap_builder = "4.6.0"
 
 [features]
-default = ["rasterize", "sixel"]
+default = ["rasterize", "sixel", "parallel"]
 sixel = ["px2ansi/sixel"]
 rasterize = ["px2ansi/rasterize"]
+parallel = ["px2ansi/parallel"]
 
 
 [profile.release]
