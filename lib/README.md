@@ -206,7 +206,7 @@ fn main() -> anyhow::Result<()> {
 ### Rasterization
 
 If you render ANSI art into a byte stream, you can turn it back into a PNG with
-rasterize_ansi.
+`rasterize_ansi`.
 
 ```rust
 use px2ansi::rasterize_ansi;
@@ -272,10 +272,11 @@ use px2ansi::{
 ## Image Indexing
 
 px2ansi-rs includes a built-in indexer that recursively scans a directory of
-images and builds a searchable JSON manifest. This enables the fast, fuzzy-search
-powered `show` command.
+images and builds a searchable JSON manifest. This enables the fast,
+fuzzy-search powered `show` command.
 
 ### Building an Index
+
 ```bash
 # Index a directory of sprites
 px2ansi-rs index ~/sprites --output ~/sprites/index.json
@@ -308,9 +309,9 @@ let json = std::fs::read_to_string("index.json")?;
 let entries: Vec<ImageEntry> = serde_json::from_str(&json)?;
 
 for entry in &entries {
-    println!("{}: {}x{}px at {}", 
-        entry.name, 
-        entry.dimensions.0, 
+    println!("{}: {}x{}px at {}",
+        entry.name,
+        entry.dimensions.0,
         entry.dimensions.1,
         entry.path
     );
@@ -321,6 +322,7 @@ for entry in &entries {
 
 The index is a plain JSON file. Easy to inspect, version control, or process
 with other tools:
+
 ```json
 [
   {
@@ -330,7 +332,7 @@ with other tools:
   },
   {
     "name": "charizard",
-    "path": "/home/user/sprites/charizard.png", 
+    "path": "/home/user/sprites/charizard.png",
     "dimensions": [128, 128]
   }
 ]
@@ -369,23 +371,103 @@ fn custom_pipeline(img: &image::DynamicImage) -> anyhow::Result<()> {
 
 ## Optional Features
 
-### Sixel
+Both features are **enabled by default**. Disable them individually or together
+for minimal builds.
 
-Renders true pixel images in Sixel-compatible terminals (foot, WezTerm, iTerm2):
+| Feature     | Dependency | What it does                                                         |
+| ----------- | ---------- | -------------------------------------------------------------------- |
+| `rasterize` | `fontdue`  | Renders ANSI art to a PNG image using an embedded monospace font     |
+| `sixel`     | `viuer`    | Streams pixel-accurate images directly to Sixel-compatible terminals |
+
+### Controlling features
+
+```bash
+# Minimal - pure ANSI text output only
+cargo add px2ansi --no-default-features
+
+# Sixel terminal output, no PNG rasterization
+cargo add px2ansi --no-default-features --features sixel
+
+# PNG rasterization, no Sixel output
+cargo add px2ansi --no-default-features --features rasterize
+
+# Everything (Full feature set)
+cargo add px2ansi --features full
+```
+
+In `Cargo.toml`:
 
 ```toml
-px2ansi = { version = "0.1", features = ["sixel"] }
+# Default (both features on)
+px2ansi = "0.1.2"
+
+# Minimal
+px2ansi = { version = "0.1.2", default-features = false }
+
+# Pick what you need
+px2ansi = { version = "0.1.2", default-features = false, features = ["rasterize"] }
 ```
+
+---
+
+### Sixel
+
+Renders pixel-accurate images inline in the terminal using the
+[Sixel graphics protocol](https://en.wikipedia.org/wiki/Sixel).
+
+**Compatible terminals:** foot, WezTerm, iTerm2, mlterm, xterm (with `-ti 340`)
 
 ```rust
 use px2ansi::{RenderOptions, RenderStylePreset};
+use std::io::stdout;
 
-let opts = RenderOptions::builder()
-    .preset(RenderStylePreset::Sixel)
-    .build();
+let mut builder = RenderOptions::builder();
+builder.preset(RenderStylePreset::Sixel);
+let opts = builder.build();
 
 opts.render_centered(&img, &mut stdout())?;
 ```
+
+---
+
+### Rasterize
+
+Converts ANSI art to a PNG image using an embedded
+[Iosevka Charon Mono](https://github.com/nicowillis/iosevka-charon) font. Useful
+for saving previews or sharing output as an image.
+
+Use the default TokyoNight Theme:
+
+```rust
+If you render ANSI art into a byte stream, you can turn it back into a PNG with
+`rasterize_ansi`.
+
+```rust
+use px2ansi::rasterize_ansi;
+
+fn main() -> anyhow::Result<()> {
+    let input = b"\x1b[31m██\x1b[0m\n";
+    let png = rasterize_ansi(input)?;
+    std::fs::write("out.png", png)?;
+    Ok(())
+}
+```
+
+
+```rust
+use px2ansi::{RasterTheme, rasterize_ansi_with_theme};
+
+// First render to an ANSI buffer
+let mut buf = Vec::new();
+opts.render_centered(&img, &mut buf)?;
+
+// Then rasterize to PNG with a theme background
+let png = rasterize_ansi_with_theme(&buf, RasterTheme::Dracula)?;
+png.save("output.png")?;
+```
+
+Available themes: `TokyoNight` (default), `Dracula`, `Nord`, `GruvboxDark`,
+`OneDark`, `SolarizedDark`, `Black`, `White`
 
 ---
 
