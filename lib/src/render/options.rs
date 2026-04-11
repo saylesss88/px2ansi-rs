@@ -241,10 +241,16 @@ impl RenderOptions {
         let pad_str = " ".repeat(padding as usize);
 
         // Capture the render into a pre-sized buffer, then prefix each line
-        // with padding.  The capacity estimate (25 bytes per source pixel) is a
-        // conservative upper bound that covers truecolor ANSI escape sequences
-        // and avoids repeated reallocations for large images.
-        let estimated_capacity = prepared.width() as usize * prepared.height() as usize * 25;
+        // with padding.
+        //
+        // Capacity estimate: a truecolor ANSI cell (▀/▄) with both fg and bg
+        // escape sequences is roughly "\x1b[38;2;255;255;255m\x1b[48;2;255;255;255m▀"
+        // ≈ 40 bytes, and each cell represents 2 source pixels, giving ~20 bytes
+        // per pixel.  A 25-byte estimate adds a comfortable margin for resets
+        // ("\x1b[0m") and newlines without over-allocating for other modes.
+        const BYTES_PER_PIXEL_ESTIMATE: usize = 25;
+        let estimated_capacity =
+            prepared.width() as usize * prepared.height() as usize * BYTES_PER_PIXEL_ESTIMATE;
         let mut buf = Vec::with_capacity(estimated_capacity);
         crate::render::write_ansi_art(&prepared, &mut buf, *self)?;
 

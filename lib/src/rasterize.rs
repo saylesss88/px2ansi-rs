@@ -166,6 +166,7 @@ fn render_cell_row_to_buf(
 
             // Half-block ▀: top half = fg color, bottom half = bg color.
             Cell::HalfBlock { top, bot } => {
+                // Top half starts at the row's base_y, so abs_y == base_py here.
                 fill_rect_buf(row_buf, base_x, base_y, CELL_W, CELL_H / 2, *top, img_w, base_y);
                 fill_rect_buf(
                     row_buf,
@@ -365,7 +366,8 @@ fn parse_color_params(params: &str, fg: &mut [u8; 3], bg: &mut Rgba<u8>, theme_b
 /// when the computed offset falls outside `buf`.
 fn put_pixel_buf(buf: &mut [u8], px: u32, abs_py: u32, color: Rgba<u8>, img_w: u32, base_py: u32) {
     let rel_y = abs_py.saturating_sub(base_py);
-    let offset = (rel_y * img_w + px) as usize * 4;
+    // Cast to usize before multiplication to prevent u32 overflow on large images.
+    let offset = (rel_y as usize * img_w as usize + px as usize) * 4;
     if let Some(slot) = buf.get_mut(offset..offset + 4) {
         slot.copy_from_slice(&color.0);
     }
@@ -393,7 +395,8 @@ fn fill_rect_buf(
             if px >= img_w {
                 break;
             }
-            let offset = (rel_y * img_w + px) as usize * 4;
+            // Cast to usize before multiplication to prevent u32 overflow on large images.
+            let offset = (rel_y as usize * img_w as usize + px as usize) * 4;
             if let Some(slot) = buf.get_mut(offset..offset + 4) {
                 slot.copy_from_slice(&color.0);
             }
