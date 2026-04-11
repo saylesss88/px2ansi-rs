@@ -1,6 +1,8 @@
 use std::str::FromStr;
 use thiserror::Error;
 
+use crate::color::terminal_supports_truecolor;
+
 /// Defines the character set used to represent pixels in the terminal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CharsetMode {
@@ -119,4 +121,27 @@ pub enum RenderError {
 
     #[error("Invalid density: {0}. (valid: light, medium, heavy)")]
     InvalidDensity(String),
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ColorMode {
+    /// 24-bit truecolor ANSI escapes
+    #[default]
+    TrueColor,
+    /// Oklab-quantized xterm 256-color escapes  
+    Ansi256,
+    /// No color
+    None,
+}
+
+impl ColorMode {
+    /// Auto-detect the best color mode the terminal supports.
+    #[must_use]
+    pub fn detect() -> Self {
+        if terminal_supports_truecolor() {
+            Self::TrueColor
+        } else {
+            Self::Ansi256
+        }
+    }
 }

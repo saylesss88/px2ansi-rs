@@ -244,8 +244,20 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                 let idx = ((normalized * (num_chars_u32 - 1) / 255) as usize).min(num_chars - 1);
                 let glyph = charset[idx];
 
+                // if self.options.color() {
+                //     write!(self.writer, "\x1b[38;2;{red};{green};{blue}m{glyph}")?;
+                // } else {
+                //     write!(self.writer, "{glyph}")?;
+                // }
                 if self.options.color() {
-                    write!(self.writer, "\x1b[38;2;{red};{green};{blue}m{glyph}")?;
+                    write_colored_glyph(
+                        self.writer,
+                        glyph,
+                        red,
+                        green,
+                        blue,
+                        self.options.color_mode(),
+                    )?;
                 } else {
                     write!(self.writer, "{glyph}")?;
                 }
@@ -328,22 +340,24 @@ pub fn write_sixel(img: &image::DynamicImage) -> std::io::Result<()> {
         .map_err(|e| std::io::Error::other(e.to_string()))
 }
 
-/// Detects whether the terminal supports 24-bit truecolor.
-///
-/// Checks `COLORTERM` env var first (most reliable), then falls back
-/// to checking `TERM` for known truecolor terminals.
-pub fn terminal_supports_truecolor() -> bool {
-    if let Ok(colorterm) = std::env::var("COLORTERM") {
-        let ct = colorterm.to_lowercase();
-        if ct == "truecolor" || ct == "24bit" {
-            return true;
+fn write_colored_glyph<W: Write>(
+    writer: &mut W,
+    glyph: &str,
+    r: u8,
+    g: u8,
+    b: u8,
+    color_mode: ColorMode,
+) -> std::io::Result<()> {
+    match color_mode {
+        ColorMode::TrueColor => {
+            write!(writer, "\x1b[38;2;{r};{g};{b}m{glyph}")
+        }
+        ColorMode::Ansi256 => {
+            let idx = crate::color::rgb_to_xterm256(r, g, b);
+            write!(writer, "\x1b[38;5;{idx}m{glyph}")
+        }
+        ColorMode::None => {
+            write!(writer, "{glyph}")
         }
     }
-    if let Ok(term) = std::env::var("TERM") {
-        let t = term.to_lowercase();
-        if t.contains("256color") || t.contains("truecolor") {
-            return true;
-        }
-    }
-    false
 }

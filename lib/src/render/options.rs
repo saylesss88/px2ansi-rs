@@ -1,7 +1,7 @@
 #![allow(clippy::missing_const_for_fn)]
 use super::types::{CharsetMode, Density, RenderStyle};
 use crate::cli_enums::{RenderStylePreset, ResizeFilter};
-use crate::render::get_terminal_size;
+use crate::render::{ColorMode, get_terminal_size};
 use image::{DynamicImage, imageops::FilterType};
 use std::io::Write;
 
@@ -16,6 +16,7 @@ pub struct RenderOptions {
     charset: CharsetMode,
     style: RenderStyle,
     color: bool,
+    color_mode: ColorMode,
 }
 
 impl Default for RenderOptions {
@@ -26,6 +27,7 @@ impl Default for RenderOptions {
             charset: CharsetMode::Ansi,
             style: RenderStyle::default(),
             color: true, // color on by default
+            color_mode: ColorMode::detect(),
         }
     }
 }
@@ -62,6 +64,7 @@ pub struct RenderOptionsBuilder {
     width: Option<u32>,
     filter: Option<ResizeFilter>,
     color: bool,
+    color_mode: Option<ColorMode>,
 }
 
 impl RenderOptionsBuilder {
@@ -89,6 +92,17 @@ impl RenderOptionsBuilder {
 
     pub fn color(&mut self, color: bool) -> &mut Self {
         self.color = color;
+        self
+    }
+
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn with_color_mode(mut self, color_mode: ColorMode) -> Self {
+        self.color_mode = Some(color_mode);
         self
     }
     #[must_use]
@@ -152,6 +166,10 @@ impl RenderOptions {
     pub const fn no_color(mut self) -> Self {
         self.color = false;
         self
+    }
+    #[must_use]
+    pub const fn color_mode(&self) -> ColorMode {
+        self.color_mode
     }
     /// Prepares a `DynamicImage` for the terminal by resizing it to fit the
     /// calculated constraints.  
