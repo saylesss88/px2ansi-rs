@@ -45,19 +45,19 @@ pub fn build_render_options(
     let mut builder = RenderOptions::builder();
 
     if let Some(s) = style {
-        builder.preset(s);
+        builder = builder.preset(s);
     }
     if let Some(d) = density {
-        builder.density(d);
+        builder = builder.density(d);
     }
     if let Some(w) = width {
-        builder.width(w);
+        builder = builder.width(w);
     }
     if let Some(f) = filter {
-        builder.filter(f);
+        builder = builder.filter(f);
     }
     if no_color {
-        builder.color(false);
+        builder = builder.color(false);
     }
 
     builder.build()

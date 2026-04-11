@@ -128,26 +128,45 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                         }
                     }
                 }
+
                 if byte == 0 || lit_count == 0 {
-                    write!(self.writer, "\x1b[0m\u{2800}")?;
+                    if self.options.color() {
+                        write!(self.writer, "\x1b[0m\u{2800}")?;
+                    } else {
+                        write!(self.writer, "\u{2800}")?;
+                    }
                 } else {
                     let red = u8::try_from(r_sum / lit_count).unwrap_or(0);
                     let green = u8::try_from(g_sum / lit_count).unwrap_or(0);
                     let blue = u8::try_from(b_sum / lit_count).unwrap_or(0);
-                    let ch = char::from_u32(0x2800 + u32::from(byte)).unwrap_or(' ');
 
+                    let ch = char::from_u32(0x2800 + u32::from(byte)).unwrap_or(' ');
+                    let mut buf = [0u8; 4];
+                    let glyph = ch.encode_utf8(&mut buf);
                     if self.options.color() {
-                        write!(self.writer, "\x1b[38;2;{red};{green};{blue}m{ch}")?;
+                        write_colored_glyph(
+                            self.writer,
+                            glyph,
+                            red,
+                            green,
+                            blue,
+                            self.options.color_mode(),
+                        )?;
                     } else {
                         write!(self.writer, "{ch}")?;
                     }
                 }
             }
-            writeln!(self.writer, "\x1b[0m")?;
+
+            if self.options.color() {
+                writeln!(self.writer, "\x1b[0m")?;
+            } else {
+                writeln!(self.writer)?;
+            }
         }
+
         Ok(())
     }
-
     /// Renders using a block-shade ramp (░▒▓█).
     fn fade(&mut self) -> std::io::Result<()> {
         self.charset_colored(&[" ", "░", "▒", "▓", "█"], false)
@@ -211,8 +230,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         let x_step = if wide { 2 } else { 1 };
         let blank = if wide { "  " } else { " " };
 
-        // First pass: find the actual luma range of opaque pixels so we can
-        // normalize dark images (like the NixOS logo) across the full charset.
+        // First pass: find the actual luma range of opaque pixels
         let mut luma_min = u32::MAX;
         let mut luma_max = u32::MIN;
         for y in 0..height {
@@ -227,14 +245,30 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                 }
             }
         }
+
+        // Guard: fully transparent image — write all blanks and return
+        if luma_min == u32::MAX {
+            for _ in 0..height {
+                for _ in (0..width).step_by(x_step) {
+                    write!(self.writer, "{blank}")?;
+                }
+                writeln!(self.writer)?;
+            }
+            return Ok(());
+        }
+
         let luma_range = (luma_max - luma_min).max(1);
 
-        // Second pass: render each pixel as a colored glyph.
+        // Second pass: render each pixel as a colored glyph
         for y in 0..height {
             for x in (0..width).step_by(x_step) {
                 let [red, green, blue, alpha] = rgba.get_pixel(x, y).0;
                 if alpha < ALPHA_THRESHOLD {
-                    write!(self.writer, "\x1b[0m{blank}")?;
+                    if self.options.color() {
+                        write!(self.writer, "\x1b[0m{blank}")?;
+                    } else {
+                        write!(self.writer, "{blank}")?;
+                    }
                     continue;
                 }
                 let luma =
@@ -243,12 +277,6 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                 let normalized = ((luma - luma_min) * 255) / luma_range;
                 let idx = ((normalized * (num_chars_u32 - 1) / 255) as usize).min(num_chars - 1);
                 let glyph = charset[idx];
-
-                // if self.options.color() {
-                //     write!(self.writer, "\x1b[38;2;{red};{green};{blue}m{glyph}")?;
-                // } else {
-                //     write!(self.writer, "{glyph}")?;
-                // }
                 if self.options.color() {
                     write_colored_glyph(
                         self.writer,
@@ -262,7 +290,12 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                     write!(self.writer, "{glyph}")?;
                 }
             }
-            writeln!(self.writer, "\x1b[0m")?;
+            // End of row reset
+            if self.options.color() {
+                writeln!(self.writer, "\x1b[0m")?;
+            } else {
+                writeln!(self.writer)?;
+            }
         }
         Ok(())
     }

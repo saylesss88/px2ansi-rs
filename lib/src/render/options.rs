@@ -70,27 +70,32 @@ pub struct RenderOptionsBuilder {
 impl RenderOptionsBuilder {
     /// Sets a high-level preset, such as ANSI or Braille.
     /// Presets provide baseline charset and style defaults.
-    pub fn preset(&mut self, preset: RenderStylePreset) -> &mut Self {
+    #[must_use]
+    pub fn preset(mut self, preset: RenderStylePreset) -> Self {
         self.preset = Some(preset);
         self
     }
 
-    pub fn density(&mut self, density: Density) -> &mut Self {
+    #[must_use]
+    pub fn density(mut self, density: Density) -> Self {
         self.density = Some(density);
         self
     }
 
-    pub fn width(&mut self, width: u32) -> &mut Self {
+    #[must_use]
+    pub fn width(mut self, width: u32) -> Self {
         self.width = Some(width);
         self
     }
 
-    pub fn filter(&mut self, filter: ResizeFilter) -> &mut Self {
+    #[must_use]
+    pub fn filter(mut self, filter: ResizeFilter) -> Self {
         self.filter = Some(filter);
         self
     }
 
-    pub fn color(&mut self, color: bool) -> &mut Self {
+    #[must_use]
+    pub fn color(mut self, color: bool) -> Self {
         self.color = color;
         self
     }

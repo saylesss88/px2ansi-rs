@@ -63,11 +63,28 @@ browsing, and advanced filters. It is approximately 25x faster.
 - **Optional monochrome output** — Use `--no-color` where it makes sense.
 - Optionally rasterize ANSI output back into PNG
 - Optional Sixel output for terminals that support it
+- Optional parallel execution (rayon)
 
 `px2ansi-rs` is built on top of [`px2ansi`](https://crates.io/crates/px2ansi), 
 a standalone Rust library that exposes the full rendering engine as a public
 API.
 
+### Optional Features
+
+Sixel, Rasterization, and rayon are all optional features.
+
+```bash
+cargo install px2ansi-rs --no-default-features
+
+# Sixel terminal output, no PNG rasterization or rayon
+cargo install px2ansi-rs --no-default-features --features sixel
+
+# Only enable parallel execution with rayon
+cargo install px2ansi-rs --no-default-features --features parallel
+
+# Only enable rasterization
+cargo install px2ansi-rs --no-default-features --features rasterize
+```
 ---
 
 ## Installation

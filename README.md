@@ -60,19 +60,22 @@ browsing, and advanced filters. It is approximately 25x faster.
 
 ## Optional Features
 
-### Sixel Support
+Sixel, Rasterization, and rayon are all optional features.
 
-**Sixel** (short for six pixels),
+```bash
+cargo install px2ansi-rs --no-default-features
 
-Sixel renders true pixel images in supported terminals (foot, WezTerm, iTerm2,
-ghosTTY).
+# Sixel terminal output, no PNG rasterization or rayon
+cargo install px2ansi-rs --no-default-features --features sixel
 
-```sh
-cargo install px2ansi-rs --features sixel
-px2ansi-rs convert image.png --style sixel
+cargo install px2ansi-rs --no-default-features --features parallel
+
+cargo install px2ansi-rs --no-default-features --features rasterize
 ```
 
-Requires a Sixel-compatible terminal. Falls back gracefully if not supported.
+
+### Rayon (parallel builds)
+
 
 ---
 
