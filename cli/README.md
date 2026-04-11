@@ -10,7 +10,7 @@
 
 `px2ansi-rs` is a high-fidelity terminal art engine and asset manager.
 
-It transforms images into terminal-native art using 8 rendering styles, from
+It transforms images into terminal-native art using 9 rendering styles, from
 classic ANSI blocks to high-density Braille and Kanji.
 With built-in indexing and manifest support, it is designed to manage and
 display entire sprite libraries with the same ease as `pokemon-colorscripts`.
@@ -61,6 +61,8 @@ browsing, and advanced filters. It is approximately 25x faster.
 - **Embedded font rasterization** — `IosevkaCharonMono-Regular.ttf` is bundled
   for rasterization.
 - **Optional monochrome output** — Use `--no-color` where it makes sense.
+- Optionally rasterize ANSI output back into PNG
+- Optional Sixel output for terminals that support it
 
 `px2ansi-rs` is built on top of [`px2ansi`](https://crates.io/crates/px2ansi), 
 a standalone Rust library that exposes the full rendering engine as a public
