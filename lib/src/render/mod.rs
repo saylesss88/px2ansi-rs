@@ -327,3 +327,23 @@ pub fn write_sixel(img: &image::DynamicImage) -> std::io::Result<()> {
         .map(|_| ())
         .map_err(|e| std::io::Error::other(e.to_string()))
 }
+
+/// Detects whether the terminal supports 24-bit truecolor.
+///
+/// Checks `COLORTERM` env var first (most reliable), then falls back
+/// to checking `TERM` for known truecolor terminals.
+pub fn terminal_supports_truecolor() -> bool {
+    if let Ok(colorterm) = std::env::var("COLORTERM") {
+        let ct = colorterm.to_lowercase();
+        if ct == "truecolor" || ct == "24bit" {
+            return true;
+        }
+    }
+    if let Ok(term) = std::env::var("TERM") {
+        let t = term.to_lowercase();
+        if t.contains("256color") || t.contains("truecolor") {
+            return true;
+        }
+    }
+    false
+}
