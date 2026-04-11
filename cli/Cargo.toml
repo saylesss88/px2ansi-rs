@@ -37,6 +37,10 @@ serde = { version = "1.0.228", features = ["derive"] }
 confy = "2.0.0"                                                                    # CLI-only config, not shared
 clap_builder = "4.6.0"
 
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.0"
+
 [features]
 default = ["rasterize", "sixel", "parallel"]
 sixel = ["px2ansi/sixel"]
