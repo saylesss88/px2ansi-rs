@@ -37,7 +37,7 @@ Add `px2ansi` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-px2ansi = "0.1.1"
+px2ansi = "0.2.2"
 image = "0.25"
 ```
 

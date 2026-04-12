@@ -11,9 +11,9 @@
 `px2ansi-rs` is a high-fidelity terminal art engine and asset manager.
 
 It transforms images into terminal-native art using 10 rendering styles, from
-classic ANSI blocks to high-density Braille and Kanji.
-With built-in indexing and manifest support, it is designed to manage and
-display entire sprite libraries with the same ease as `pokemon-colorscripts`.
+classic ANSI blocks to high-density Braille and Kanji. With built-in indexing
+and manifest support, it is designed to manage and display entire sprite
+libraries with the same ease as `pokemon-colorscripts`.
 
 Inspired by the original [px2ansi](https://github.com/Nellousan/px2ansi)
 project, this is a complete reimplementation with indexing, fuzzy search, TUI
@@ -26,6 +26,24 @@ browsing, and advanced filters. It is approximately 25x faster.
 <p align="center">
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png" width="400" alt="Braille rendering example">
 </p>
+
+<details>
+<summary> NixOS Kanji </summary>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-kanji.png" width="400" alt="NixOS Kanji">
+</p>
+
+</details>
+
+<details>
+<summary> NixOS Chinese </summary>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-chinese.png" width="400" alt="NixOS Chinese">
+</p>
+
+</details>
 
 <a id="top"></a>
 
@@ -67,9 +85,8 @@ browsing, and advanced filters. It is approximately 25x faster.
 - Optional Sixel output for terminals that support it.
 - Optional parallel execution (rayon).
 
-`px2ansi-rs` is built on top of [`px2ansi`](https://crates.io/crates/px2ansi),
-a standalone Rust library that exposes the full rendering engine as a public
-API.
+`px2ansi-rs` is built on top of [`px2ansi`](https://crates.io/crates/px2ansi), a
+standalone Rust library that exposes the full rendering engine as a public API.
 
 ### Optional Features
 
@@ -388,7 +405,7 @@ The defaults are:
 | Setting        | Default       |
 | -------------- | ------------- |
 | `style`        | `ansi`        |
-| `filter`       | `nearest`    |
+| `filter`       | `nearest`     |
 | `latency`      | `false`       |
 | `index`        | `index.json`  |
 | `raster_theme` | `tokyo-night` |
@@ -457,8 +474,8 @@ programs.zsh.initContent = ''
 | Sixel      | `--style sixel`      | Pixel-accurate Sixel protocol output       | Supported terminals only     |
 
 > [!NOTE]
-> `--style ascii` also supports `--density light|medium|heavy`. `--style dense`
-> is shorthand for `--style ascii --density heavy`.
+> `--style ascii` also supports `--density light|medium|heavy`.
+> `--style dense` is shorthand for `--style ascii --density heavy`.
 > `--style sixel` is basically a 1 to 1 conversion.
 
 By default, ANSI and Unicode modes use vertical packing to maximize resolution.
@@ -471,6 +488,24 @@ By default, ANSI and Unicode modes use vertical packing to maximize resolution.
 
 `px2ansi-rs` is designed for high-performance terminal environments and works
 best in a "build once, show many" workflow.
+
+<details>
+<summary> Testing against rascii_art </summary>
+
+`rascii` is a well-established and fast terminal art tool. These benchmarks are
+a genuine comparison against a solid baseline, not a strawman.
+
+| Image        | Dimensions | Tool                       | Mean    | Min    | Max     | Runs |
+| ------------ | ---------- | -------------------------- | ------- | ------ | ------- | ---- |
+| `scream.png` | 700x909    | `rascii --color`           | 10.3 ms | 9.0 ms | 12.5 ms | 198  |
+| `scream.png` | 700x909    | `px2ansi-rs --style ascii` | 9.1 ms  | 7.7 ms | 11.0 ms | 207  |
+| `nixos.png`  | 1183x1024  | `rascii --color`           | 10.4 ms | 9.1 ms | 13.0 ms | 193  |
+| `nixos.png`  | 1183x1024  | `px2ansi-rs --style ascii` | 7.8ms   | 6.5 ms | 9.9 ms  | 215  |
+
+The actuall commands compared were `rascii <image> --color`, and
+`px2ansi-rs convert <image> --style ascii`
+
+</details>
 
 ### The indexing advantage
 
@@ -504,15 +539,15 @@ px2ansi-rs show random -l
 
 ## Rasterize output to PNG
 
-Use `--output-image` (`-O`) to convert terminal escape codes into a `.png`
-file. This requires the `rasterize` feature (enabled by default).
+Use `--output-image` (`-O`) to convert terminal escape codes into a `.png` file.
+This requires the `rasterize` feature (enabled by default).
 
 ```bash
 px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image nixos-rasterized.png
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-rasterize.png" width="300" alt="Rasterized output example">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-ascii.png" width="300" alt="Rasterized output example">
 </p>
 
 > [!NOTE]
@@ -534,8 +569,8 @@ px2ansi-rs convert input.png -O output.png --raster-theme dracula
 px2ansi-rs convert input.png -O output.png --raster-theme nord
 ```
 
-**Available themes:** `tokyo-night` (default), `dracula`, `nord`, `gruvbox-dark`,
-`one-dark`, `solarized-dark`, `black`, `white`
+**Available themes:** `tokyo-night` (default), `dracula`, `nord`,
+`gruvbox-dark`, `one-dark`, `solarized-dark`, `black`, `white`
 
 You can also set a default theme in your config file:
 
@@ -559,7 +594,6 @@ If you want to check out the `px2ansi` library, see [px2ansi](../lib)
 >
 > - `px2ansi` (the library): Contains the pure rendering logic, math, and
 >   character sets.
->
 > - `px2ansi-rs` (the CLI): A frontend wrapper that handles terminal flags,
 >   config files, and user interaction.
 
