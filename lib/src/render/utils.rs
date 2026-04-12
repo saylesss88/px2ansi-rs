@@ -20,16 +20,33 @@ impl RenderOptions {
             match self.charset() {
                 CharsetMode::Braille => (term_w * 2, term_h * 4),
                 CharsetMode::Unicode if self.style().full => (term_w / 2, term_h),
-                // CharsetMode::Ascii | CharsetMode::Fade => (term_w.saturating_sub(2), term_h - 2),
-                CharsetMode::Sixel => (term_w * 8, term_h * 16), // pixel dimensions, not cells
+                CharsetMode::Sixel => (term_w * 8, term_h * 16),
+                CharsetMode::Ascii | CharsetMode::Fade => {
+                    // Derive height from width using aspect ratio + cell correction
+                    // Terminal cells are ~2:1 tall:wide so divide height by 2
+                    let w = term_w.saturating_sub(2);
+                    let aspect = f64::from(orig_h) / f64::from(orig_w);
+                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                    let h = (f64::from(w) * aspect / 2.0).ceil() as u32;
+                    (w, h.min(term_h))
+                }
                 _ => (term_w.saturating_sub(2), term_h * 2 / 3),
             }
         } else {
             (80, 40)
         };
+
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let (render_w, render_h) = self.width().map_or_else(
             || {
+                // ASCII/Fade: derive from terminal width, not min-scale
+                if matches!(self.charset(), CharsetMode::Ascii | CharsetMode::Fade) {
+                    let w = max_w;
+                    let aspect = f64::from(orig_h) / f64::from(orig_w);
+                    let h = (f64::from(w) * aspect / 2.0).ceil() as u32;
+                    return (w, h.min(max_h));
+                }
                 if self.filter() == FilterType::Nearest && orig_w < 120 {
                     let scale_w = (f64::from(max_w) / f64::from(orig_w)).floor();
                     let scale_h = (f64::from(max_h) / f64::from(orig_h)).floor();
@@ -49,14 +66,28 @@ impl RenderOptions {
             },
             |tw| {
                 let aspect = f64::from(orig_h) / f64::from(orig_w);
-                (tw, (f64::from(tw) * aspect).round() as u32)
+                let h = (f64::from(tw) * aspect / 2.0).ceil() as u32;
+                (tw, h)
             },
         );
+        let result = (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE));
 
-        (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE))
+        eprintln!(
+            "DEBUG charset={:?} term={}x{} max={}x{} orig={}x{} render={}x{}",
+            self.charset(),
+            term_w,
+            term_h,
+            max_w,
+            max_h,
+            orig_w,
+            orig_h,
+            result.0,
+            result.1
+        );
+
+        result
     }
 }
-
 /// Use Env vars to get the terminal size
 #[must_use]
 pub fn get_terminal_size() -> (u32, u32) {
