@@ -12,6 +12,7 @@ impl RenderOptions {
     /// 2. Different character aspect ratios (Braille vs. Half-blocks).
     /// 3. User-defined width overrides.
     /// 4. Nearest-neighbor scaling for pixel art preservation.
+    #[allow(clippy::too_many_lines)]
     #[must_use]
     pub fn calculate_dimensions(&self, orig_w: u32, orig_h: u32) -> (u32, u32) {
         const MAX_SAFE: u32 = 16384;
@@ -66,7 +67,7 @@ impl RenderOptions {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let (render_w, render_h) = self.width().map_or_else(
             || {
-                // Kanji/Chinese: max_w is already halved above; use plain aspect (no /2)
+                // Kanji/Chinese: max_w is already halved above
                 if matches!(self.charset(), CharsetMode::Kanji | CharsetMode::Chinese) {
                     let w = max_w;
                     let aspect = f64::from(orig_h) / f64::from(orig_w);
