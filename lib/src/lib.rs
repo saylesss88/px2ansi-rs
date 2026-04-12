@@ -40,6 +40,7 @@
 pub mod cli_enums;
 pub mod indexer;
 pub mod render;
+pub mod simd;
 
 pub(crate) mod color;
 #[cfg(feature = "rasterize")]
