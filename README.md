@@ -6,7 +6,7 @@
 
 `px2ansi-rs` is a high-fidelity terminal art engine and asset manager.
 
-It transforms images into terminal-native art using 8 rendering styles, from
+It transforms images into terminal-native art using 10 rendering styles, from
 classic ANSI blocks to high-density Braille and Kanji.
 With built-in indexing and manifest support, it is designed to manage and
 display entire sprite libraries with the same ease as `pokemon-colorscripts`.
@@ -52,30 +52,43 @@ browsing, and advanced filters. It is approximately 25x faster.
 - **Smart resize** — Auto-fits terminal width.
 - **Custom dimensions** — Use `--width` to adjust output size.
 - **5 filters** — `nearest` for pixel art through `lanczos3` for photos.
-- **8 styles** — `ansi`, `unicode`, `fade`, `ascii`, `braille`, `full-block`,
-  `chinese`, and `kanji`.
+- **10 styles** — `ansi`, `unicode`, `fade`, `ascii`, `braille`, `full-block`,
+  `dense`, `chinese`, `kanji`, and `sixel`.
 - **Embedded font rasterization** — `IosevkaCharonMono-Regular.ttf` is bundled
   for rasterization.
-- **Optional monochrome output** — Use `--no-color` where it makes sense.
+- **Optional monochrome output** — Use `--no-color` to disable ANSI color
+  escapes (applies to ascii, fade, braille, kanji, and chinese modes).
+- **ASCII density control** — Use `--density light|medium|heavy` to tune
+  character ramp complexity.
+- Optionally rasterize ANSI output back into PNG (with selectable themes).
+- Optional Sixel output for terminals that support it.
+- Optional parallel execution (rayon).
 
-## Optional Features
+`px2ansi-rs` is built on top of [`px2ansi`](https://crates.io/crates/px2ansi),
+a standalone Rust library that exposes the full rendering engine as a public
+API.
 
-Sixel, Rasterization, and rayon are all optional features.
+### Optional Features
+
+Sixel, Rasterization, and rayon are all optional features (all enabled by
+default).
 
 ```bash
+# Minimal — no sixel, no rasterization, no rayon
 cargo install px2ansi-rs --no-default-features
 
-# Sixel terminal output, no PNG rasterization or rayon
+# Sixel terminal output only
 cargo install px2ansi-rs --no-default-features --features sixel
 
+# Only enable parallel execution with rayon
 cargo install px2ansi-rs --no-default-features --features parallel
 
+# Only enable rasterization
 cargo install px2ansi-rs --no-default-features --features rasterize
+
+# Everything (full feature set)
+cargo install px2ansi-rs --features full
 ```
-
-
-### Rayon (parallel builds)
-
 
 ---
 
@@ -86,7 +99,7 @@ cargo install px2ansi-rs --no-default-features --features rasterize
 ```bash
 git clone https://github.com/saylesss88/px2ansi-rs
 cd px2ansi-rs
-cargo install --path .
+cargo install --path cli
 ```
 
 ### From crates.io
@@ -102,7 +115,7 @@ cargo install px2ansi-rs
 ## Quick reference
 
 ```text
-Pixel art tools
+High-fidelity terminal art engine and asset manager
 
 Usage: px2ansi-rs [OPTIONS] <COMMAND>
 
@@ -116,12 +129,10 @@ Commands:
 
 Options:
   -l, --latency        Show timing and execution metadata
-  -I, --index <INDEX>
+  -I, --index <INDEX>  Path to the JSON index file (overrides config file setting)
   -h, --help           Print help
   -V, --version        Print version
 ```
-
-`px2ansi-rs` now defaults to using the nearest filter with ansi style.
 
 [Back to TOC](#top)
 
@@ -133,9 +144,10 @@ Options:
 > `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`, `show`,
 > and `list`.
 
-Most subcommands also have their own help menus:
+Most subcommands have their own help menus:
 
 ```bash
+px2ansi-rs convert --help
 px2ansi-rs show --help
 ```
 
@@ -146,6 +158,15 @@ Basic conversion to stdout with automatic terminal sizing:
 ```bash
 px2ansi-rs convert image.png
 px2ansi-rs convert image.png --style unicode
+```
+
+#### Save ANSI output to a file
+
+Use `--output` (`-o`) to write the rendered ANSI text to a file instead of
+stdout:
+
+```bash
+px2ansi-rs convert image.png --style braille --output out.txt
 ```
 
 #### Unicode mode
@@ -168,16 +189,46 @@ For larger images, `lanczos3` usually looks better:
 px2ansi-rs convert tests/scream.png --filter lanczos3
 ```
 
-Simple ASCII output:
+#### Sixel
 
 ```bash
+px2ansi-rs convert tests/nixos.png --style sixel
+```
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-sixel.png" width="400" alt="Braille rendering example">
+</p>
+
+#### ASCII with density control
+
+```bash
+# Default (medium) density
 px2ansi-rs convert tests/test.png --style ascii --filter nearest
+
+# Light density (sparse characters)
+px2ansi-rs convert tests/test.png --style ascii --density light
+
+# Heavy density (block-heavy ramp) — same as --style dense
+px2ansi-rs convert tests/test.png --style ascii --density heavy
+
+# Shorthand for --style ascii --density heavy
+px2ansi-rs convert tests/test.png --style dense
+
+# Monochrome ASCII
 px2ansi-rs convert tests/test.png --style ascii --filter nearest --no-color
 ```
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii.png" width="400" alt="ASCII Pikachu example">
 </p>
+
+#### Disable color
+
+Use `--no-color` on any conversion to strip ANSI color escapes:
+
+```bash
+px2ansi-rs convert image.png --style braille --no-color
+```
 
 ### 2. Create an index
 
@@ -186,6 +237,9 @@ You can create a JSON manifest of a directory full of sprites:
 ```bash
 px2ansi-rs index ./assets/sprites --output index.json
 ```
+
+If `--output` is omitted, the index path falls back to the configured default
+(or `index.json`).
 
 ### 3. Show by name
 
@@ -199,8 +253,20 @@ px2ansi-rs show random --style unicode
 px2ansi-rs show random --style ansi --filter nearest
 ```
 
-By default, `px2ansi-rs show` displays a random sprite from `index.json` in the
-current folder.
+By default (when no name is given), `px2ansi-rs show` picks a random sprite:
+
+```bash
+# Equivalent to: px2ansi-rs show random
+px2ansi-rs show
+```
+
+The `show` command also supports `--style`, `--filter`, `--density`, and
+`--no-color`:
+
+```bash
+px2ansi-rs show pikachu --style ascii --density light
+px2ansi-rs show pikachu --style braille --no-color
+```
 
 #### Quick way with fuzzy matching
 
@@ -244,6 +310,12 @@ Index: Showing 10 of 1333 entries:
   -  aerodactyl-mega      68x56px
 ```
 
+Use `-I` to point at a specific index:
+
+```bash
+px2ansi-rs -I /path/to/custom.json list
+```
+
 [Back to TOC](#top)
 
 ---
@@ -261,7 +333,8 @@ Index: Showing 10 of 1333 entries:
 ### Example `default-config.toml`
 
 ```toml
-# Output style: "ansi", "unicode", "fade", "ascii", "kanji", "braille", "full-block"
+# Output style: "ansi", "unicode", "fade", "ascii", "kanji", "braille",
+#               "full-block", "dense", "chinese", "sixel"
 style = "ansi"
 
 # Show execution timing metadata
@@ -270,8 +343,14 @@ latency = true
 # Default filter: "nearest", "triangle", "catmull-rom", "gaussian", "lanczos3"
 filter = "lanczos3"
 
-# Index file to target
+# Index file to target (absolute path recommended)
 index = "/home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json"
+
+# Default raster theme for --output-image
+raster_theme = "tokyo-night"
+
+# Optional: auto-save a rasterized PNG alongside terminal output
+# output_image = "/tmp/preview.png"
 ```
 
 You can point `show` at an index anywhere in your filesystem with `-I`:
@@ -283,11 +362,34 @@ px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.jso
 > [!NOTE]
 > Any field omitted from the `.toml` file falls back to the built-in defaults.
 
+#### Configuration on NixOS
+
+```nix
+    home.file = {
+      ".config/px2ansi-rs/default-config.toml".text = ''
+        filter = "nearest"
+        latency = true
+        index = "/home/jr/pokesprite/pokemon-gen8/shiny/index.json"
+      '';
+    };
+```
+
 ### Hierarchy of truth
 
 1. **CLI flags** always win.
 2. **Config file** is used if no flag is provided.
 3. **Built-in defaults** are used if the config file is missing.
+
+The defaults are:
+
+| Setting        | Default       |
+| -------------- | ------------- |
+| `style`        | `ansi`        |
+| `filter`       | `nearest`    |
+| `latency`      | `false`       |
+| `index`        | `index.json`  |
+| `raster_theme` | `tokyo-night` |
+| `output_image` | none          |
 
 [Back to TOC](#top)
 
@@ -338,20 +440,23 @@ programs.zsh.initContent = ''
 
 `px2ansi-rs` supports multiple ways to bring your sprites to life.
 
-| Mode       | Flag                 | Description                           | Best for                     |
-| ---------- | -------------------- | ------------------------------------- | ---------------------------- |
-| ANSI       | `--style ansi`       | Half-blocks (`▀▄`) — 2 pixels per row | Compatibility and speed      |
-| HD Unicode | `--style unicode`    | High-definition Unicode half-blocks   | High-fidelity assets         |
-| Full Block | `--style full-block` | Solid `██` squares                    | 8-bit and 16-bit pixel art   |
-| Braille    | `--style braille`    | 2×4 dot patterns                      | Fine detail and line art     |
-| Fade       | `--style fade`       | Block shading (`░▒▓█`)                | High-contrast logos          |
-| ASCII      | `--style ascii`      | Character-density ramp                | Photos and classic ASCII art |
-| Kanji      | `--style kanji`      | Japanese kanji density ramp           | Stylized output              |
-| Chinese    | `--style chinese`    | Chinese density ramp                  | Stylized output              |
+| Mode       | Flag                 | Description                                | Best for                     |
+| ---------- | -------------------- | ------------------------------------------ | ---------------------------- |
+| ANSI       | `--style ansi`       | Half-blocks (`▀▄`) — 2 pixels per row      | Compatibility and speed      |
+| HD Unicode | `--style unicode`    | High-definition Unicode half-blocks        | High-fidelity assets         |
+| Full Block | `--style full-block` | Solid `██` squares (double-width)          | 8-bit and 16-bit pixel art   |
+| Braille    | `--style braille`    | 2×4 dot patterns                           | Fine detail and line art     |
+| Fade       | `--style fade`       | Block shading (`░▒▓█`)                     | High-contrast logos          |
+| ASCII      | `--style ascii`      | Character-density ramp (92 chars)          | Photos and classic ASCII art |
+| Dense      | `--style dense`      | ASCII with heavy density (shorthand)       | Bold, block-heavy output     |
+| Kanji      | `--style kanji`      | Japanese kanji density ramp (double-width) | Stylized output              |
+| Chinese    | `--style chinese`    | Chinese density ramp (double-width)        | Stylized output              |
+| Sixel      | `--style sixel`      | Pixel-accurate Sixel protocol output       | Supported terminals only     |
 
 > [!NOTE]
 > `--style ascii` also supports `--density light|medium|heavy`. `--style dense`
 > is shorthand for `--style ascii --density heavy`.
+> `--style sixel` is basically a 1 to 1 conversion.
 
 By default, ANSI and Unicode modes use vertical packing to maximize resolution.
 
@@ -362,7 +467,7 @@ By default, ANSI and Unicode modes use vertical packing to maximize resolution.
 ## Performance & workflow
 
 `px2ansi-rs` is designed for high-performance terminal environments and works
-best in a “build once, show many” workflow.
+best in a "build once, show many" workflow.
 
 ### The indexing advantage
 
@@ -377,6 +482,9 @@ Add the `-l` or `--latency` flag to show timing metrics:
 px2ansi-rs -l show random
 px2ansi-rs convert <file> --latency
 ```
+
+> **Note**: Latency can also be enabled via the config file (`latency = true`).
+> CLI flags override config settings.
 
 ### Testing with PokéSprite
 
@@ -393,7 +501,8 @@ px2ansi-rs show random -l
 
 ## Rasterize output to PNG
 
-Use `--output-image` to convert terminal escape codes into a `.png` file:
+Use `--output-image` (`-O`) to convert terminal escape codes into a `.png`
+file. This requires the `rasterize` feature (enabled by default).
 
 ```bash
 px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image nixos-rasterized.png
@@ -404,8 +513,36 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
 </p>
 
 > [!NOTE]
-> Some styles look better than others. The default background is Tokyo Night,
-> and that may change in the future.
+> Some styles look better than others. The default background theme is Tokyo
+> Night.
+
+### Choosing a theme
+
+Use `--raster-theme` to select a background color for the rasterized PNG:
+
+```bash
+# Use default Tokyo Night theme
+px2ansi-rs convert input.png -O output.png
+
+# Use Dracula theme
+px2ansi-rs convert input.png -O output.png --raster-theme dracula
+
+# Use Nord theme
+px2ansi-rs convert input.png -O output.png --raster-theme nord
+```
+
+**Available themes:** `tokyo-night` (default), `dracula`, `nord`, `gruvbox-dark`,
+`one-dark`, `solarized-dark`, `black`, `white`
+
+You can also set a default theme in your config file:
+
+```toml
+raster_theme = "gruvbox-dark"
+```
+
+> [!NOTE]
+> If the `rasterize` feature is not compiled in, using `--output-image` will
+> produce an error asking you to rebuild with the feature enabled.
 
 [Back to TOC](#top)
 
@@ -440,14 +577,20 @@ other projects without pulling in unnecessary CLI dependencies.
 
 `px2ansi-rs` uses `anyhow` for error handling. Common issues:
 
+- **Invalid style** — Using an unrecognized `--style` value will show an error
+  with the list of valid options.
+- **Missing file** — `convert` on a nonexistent file fails gracefully with an
+  error message.
 - **Broken pipe** — Happens when output is piped into a command that exits
   early, such as `head`. This is normal.
-- **Missing index** — If `show` fails, ensure `index.json` exists in the current
-  directory or pass `--index <PATH>`.
+- **Missing index** — If `show` or `list` fails, ensure `index.json` exists in
+  the current directory or pass `-I <PATH>`.
 - **Low fuzzy score** — If a search returns no result, try a more specific query
   or use `-i`.
 - **Terminal gaps** — If you see horizontal lines, your terminal line-height may
   be greater than `1.0`.
+- **Rasterize not available** — If you see a message about the `rasterize`
+  feature, rebuild with `cargo install px2ansi-rs --features rasterize`.
 
 [Back to TOC](#top)
 
