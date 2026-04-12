@@ -224,14 +224,14 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         let (width, height) = rgba.dimensions();
         let num_chars_u32 = u32::try_from(charset.len()).unwrap_or(1);
         let num_chars = charset.len();
-        let x_step = if wide { 2 } else { 1 };
         let blank = if wide { "  " } else { " " };
 
         // First pass: find the actual luma range of opaque pixels
         let mut luma_min = u32::MAX;
         let mut luma_max = u32::MIN;
         for y in 0..height {
-            for x in (0..width).step_by(x_step) {
+            for x in 0..width {
+                // always step by 1 — dimensions already account for double-width
                 let [red, green, blue, alpha] = rgba.get_pixel(x, y).0;
                 if alpha >= ALPHA_THRESHOLD {
                     let luma =
@@ -246,7 +246,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         // Guard: fully transparent image — write all blanks and return
         if luma_min == u32::MAX {
             for _ in 0..height {
-                for _ in (0..width).step_by(x_step) {
+                for _ in 0..width {
                     write!(self.writer, "{blank}")?;
                 }
                 writeln!(self.writer)?;
@@ -258,7 +258,8 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
 
         // Second pass: render each pixel as a colored glyph
         for y in 0..height {
-            for x in (0..width).step_by(x_step) {
+            for x in 0..width {
+                // always step by 1
                 let [red, green, blue, alpha] = rgba.get_pixel(x, y).0;
                 if alpha < ALPHA_THRESHOLD {
                     if self.options.color() {
@@ -295,7 +296,88 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
             }
         }
         Ok(())
-    }
+    } // fn charset_colored(&mut self, charset: &[&str], wide: bool) -> std::io::Result<()> {
+    //     let rgba = self.img.to_rgba8();
+    //     let (width, height) = rgba.dimensions();
+    //     let num_chars_u32 = u32::try_from(charset.len()).unwrap_or(1);
+    //     let num_chars = charset.len();
+    //     let x_step = if wide { 2 } else { 1 };
+    //     let blank = if wide { "  " } else { " " };
+
+    //     // First pass: find the actual luma range of opaque pixels
+    //     let (luma_min, luma_max) = if wide {
+    //         // Wide modes skip every other column — fall back to per-pixel scan
+    //         let mut lo = u32::MAX;
+    //         let mut hi = u32::MIN;
+    //         for y in 0..height {
+    //             for x in (0..width).step_by(x_step) {
+    //                 let [r, g, b, a] = rgba.get_pixel(x, y).0;
+    //                 if a >= ALPHA_THRESHOLD {
+    //                     let luma = crate::simd::luma_scalar(r, g, b);
+    //                     lo = lo.min(luma);
+    //                     hi = hi.max(luma);
+    //                 }
+    //             }
+    //         }
+    //         (lo, hi)
+    //     } else {
+    //         // x_step == 1: every pixel is visited — use the bulk SIMD scan
+    //         crate::simd::find_luma_range_rgba_bytes(rgba.as_raw())
+    //     };
+
+    //     // Guard: fully transparent image — write all blanks and return
+    //     if luma_min == u32::MAX {
+    //         for _ in 0..height {
+    //             for _ in (0..width).step_by(x_step) {
+    //                 write!(self.writer, "{blank}")?;
+    //             }
+    //             writeln!(self.writer)?;
+    //         }
+    //         return Ok(());
+    //     }
+
+    //     let luma_range = (luma_max - luma_min).max(1);
+
+    //     // Second pass: render each pixel as a colored glyph
+    //     for y in 0..height {
+    //         for x in (0..width).step_by(x_step) {
+    //             let [red, green, blue, alpha] = rgba.get_pixel(x, y).0;
+    //             if alpha < ALPHA_THRESHOLD {
+    //                 if self.options.color() {
+    //                     write!(self.writer, "\x1b[0m{blank}")?;
+    //                 } else {
+    //                     write!(self.writer, "{blank}")?;
+    //                 }
+    //                 continue;
+    //             }
+    //             let luma =
+    //                 (2126 * u32::from(red) + 7152 * u32::from(green) + 722 * u32::from(blue))
+    //                     / 10000;
+    //             let normalized = ((luma - luma_min) * 255) / luma_range;
+    //             let idx = ((normalized * (num_chars_u32 - 1) / 255) as usize).min(num_chars - 1);
+    //             let glyph = charset[idx];
+    //             if self.options.color() {
+    //                 write_colored_glyph(
+    //                     self.writer,
+    //                     glyph,
+    //                     red,
+    //                     green,
+    //                     blue,
+    //                     self.options.color_mode(),
+    //                 )?;
+    //             } else {
+    //                 write!(self.writer, "{glyph}")?;
+    //             }
+    //         }
+    //         // End of row reset
+    //         if self.options.color() {
+    //             writeln!(self.writer, "\x1b[0m")?;
+    //         } else {
+    //             writeln!(self.writer)?;
+    //         }
+    //     }
+    //     Ok(())
+    // }
 }
 
 /// Renders a prepared image to `writer` using the mode specified in `options`.

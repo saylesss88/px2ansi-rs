@@ -21,15 +21,42 @@ impl RenderOptions {
                 CharsetMode::Braille => (term_w * 2, term_h * 4),
                 CharsetMode::Unicode if self.style().full => (term_w / 2, term_h),
                 CharsetMode::Sixel => (term_w * 8, term_h * 16),
+
+                // Kanji/Chinese: each glyph is 2 columns wide, so pixel budget is
+                // term_w / 2. The 2× column cost cancels the 2:1 cell aspect ratio,
+                // so height correction is just plain `aspect` (no / 2.0).
+                CharsetMode::Kanji | CharsetMode::Chinese => {
+                    let w = term_w / 2;
+                    let aspect = f64::from(orig_h) / f64::from(orig_w);
+                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                    let h_from_w = (f64::from(w) * aspect).ceil() as u32;
+                    if h_from_w <= term_h {
+                        (w, h_from_w)
+                    } else {
+                        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                        let w_from_h = (f64::from(term_h) / aspect).floor() as u32;
+                        let chosen_w = w_from_h.min(w);
+                        (chosen_w, term_h)
+                    }
+                }
+
+                // ASCII / Fade: terminal cells are ~2:1 tall, so divide height by 2.
+                // Also handle the case where the image is taller than the terminal.
                 CharsetMode::Ascii | CharsetMode::Fade => {
-                    // Derive height from width using aspect ratio + cell correction
-                    // Terminal cells are ~2:1 tall:wide so divide height by 2
                     let w = term_w.saturating_sub(2);
                     let aspect = f64::from(orig_h) / f64::from(orig_w);
                     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                    let h = (f64::from(w) * aspect / 2.0).ceil() as u32;
-                    (w, h.min(term_h))
+                    let h_from_w = (f64::from(w) * aspect / 2.0).ceil() as u32;
+                    if h_from_w <= term_h {
+                        (w, h_from_w)
+                    } else {
+                        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                        let w_from_h = ((f64::from(term_h) * 2.0) / aspect).floor() as u32;
+                        let chosen_w = w_from_h.min(w);
+                        (chosen_w, term_h)
+                    }
                 }
+
                 _ => (term_w.saturating_sub(2), term_h * 2 / 3),
             }
         } else {
@@ -37,17 +64,33 @@ impl RenderOptions {
         };
 
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let (render_w, render_h) = self.width().map_or_else(
             || {
-                // ASCII/Fade: derive from terminal width, not min-scale
-                if matches!(self.charset(), CharsetMode::Ascii | CharsetMode::Fade) {
+                // Kanji/Chinese: max_w is already halved above; use plain aspect (no /2)
+                if matches!(self.charset(), CharsetMode::Kanji | CharsetMode::Chinese) {
                     let w = max_w;
                     let aspect = f64::from(orig_h) / f64::from(orig_w);
-                    let h = (f64::from(w) * aspect / 2.0).ceil() as u32;
-                    return (w, h.min(max_h));
-                }
-                if self.filter() == FilterType::Nearest && orig_w < 120 {
+                    let h_from_w = (f64::from(w) * aspect).ceil() as u32;
+                    if h_from_w <= max_h {
+                        (w, h_from_w.min(max_h))
+                    } else {
+                        let w_from_h = (f64::from(max_h) / aspect).floor() as u32;
+                        let chosen_w = w_from_h.min(w);
+                        (chosen_w, max_h)
+                    }
+                // ASCII/Fade: derive from terminal width but enforce the height fit
+                } else if matches!(self.charset(), CharsetMode::Ascii | CharsetMode::Fade) {
+                    let w = max_w;
+                    let aspect = f64::from(orig_h) / f64::from(orig_w);
+                    let h_from_w = (f64::from(w) * aspect / 2.0).ceil() as u32;
+                    if h_from_w <= max_h {
+                        (w, h_from_w.min(max_h))
+                    } else {
+                        let w_from_h = ((f64::from(max_h) * 2.0) / aspect).floor() as u32;
+                        let chosen_w = w_from_h.min(w);
+                        (chosen_w, max_h)
+                    }
+                } else if self.filter() == FilterType::Nearest && orig_w < 120 {
                     let scale_w = (f64::from(max_w) / f64::from(orig_w)).floor();
                     let scale_h = (f64::from(max_h) / f64::from(orig_h)).floor();
                     let scale = scale_w.min(scale_h).max(1.0);
@@ -65,11 +108,18 @@ impl RenderOptions {
                 }
             },
             |tw| {
+                // User provided width 'tw' — derive height from it.
+                // Kanji/Chinese: 2× col cost cancels cell aspect, so no /2 correction.
                 let aspect = f64::from(orig_h) / f64::from(orig_w);
-                let h = (f64::from(tw) * aspect / 2.0).ceil() as u32;
+                let h = if matches!(self.charset(), CharsetMode::Kanji | CharsetMode::Chinese) {
+                    (f64::from(tw) * aspect).ceil() as u32
+                } else {
+                    (f64::from(tw) * aspect / 2.0).ceil() as u32
+                };
                 (tw, h)
             },
         );
+
         let result = (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE));
 
         eprintln!(
