@@ -702,10 +702,10 @@ sudo mandb
 
 ## Similar crates
 
-- [rascii_art](https://crates.io/crates/rascii_art): A well-structured and
-  highly readable implementation. Comparing `px2ansi-rs` against `rascii` was
-  instrumental in identifying and fixing aspect-ratio issues in my own rendering
-  logic, as well as providing ideas for different charsets.
+- [rascii_art](https://crates.io/crates/rascii_art): A well-structured,
+  readable implementation. Comparing px2ansi-rs with rascii_art was especially
+  helpful for spotting and fixing aspect-ratio issues in my own rendering
+  logic, and it also gave me ideas for additional charsets.
 
 - [ansimage](https://crates.io/crates/ansimage): Haven't had a chance to test
   this yet.
