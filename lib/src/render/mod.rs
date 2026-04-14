@@ -294,9 +294,9 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                 let mut hi = u32::MIN;
                 for y in 0..height {
                     for x in (0..width).step_by(x_step) {
-                        let [r, g, b, a] = rgba.get_pixel(x, y).0;
-                        if a >= ALPHA_THRESHOLD {
-                            let l = crate::simd::luma_scalar(r, g, b);
+                        let [red, green, blue, alpha] = rgba.get_pixel(x, y).0;
+                        if alpha >= ALPHA_THRESHOLD {
+                            let l = crate::simd::luma_scalar(red, green, blue);
                             lo = lo.min(l);
                             hi = hi.max(l);
                         }
