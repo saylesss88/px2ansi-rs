@@ -10,7 +10,7 @@ use viuer;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-// use std::fmt::Write as FmtWrite;
+use std::fmt::Write as FmtWrite;
 use std::{borrow::Cow, io::Write};
 
 pub mod options;
@@ -223,6 +223,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
     /// `wide` should be `true` for double-width glyphs (kanji, emoji) — this
     /// steps the x iterator by 2 and uses two spaces for transparent cells so
     /// the grid stays aligned.
+    #[allow(clippy::too_many_lines)]
     fn charset_colored(&mut self, charset: &[&str], wide: bool) -> std::io::Result<()> {
         let rgba = self.img.to_rgba8();
         let (width, height) = rgba.dimensions();
@@ -258,7 +259,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
             // Narrow mode: Rayon handles rows, SIMD handles pixels
             rgba.as_raw()
                 .par_chunks_exact(width as usize * 4)
-                .map(|row| crate::simd::find_luma_range_rgba_bytes(row))
+                .map(crate::simd::find_luma_range_rgba_bytes)
                 .reduce(
                     || (u32::MAX, u32::MIN),
                     |(m1, x1), (m2, x2)| (m1.min(m2), x1.max(x2)),
@@ -321,8 +322,8 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
 
                     if color_enabled {
                         // Internal helper that writes to a String buffer instead of IO
-                        let _ =
-                            write_colored_glyph_to_str(&mut row_str, glyph, r, g, b, color_mode);
+
+                        write_colored_glyph_to_str(&mut row_str, glyph, r, g, b, color_mode);
                     } else {
                         row_str.push_str(glyph);
                     }
@@ -572,11 +573,11 @@ fn write_colored_glyph_to_str(
 ) {
     match color_mode {
         ColorMode::TrueColor => {
-            buf.push_str(&format!("\x1b[38;2;{r};{g};{b}m{glyph}"));
+            let _ = write!(buf, "\\x1b[38;2;{r};{g};{b}m{glyph}");
         }
         ColorMode::Ansi256 => {
             let idx = crate::color::rgb_to_xterm256(r, g, b);
-            buf.push_str(&format!("\x1b[38;5;{idx}m{glyph}"));
+            let _ = write!(buf, "\\x1b[38;5;{idx}m{glyph}");
         }
         ColorMode::None => {
             buf.push_str(glyph);
