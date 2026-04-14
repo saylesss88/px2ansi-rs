@@ -162,8 +162,9 @@ Options:
 
 ## Usage
 
-> [!NOTE] `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`,
-> `show`, and `list`.
+> [!NOTE]
+> `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`, `show`,
+> and `list`.
 
 Most subcommands have their own help menus:
 
@@ -380,8 +381,8 @@ You can point `show` at an index anywhere in your filesystem with `-I`:
 px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json
 ```
 
-> [!NOTE] Any field omitted from the `.toml` file falls back to the built-in
-> defaults.
+> [!NOTE]
+> Any field omitted from the `.toml` file falls back to the built-in defaults.
 
 #### Configuration on NixOS
 
@@ -474,7 +475,8 @@ programs.zsh.initContent = ''
 | Chinese    | `--style chinese`    | Chinese density ramp (double-width)        | Stylized output              |
 | Sixel      | `--style sixel`      | Pixel-accurate Sixel protocol output       | Supported terminals only     |
 
-> [!NOTE] `--style ascii` also supports `--density light|medium|heavy`.
+> [!NOTE]
+> `--style ascii` also supports `--density light|medium|heavy`.
 > `--style dense` is shorthand for `--style ascii --density heavy`.
 > `--style sixel` is basically a 1 to 1 conversion.
 
@@ -586,8 +588,9 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-rasterized.png" width="300" alt="Rasterized output example">
 </p>
 
-> [!NOTE] Some styles look better than others. The default background theme is
-> Tokyo Night.
+> [!NOTE]
+> Some styles look better than others. The default background theme is Tokyo
+> Night.
 
 ### Choosing a theme
 
@@ -613,8 +616,9 @@ You can also set a default theme in your config file:
 raster_theme = "gruvbox-dark"
 ```
 
-> [!NOTE] If the `rasterize` feature is not compiled in, using `--output-image`
-> will produce an error asking you to rebuild with the feature enabled.
+> [!NOTE]
+> If the `rasterize` feature is not compiled in, using `--output-image` will
+> produce an error asking you to rebuild with the feature enabled.
 
 [Back to TOC](#top)
 
