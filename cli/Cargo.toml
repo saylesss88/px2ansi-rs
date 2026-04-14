@@ -46,6 +46,7 @@ default = ["rasterize", "sixel", "parallel"]
 sixel = ["px2ansi/sixel"]
 rasterize = ["px2ansi/rasterize"]
 parallel = ["px2ansi/parallel"]
+simd = ["px2ansi/simd"]
 
 
 [profile.release]
@@ -54,3 +55,8 @@ lto = true
 codegen-units = 1
 panic = 'abort'
 strip = true
+debug = true
+
+[profile.profiling]
+inherits = "release"
+debut = 1

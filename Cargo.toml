@@ -42,6 +42,7 @@ lto = true
 codegen-units = 1
 panic = 'abort'
 strip = true
+debug = true
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }

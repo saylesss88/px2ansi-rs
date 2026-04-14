@@ -83,7 +83,9 @@ browsing, and advanced filters. It is approximately 25x faster.
   character ramp complexity.
 - Optionally rasterize ANSI output back into PNG (with selectable themes).
 - Optional Sixel output for terminals that support it.
-- Optional parallel execution (rayon).
+
+- **High-Performance Backend**: SIMD-accelerated pixel processing (wide) with
+  optional multi-core parallelism (rayon).
 
 `px2ansi-rs` is built on top of [`px2ansi`](https://crates.io/crates/px2ansi), a
 standalone Rust library that exposes the full rendering engine as a public API.
@@ -100,8 +102,8 @@ cargo install px2ansi-rs --no-default-features
 # Sixel terminal output only
 cargo install px2ansi-rs --no-default-features --features sixel
 
-# Only enable parallel execution with rayon
-cargo install px2ansi-rs --no-default-features --features parallel
+# Only enable rayon and simd
+cargo install px2ansi-rs --no-default-features --features parallel simd
 
 # Only enable rasterization
 cargo install px2ansi-rs --no-default-features --features rasterize
@@ -160,9 +162,8 @@ Options:
 
 ## Usage
 
-> [!NOTE]
-> `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`, `show`,
-> and `list`.
+> [!NOTE] `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`,
+> `show`, and `list`.
 
 Most subcommands have their own help menus:
 
@@ -379,8 +380,8 @@ You can point `show` at an index anywhere in your filesystem with `-I`:
 px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json
 ```
 
-> [!NOTE]
-> Any field omitted from the `.toml` file falls back to the built-in defaults.
+> [!NOTE] Any field omitted from the `.toml` file falls back to the built-in
+> defaults.
 
 #### Configuration on NixOS
 
@@ -473,8 +474,7 @@ programs.zsh.initContent = ''
 | Chinese    | `--style chinese`    | Chinese density ramp (double-width)        | Stylized output              |
 | Sixel      | `--style sixel`      | Pixel-accurate Sixel protocol output       | Supported terminals only     |
 
-> [!NOTE]
-> `--style ascii` also supports `--density light|medium|heavy`.
+> [!NOTE] `--style ascii` also supports `--density light|medium|heavy`.
 > `--style dense` is shorthand for `--style ascii --density heavy`.
 > `--style sixel` is basically a 1 to 1 conversion.
 
@@ -489,18 +489,54 @@ By default, ANSI and Unicode modes use vertical packing to maximize resolution.
 `px2ansi-rs` is designed for high-performance terminal environments and works
 best in a "build once, show many" workflow.
 
+### SIMD (`--features simd`)
+
+Enables SIMD-accelerated pixel processing for faster rendering of large images.
+
+```sh
+# Build with SIMD support
+cargo install px2ansi-rs --features simd
+
+# Or build locally
+cargo build --release --features simd
+```
+
+Most noticeable on large images with `--style ascii`, `--style fade`,
+`--style kanji`, or `--style chinese`. Half-block and Braille modes see less
+benefit.
+
+Requires a CPU with SSE2 (all x86_64) or NEON (ARM). The `wide` crate handles
+dispatch automatically. No manual configuration needed.
+
+### Sixel (`--features sixel`)
+
+Renders true pixel images in Sixel-compatible terminals (foot, WezTerm, iTerm2).
+
+```sh
+cargo install px2ansi-rs --features sixel
+px2ansi-rs convert image.png --style sixel
+```
+
+Falls back gracefully if the terminal does not support Sixel.
+
+### Combining Features
+
+```sh
+cargo build --release --features simd,sixel
+```
+
 <details>
 <summary> Testing against rascii_art </summary>
 
 `rascii` is a well-established and fast terminal art tool. These benchmarks are
 a genuine comparison against a solid baseline, not a strawman.
 
-| Image        | Dimensions | Tool                       | Mean    | Min    | Max     | Runs |
-| ------------ | ---------- | -------------------------- | ------- | ------ | ------- | ---- |
-| `scream.png` | 700x909    | `rascii --color`           | 10.3 ms | 9.0 ms | 12.5 ms | 198  |
-| `scream.png` | 700x909    | `px2ansi-rs --style ascii` | 9.1 ms  | 7.7 ms | 11.0 ms | 207  |
-| `nixos.png`  | 1183x1024  | `rascii --color`           | 10.4 ms | 9.1 ms | 13.0 ms | 193  |
-| `nixos.png`  | 1183x1024  | `px2ansi-rs --style ascii` | 7.8ms   | 6.5 ms | 9.9 ms  | 215  |
+| Image        | Dimensions | Tool                       | User(CPU) | Total(Mean | Improvement           | Runs |
+| ------------ | ---------- | -------------------------- | --------- | ---------- | --------------------- | ---- |
+| `scream.png` | 700x909    | `rascii --color`           | 6.1 ms    | 10.1 ms    | -                     | 198  |
+| `scream.png` | 700x909    | `px2ansi-rs --style ascii` | 4.6 ms    | 8.8 ms     | 1.3x faster CPU logic | 207  |
+| `nixos.png`  | 1183x1024  | `rascii --color`           | 4.6 ms    | 10.5 ms    | -                     | 193  |
+| `nixos.png`  | 1183x1024  | `px2ansi-rs --style ascii` | 2.2 ms    | 7.7 ms     | 2x faster CPU logic   | 215  |
 
 The actuall commands compared were `rascii <image> --color`, and
 `px2ansi-rs convert <image> --style ascii`
@@ -550,9 +586,8 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-ascii.png" width="300" alt="Rasterized output example">
 </p>
 
-> [!NOTE]
-> Some styles look better than others. The default background theme is Tokyo
-> Night.
+> [!NOTE] Some styles look better than others. The default background theme is
+> Tokyo Night.
 
 ### Choosing a theme
 
@@ -578,9 +613,8 @@ You can also set a default theme in your config file:
 raster_theme = "gruvbox-dark"
 ```
 
-> [!NOTE]
-> If the `rasterize` feature is not compiled in, using `--output-image` will
-> produce an error asking you to rebuild with the feature enabled.
+> [!NOTE] If the `rasterize` feature is not compiled in, using `--output-image`
+> will produce an error asking you to rebuild with the feature enabled.
 
 [Back to TOC](#top)
 
@@ -661,6 +695,13 @@ sudo mandb
 ```
 
 ---
+
+## Similar crates
+
+- [rascii_art](https://crates.io/crates/rascii_art): A well-structured and
+  highly readable implementation. Comparing `px2ansi-rs` against `rascii` was
+  instrumental in identifying and fixing aspect-ratio issues in my own rendering
+  logic, as well as providing ideas for different charsets.
 
 ## License
 

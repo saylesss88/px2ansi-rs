@@ -411,6 +411,35 @@ png.save("output.png")?;
 
 ---
 
+## Performance
+
+### SIMD Acceleration
+
+The `simd` feature enables SIMD-accelerated pixel processing using the
+[`wide`](https://crates.io/crates/wide) crate. When enabled, the luma range
+scan (the first pass over every pixel during ASCII, Fade, Kanji, and Chinese
+rendering) processes 8 pixels simultaneously instead of one at a time.
+
+```toml
+[dependencies]
+px2ansi = { version = "0.1", features = ["simd"] }
+```
+
+The `wide` crate provides portable SIMD that automatically targets the best
+available instruction set at compile time — AVX2 on modern x86_64, SSE2 as
+fallback, and NEON on ARM. No unsafe code or architecture-specific feature
+flags required.
+
+**When to enable it:** Large images (>200×200 pixels) with ASCII, Fade, Kanji,
+or Chinese rendering will see the most benefit since those modes do two full
+passes over every pixel. Half-block and Braille modes are less affected as
+their hot path is different.
+
+**Benchmarking:**
+```sh
+cargo bench --features simd
+```
+
 ## Re-exports
 
 The crate root re-exports the most common types so users do not need to dig
