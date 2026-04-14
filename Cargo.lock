@@ -1170,7 +1170,6 @@ name = "px2ansi"
 version = "0.2.2"
 dependencies = [
  "anyhow",
- "colored",
  "fontdue",
  "image",
  "rayon",
@@ -1191,7 +1190,6 @@ dependencies = [
  "anyhow",
  "assert_cmd",
  "clap",
- "clap_builder",
  "clap_complete",
  "clap_mangen",
  "colored",
@@ -1204,7 +1202,6 @@ dependencies = [
  "rand 0.10.1",
  "serde",
  "serde_json",
- "walkdir",
 ]
 
 [[package]]

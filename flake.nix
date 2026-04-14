@@ -61,6 +61,7 @@
             rust-analyzer
             clippy
             rustfmt
+            mold
           ];
 
           buildInputs = with pkgs; [
