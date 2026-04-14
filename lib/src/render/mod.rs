@@ -232,72 +232,80 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         let num_chars = charset.len();
         let num_chars_u32 = u32::try_from(num_chars).unwrap_or(1);
 
-        // --- Pass 1: Luma Range (SIMD + Optional Rayon) ---
-        #[cfg(feature = "parallel")]
-        let (luma_min, luma_max) = if wide {
-            // Wide mode fallback: Rayon handles rows, scalar handles pixels
-            rgba.as_raw()
-                .par_chunks_exact(width as usize * 4)
-                .map(|row| {
-                    let mut lo = u32::MAX;
-                    let mut hi = u32::MIN;
+        // Dynamically decide whether to use Rayon based on pixel count.
+        // Thread pool overhead (1-2ms) usually overtakes SIMD processing for < 120,000 pixels.
+        // Terminal-sized images (~200x100 = 20,000 pixels) will hit the fast serial path.
+        let use_parallel = cfg!(feature = "parallel") && (width * height > 120_000);
 
-                    let mut process_px = |px: &[u8]| {
-                        if px[3] >= ALPHA_THRESHOLD {
-                            let luma = crate::simd::luma_scalar(px[0], px[1], px[2]);
-                            lo = lo.min(luma);
-                            hi = hi.max(luma);
-                        }
-                    };
+        // --- Pass 1: Luma Range ---
+        let (luma_min, luma_max) = if use_parallel {
+            #[cfg(feature = "parallel")]
+            {
+                if wide {
+                    rgba.as_raw()
+                        .par_chunks_exact(width as usize * 4)
+                        .map(|row| {
+                            let mut lo = u32::MAX;
+                            let mut hi = u32::MIN;
 
-                    let chunks = row.chunks_exact(8);
-                    let remainder = chunks.remainder();
+                            let mut process_px = |px: &[u8]| {
+                                if px[3] >= ALPHA_THRESHOLD {
+                                    let luma = crate::simd::luma_scalar(px[0], px[1], px[2]);
+                                    lo = lo.min(luma);
+                                    hi = hi.max(luma);
+                                }
+                            };
 
-                    for px in chunks {
-                        // 8 bytes = 2 pixels. We only want the first pixel (x_step = 2)
-                        process_px(&px[0..4]);
-                    }
+                            let chunks = row.chunks_exact(8);
+                            let remainder = chunks.remainder();
 
-                    // If the width is odd, the remainder contains exactly 4 bytes (1 pixel)
-                    if !remainder.is_empty() {
-                        process_px(remainder);
-                    }
+                            for px in chunks {
+                                process_px(&px[0..4]);
+                            }
 
-                    (lo, hi)
-                })
-                .reduce(
-                    || (u32::MAX, u32::MIN),
-                    |(m1, x1), (m2, x2)| (m1.min(m2), x1.max(x2)),
-                )
-        } else {
-            // Narrow mode: Rayon processes large chunks to maximize SIMD efficiency
-            // 32768 bytes = 8192 pixels. Multiple of 32 bytes ensures SIMD never breaks alignment.
-            rgba.as_raw()
-                .par_chunks(32 * 1024)
-                .map(crate::simd::find_luma_range_rgba_bytes)
-                .reduce(
-                    || (u32::MAX, u32::MIN),
-                    |(m1, x1), (m2, x2)| (m1.min(m2), x1.max(x2)),
-                )
-        };
+                            if !remainder.is_empty() {
+                                process_px(remainder);
+                            }
 
-        #[cfg(not(feature = "parallel"))]
-        let (luma_min, luma_max) = if wide {
-            let mut lo = u32::MAX;
-            let mut hi = u32::MIN;
-            for y in 0..height {
-                for x in (0..width).step_by(x_step) {
-                    let [r, g, b, a] = rgba.get_pixel(x, y).0;
-                    if a >= ALPHA_THRESHOLD {
-                        let l = crate::simd::luma_scalar(r, g, b);
-                        lo = lo.min(l);
-                        hi = hi.max(l);
-                    }
+                            (lo, hi)
+                        })
+                        .reduce(
+                            || (u32::MAX, u32::MIN),
+                            |(m1, x1), (m2, x2)| (m1.min(m2), x1.max(x2)),
+                        )
+                } else {
+                    rgba.as_raw()
+                        .par_chunks(32 * 1024)
+                        .map(crate::simd::find_luma_range_rgba_bytes)
+                        .reduce(
+                            || (u32::MAX, u32::MIN),
+                            |(m1, x1), (m2, x2)| (m1.min(m2), x1.max(x2)),
+                        )
                 }
             }
-            (lo, hi)
+            #[cfg(not(feature = "parallel"))]
+            {
+                (u32::MAX, u32::MIN) // Unreachable because use_parallel would be false
+            }
         } else {
-            crate::simd::find_luma_range_rgba_bytes(rgba.as_raw())
+            // Serial/SIMD fast-path
+            if wide {
+                let mut lo = u32::MAX;
+                let mut hi = u32::MIN;
+                for y in 0..height {
+                    for x in (0..width).step_by(x_step) {
+                        let [r, g, b, a] = rgba.get_pixel(x, y).0;
+                        if a >= ALPHA_THRESHOLD {
+                            let l = crate::simd::luma_scalar(r, g, b);
+                            lo = lo.min(l);
+                            hi = hi.max(l);
+                        }
+                    }
+                }
+                (lo, hi)
+            } else {
+                crate::simd::find_luma_range_rgba_bytes(rgba.as_raw())
+            }
         };
 
         // --- Guard: Fully transparent ---
@@ -315,54 +323,62 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         let color_enabled = self.options.color();
         let color_mode = self.options.color_mode();
 
-        // --- Pass 2: Rendering (Optional Rayon) ---
-        #[cfg(feature = "parallel")]
-        let rows: Vec<String> = (0..height)
-            .into_par_iter()
-            .map(|y| {
-                let mut row_str = String::with_capacity(width as usize * 12);
-                for x in (0..width).step_by(x_step) {
-                    let [r, g, b, a] = rgba.get_pixel(x, y).0;
-                    if a < ALPHA_THRESHOLD {
-                        if color_enabled {
-                            row_str.push_str("\x1b[0m");
+        // --- Pass 2: Rendering ---
+        if use_parallel {
+            #[cfg(feature = "parallel")]
+            {
+                let rows: Vec<String> = (0..height)
+                    .into_par_iter()
+                    .map(|y| {
+                        let mut row_str = String::with_capacity(width as usize * 12);
+                        for x in (0..width).step_by(x_step) {
+                            let [r, g, b, a] = rgba.get_pixel(x, y).0;
+                            if a < ALPHA_THRESHOLD {
+                                if color_enabled {
+                                    row_str.push_str("\x1b[0m");
+                                }
+                                row_str.push_str(blank);
+                                continue;
+                            }
+                            let luma = crate::simd::luma_scalar(r, g, b);
+                            let norm = ((luma - luma_min) * 255) / luma_range;
+                            let idx =
+                                ((norm * (num_chars_u32 - 1) / 255) as usize).min(num_chars - 1);
+                            let glyph = charset[idx];
+
+                            if color_enabled {
+                                write_colored_glyph_to_str(
+                                    &mut row_str,
+                                    glyph,
+                                    r,
+                                    g,
+                                    b,
+                                    color_mode,
+                                );
+                            } else {
+                                row_str.push_str(glyph);
+                            }
                         }
-                        row_str.push_str(blank);
-                        continue;
-                    }
-                    let luma = crate::simd::luma_scalar(r, g, b);
-                    let norm = ((luma - luma_min) * 255) / luma_range;
-                    let idx = ((norm * (num_chars_u32 - 1) / 255) as usize).min(num_chars - 1);
-                    let glyph = charset[idx];
+                        if color_enabled {
+                            row_str.push_str("\x1b[0m\n");
+                        } else {
+                            row_str.push('\n');
+                        }
+                        row_str
+                    })
+                    .collect();
 
-                    if color_enabled {
-                        // Internal helper that writes to a String buffer instead of IO
-                        write_colored_glyph_to_str(&mut row_str, glyph, r, g, b, color_mode);
-                    } else {
-                        row_str.push_str(glyph);
-                    }
+                for row in rows {
+                    self.writer.write_all(row.as_bytes())?;
                 }
-                if color_enabled {
-                    row_str.push_str("\x1b[0m\n");
-                } else {
-                    row_str.push('\n');
-                }
-                row_str
-            })
-            .collect();
-
-        #[cfg(feature = "parallel")]
-        for row in rows {
-            self.writer.write_all(row.as_bytes())?;
-        }
-
-        #[cfg(not(feature = "parallel"))]
-        {
+            }
+        } else {
+            // Serial/SIMD fast-path
             for y in 0..height {
                 for x in (0..width).step_by(x_step) {
                     let [red, green, blue, alpha] = rgba.get_pixel(x, y).0;
                     if alpha < ALPHA_THRESHOLD {
-                        if self.options.color() {
+                        if color_enabled {
                             write!(self.writer, "\x1b[0m{blank}")?;
                         } else {
                             write!(self.writer, "{blank}")?;
@@ -374,20 +390,13 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                     let idx =
                         ((normalized * (num_chars_u32 - 1) / 255) as usize).min(num_chars - 1);
                     let glyph = charset[idx];
-                    if self.options.color() {
-                        write_colored_glyph(
-                            self.writer,
-                            glyph,
-                            red,
-                            green,
-                            blue,
-                            self.options.color_mode(),
-                        )?;
+                    if color_enabled {
+                        write_colored_glyph(self.writer, glyph, red, green, blue, color_mode)?;
                     } else {
                         write!(self.writer, "{glyph}")?;
                     }
                 }
-                if self.options.color() {
+                if color_enabled {
                     writeln!(self.writer, "\x1b[0m")?;
                 } else {
                     writeln!(self.writer)?;
