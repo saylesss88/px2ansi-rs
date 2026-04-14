@@ -707,6 +707,13 @@ sudo mandb
   instrumental in identifying and fixing aspect-ratio issues in my own rendering
   logic, as well as providing ideas for different charsets.
 
+- [ansimage](https://crates.io/crates/ansimage): Haven't had a chance to test
+  this yet.
+
+- [ansizalizer](https://github.com/Zebbeni/ansizalizer): A feature-rich TUI
+  built with Ansipx and Bubble Tea (Go). It looks polished and could point
+  toward a compelling future direction for this project.
+
 ## License
 
 [GNU General Public License 3.0](https://github.com/saylesss88/px2ansi-rs/blob/main/LICENSE)
