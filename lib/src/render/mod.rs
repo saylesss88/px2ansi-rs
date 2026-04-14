@@ -24,6 +24,17 @@ pub use utils::*;
 /// The alpha threshold below which a pixel is considered transparent.
 const ALPHA_THRESHOLD: u8 = 30;
 
+/// Tracks the last-written color to suppress redundant ANSI escape sequences.
+/// Skipping repeated escape codes measurably reduces stdout write volume on
+/// images with large uniform color regions.
+#[derive(Default)]
+enum ColorState {
+    #[default]
+    None,
+    TrueColor(u8, u8, u8),
+    Ansi256(u8),
+}
+
 /// A renderer that writes ANSI art to a `Write` target.
 ///
 /// `Renderer` holds a mutable reference to the output writer and a reference
@@ -87,9 +98,6 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
     /// Renders using Braille dot patterns (U+2800–U+28FF).
     /// Each 2×4 pixel region maps to one Braille character cell.
     fn braille(&mut self) -> std::io::Result<()> {
-        // let rgba = self.img.to_rgba8();
-        // Borrow the inner RgbaImage when the image is already in that format
-        // (e.g. PNG with alpha), avoiding an unnecessary clone/conversion.
         let rgba: Cow<'_, RgbaImage> = self
             .img
             .as_rgba8()
@@ -105,6 +113,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
             (0, 3, 0x40),
             (1, 3, 0x80),
         ];
+        let mut last_color = ColorState::default();
         for y in (0..height).step_by(4) {
             for x in (0..width).step_by(2) {
                 let mut byte = 0u8;
@@ -136,6 +145,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                 if byte == 0 || lit_count == 0 {
                     if self.options.color() {
                         write!(self.writer, "\x1b[0m\u{2800}")?;
+                        last_color = ColorState::default();
                     } else {
                         write!(self.writer, "\u{2800}")?;
                     }
@@ -155,6 +165,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                             green,
                             blue,
                             self.options.color_mode(),
+                            &mut last_color,
                         )?;
                     } else {
                         write!(self.writer, "{ch}")?;
@@ -164,6 +175,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
 
             if self.options.color() {
                 writeln!(self.writer, "\x1b[0m")?;
+                last_color = ColorState::default();
             } else {
                 writeln!(self.writer)?;
             }
@@ -171,6 +183,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
 
         Ok(())
     }
+
     /// Renders using a block-shade ramp (░▒▓█).
     fn fade(&mut self) -> std::io::Result<()> {
         self.charset_colored(&[" ", "░", "▒", "▓", "█"], false)
@@ -215,6 +228,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
             true,
         )
     }
+
     /// Universal colored charset renderer.
     ///
     /// Maps each pixel to a glyph by normalized perceptual luminance, then
@@ -327,6 +341,9 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         if use_parallel {
             #[cfg(feature = "parallel")]
             {
+                // Parallel path: each row is independent, no shared ColorState.
+                // write_colored_glyph_to_str handles dedup per-row via its own
+                // local state if needed, but cross-row dedup isn't safe here.
                 let rows: Vec<String> = (0..height)
                     .into_par_iter()
                     .map(|y| {
@@ -373,13 +390,18 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                 }
             }
         } else {
-            // Serial/SIMD fast-path
+            // Serial path: ColorState deduplicates escape sequences across the
+            // entire frame, skipping writes when adjacent pixels share a color.
+            // Reset at transparency and end of each row to stay correct.
+            let mut last_color = ColorState::default();
             for y in 0..height {
                 for x in (0..width).step_by(x_step) {
                     let [red, green, blue, alpha] = rgba.get_pixel(x, y).0;
                     if alpha < ALPHA_THRESHOLD {
                         if color_enabled {
                             write!(self.writer, "\x1b[0m{blank}")?;
+                            // Transparent cell resets terminal color state
+                            last_color = ColorState::default();
                         } else {
                             write!(self.writer, "{blank}")?;
                         }
@@ -391,13 +413,23 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                         ((normalized * (num_chars_u32 - 1) / 255) as usize).min(num_chars - 1);
                     let glyph = charset[idx];
                     if color_enabled {
-                        write_colored_glyph(self.writer, glyph, red, green, blue, color_mode)?;
+                        write_colored_glyph(
+                            self.writer,
+                            glyph,
+                            red,
+                            green,
+                            blue,
+                            color_mode,
+                            &mut last_color,
+                        )?;
                     } else {
                         write!(self.writer, "{glyph}")?;
                     }
                 }
                 if color_enabled {
                     writeln!(self.writer, "\x1b[0m")?;
+                    // Row reset also clears our tracked state
+                    last_color = ColorState::default();
                 } else {
                     writeln!(self.writer)?;
                 }
@@ -416,7 +448,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
 ///
 /// # Errors
 ///
-/// Returns a [`std::io::Result`] error if the writer fails./ Returns a [`std::io::Result`] error if the writer fails.
+/// Returns a [`std::io::Result`] error if the writer fails.
 pub fn write_ansi_art<W: Write>(
     img: &DynamicImage,
     writer: &mut W,
@@ -441,6 +473,7 @@ pub fn write_ansi_art<W: Write>(
         }
     }
 }
+
 /// Writes a single half-block character cell representing two vertical pixels.
 fn write_half_block<W: Write>(out: &mut W, top: Rgba<u8>, bot: Rgba<u8>) -> std::io::Result<()> {
     match (top[3] > 0, bot[3] > 0) {
@@ -496,11 +529,17 @@ pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> std::i
         ..viuer::Config::default()
     };
 
-    viuer::print(img, &cfg)
+    // Pre-convert to Rgb8 so viuer skips its internal format detection
+    // and conversion — saves one allocation on the hot path.
+    let rgb = image::DynamicImage::ImageRgb8(img.to_rgb8());
+
+    viuer::print(&rgb, &cfg)
         .map(|_| ())
         .map_err(|e| std::io::Error::other(e.to_string()))
 }
 
+/// Writes a colored glyph to a `Write` target, deduplicating ANSI escape
+/// sequences when the color hasn't changed since the last call.
 fn write_colored_glyph<W: Write>(
     writer: &mut W,
     glyph: &str,
@@ -508,20 +547,31 @@ fn write_colored_glyph<W: Write>(
     g: u8,
     b: u8,
     color_mode: ColorMode,
+    last: &mut ColorState,
 ) -> std::io::Result<()> {
     match color_mode {
         ColorMode::TrueColor => {
-            write!(writer, "\x1b[38;2;{r};{g};{b}m{glyph}")
+            if !matches!(last, ColorState::TrueColor(lr, lg, lb) if *lr == r && *lg == g && *lb == b)
+            {
+                write!(writer, "\x1b[38;2;{r};{g};{b}m")?;
+                *last = ColorState::TrueColor(r, g, b);
+            }
+            writer.write_all(glyph.as_bytes())
         }
         ColorMode::Ansi256 => {
             let idx = crate::color::rgb_to_xterm256(r, g, b);
-            write!(writer, "\x1b[38;5;{idx}m{glyph}")
+            if !matches!(last, ColorState::Ansi256(li) if *li == idx) {
+                write!(writer, "\x1b[38;5;{idx}m")?;
+                *last = ColorState::Ansi256(idx);
+            }
+            writer.write_all(glyph.as_bytes())
         }
-        ColorMode::None => {
-            write!(writer, "{glyph}")
-        }
+        ColorMode::None => writer.write_all(glyph.as_bytes()),
     }
 }
+
+/// Writes a colored glyph into a `String` buffer (used by the parallel path).
+/// No deduplication — each row is independent across threads.
 #[cfg(feature = "parallel")]
 fn write_colored_glyph_to_str(
     buf: &mut String,

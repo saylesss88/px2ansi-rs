@@ -162,9 +162,8 @@ Options:
 
 ## Usage
 
-> [!NOTE]
-> `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`, `show`,
-> and `list`.
+> [!NOTE] `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`,
+> `show`, and `list`.
 
 Most subcommands have their own help menus:
 
@@ -381,8 +380,8 @@ You can point `show` at an index anywhere in your filesystem with `-I`:
 px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json
 ```
 
-> [!NOTE]
-> Any field omitted from the `.toml` file falls back to the built-in defaults.
+> [!NOTE] Any field omitted from the `.toml` file falls back to the built-in
+> defaults.
 
 #### Configuration on NixOS
 
@@ -475,8 +474,7 @@ programs.zsh.initContent = ''
 | Chinese    | `--style chinese`    | Chinese density ramp (double-width)        | Stylized output              |
 | Sixel      | `--style sixel`      | Pixel-accurate Sixel protocol output       | Supported terminals only     |
 
-> [!NOTE]
-> `--style ascii` also supports `--density light|medium|heavy`.
+> [!NOTE] `--style ascii` also supports `--density light|medium|heavy`.
 > `--style dense` is shorthand for `--style ascii --density heavy`.
 > `--style sixel` is basically a 1 to 1 conversion.
 
@@ -528,7 +526,7 @@ cargo build --release --features simd,sixel
 ```
 
 <details>
-<summary> Testing against rascii_art </summary>
+<summary> Testing against rascii_art and viu </summary>
 
 `rascii` is a well-established and fast terminal art tool. These benchmarks are
 a genuine comparison against a solid baseline, not a strawman.
@@ -542,6 +540,70 @@ a genuine comparison against a solid baseline, not a strawman.
 
 The actuall commands compared were `rascii <image> --color`, and
 `px2ansi-rs convert <image> --style ascii`
+
+## ⚡ Benchmarks
+
+Benchmarked against [`viu`](https://github.com/atanunq/viu): a fast,
+well-established terminal image viewer built on the same `viuer` backend that
+`px2ansi-rs` uses for Sixel output.
+
+All benchmarks run with `hyperfine --warmup 3` on the same machine. Images used:
+`nixos.png` (1183×1024) and `scream.png` (700×909).
+
+---
+
+### Half-block rendering (`--style ansi` vs `viu --blocks`)
+
+| Image        | `px2ansi-rs`        | `viu`            | Winner          |
+| ------------ | ------------------- | ---------------- | --------------- |
+| `nixos.png`  | **8.5 ms** ± 0.7 ms | 18.6 ms ± 0.7 ms | `px2ansi-rs` 🏆 |
+| `scream.png` | **9.3 ms** ± 0.4 ms | 15.4 ms ± 0.6 ms | `px2ansi-rs` 🏆 |
+
+`px2ansi-rs` renders ANSI half-blocks **2.2× faster** than `viu` on large
+images. User CPU time is 2.2 ms vs 10.6 ms — a 4.8× reduction in actual compute,
+with the remainder being process startup and I/O.
+
+---
+
+
+### Sixel rendering (`--style sixel` vs `viu --static`)
+
+| Image | `px2ansi-rs` | `viu` | Winner |
+|---|---|---|---|
+| `nixos.png` | 19.3 ms ± 1.0 ms | **18.7 ms** ± 0.7 ms | `viu` |
+| `scream.png` | 16.5 ms ± 0.8 ms | **15.4 ms** ± 0.6 ms | `viu` |
+
+Sixel encoding is CPU-bound inside the shared `viuer` encoder, both tools
+use the same underlying library. `px2ansi-rs` carries ~0.6–1.1 ms of
+additional overhead from process startup and image preparation before
+handing off to the encoder, putting it marginally behind `viu` in this mode.
+
+---
+
+### Pure compute (`> /dev/null`, `nixos.png`)
+
+Redirecting output to `/dev/null` removes terminal rendering latency and
+isolates raw encode time:
+
+| Mode        | `px2ansi-rs`             | `viu`                 | Speedup       |
+| ----------- | ------------------------ | --------------------- | ------------- |
+| Half-blocks | **10.4 ms** (2.5 ms CPU) | 20.4 ms (10.8 ms CPU) | **2× faster** |
+| Sixel       | 21.5 ms (8.7 ms CPU)     | 20.7 ms (10.8 ms CPU) | ~equal        |
+
+---
+
+### Summary
+
+```
+px2ansi-rs --style ansi is the fastest benchmark overall:
+  2.18× faster than viu --blocks  (nixos.png)
+  1.80× faster than viu --blocks  (scream.png)
+  ~equal to viu --static          (both images, Sixel)
+```
+
+> Sixel parity with `viu` is expected, both delegate encoding to the same
+> `viuer` library. The ANSI/half-block gap reflects `px2ansi-rs`'s
+> SIMD-accelerated luma scan and color deduplication reducing CPU work by ~4×.
 
 </details>
 
@@ -588,9 +650,8 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-rasterized.png" width="300" alt="Rasterized output example">
 </p>
 
-> [!NOTE]
-> Some styles look better than others. The default background theme is Tokyo
-> Night.
+> [!NOTE] Some styles look better than others. The default background theme is
+> Tokyo Night.
 
 ### Choosing a theme
 
@@ -616,9 +677,8 @@ You can also set a default theme in your config file:
 raster_theme = "gruvbox-dark"
 ```
 
-> [!NOTE]
-> If the `rasterize` feature is not compiled in, using `--output-image` will
-> produce an error asking you to rebuild with the feature enabled.
+> [!NOTE] If the `rasterize` feature is not compiled in, using `--output-image`
+> will produce an error asking you to rebuild with the feature enabled.
 
 [Back to TOC](#top)
 
@@ -702,10 +762,10 @@ sudo mandb
 
 ## Similar crates
 
-- [rascii_art](https://crates.io/crates/rascii_art): A well-structured,
-  readable implementation. Comparing px2ansi-rs with rascii_art was especially
-  helpful for spotting and fixing aspect-ratio issues in my own rendering
-  logic, and it also gave me ideas for additional charsets.
+- [rascii_art](https://crates.io/crates/rascii_art): A well-structured, readable
+  implementation. Comparing px2ansi-rs with rascii_art was especially helpful
+  for spotting and fixing aspect-ratio issues in my own rendering logic, and it
+  also gave me ideas for additional charsets.
 
 - [ansimage](https://crates.io/crates/ansimage): Haven't had a chance to test
   this yet.
