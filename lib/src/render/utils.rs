@@ -6,12 +6,6 @@ use terminal_size::{Height, Width, terminal_size};
 
 impl RenderOptions {
     /// Calculates the optimal target dimensions for the terminal.
-    ///
-    /// This is the most complex part of the renderer, as it has to account for:
-    /// 1. Terminal width/height (auto-detected).
-    /// 2. Different character aspect ratios (Braille vs. Half-blocks).
-    /// 3. User-defined width overrides.
-    /// 4. Nearest-neighbor scaling for pixel art preservation.
     #[allow(clippy::too_many_lines)]
     #[must_use]
     pub fn calculate_dimensions(&self, orig_w: u32, orig_h: u32) -> (u32, u32) {
@@ -23,27 +17,12 @@ impl RenderOptions {
                 CharsetMode::Unicode if self.style().full => (term_w / 2, term_h),
                 CharsetMode::Sixel => (term_w * 8, term_h * 16),
 
-                // Kanji/Chinese: each glyph is 2 columns wide, so pixel budget is
-                // term_w / 2. The 2× column cost cancels the 2:1 cell aspect ratio,
-                // so height correction is just plain `aspect` (no / 2.0).
-                CharsetMode::Kanji | CharsetMode::Chinese => {
-                    let w = term_w / 2;
-                    let aspect = f64::from(orig_h) / f64::from(orig_w);
-                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                    let h_from_w = (f64::from(w) * aspect).ceil() as u32;
-                    if h_from_w <= term_h {
-                        (w, h_from_w)
-                    } else {
-                        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                        let w_from_h = (f64::from(term_h) / aspect).floor() as u32;
-                        let chosen_w = w_from_h.min(w);
-                        (chosen_w, term_h)
-                    }
-                }
-
-                // ASCII / Fade: terminal cells are ~2:1 tall, so divide height by 2.
-                // Also handle the case where the image is taller than the terminal.
-                CharsetMode::Ascii | CharsetMode::Fade => {
+                // Group Kanji/Chinese with Ascii/Fade so they share the exact
+                // same pixel budget (e.g. 108x47 instead of 54x47).
+                CharsetMode::Kanji
+                | CharsetMode::Chinese
+                | CharsetMode::Ascii
+                | CharsetMode::Fade => {
                     let w = term_w.saturating_sub(2);
                     let aspect = f64::from(orig_h) / f64::from(orig_w);
                     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -67,20 +46,14 @@ impl RenderOptions {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let (render_w, render_h) = self.width().map_or_else(
             || {
-                // Kanji/Chinese: max_w is already halved above
-                if matches!(self.charset(), CharsetMode::Kanji | CharsetMode::Chinese) {
-                    let w = max_w;
-                    let aspect = f64::from(orig_h) / f64::from(orig_w);
-                    let h_from_w = (f64::from(w) * aspect).ceil() as u32;
-                    if h_from_w <= max_h {
-                        (w, h_from_w.min(max_h))
-                    } else {
-                        let w_from_h = (f64::from(max_h) / aspect).floor() as u32;
-                        let chosen_w = w_from_h.min(w);
-                        (chosen_w, max_h)
-                    }
-                // ASCII/Fade: derive from terminal width but enforce the height fit
-                } else if matches!(self.charset(), CharsetMode::Ascii | CharsetMode::Fade) {
+                // Group Kanji/Chinese with Ascii/Fade here as well
+                if matches!(
+                    self.charset(),
+                    CharsetMode::Kanji
+                        | CharsetMode::Chinese
+                        | CharsetMode::Ascii
+                        | CharsetMode::Fade
+                ) {
                     let w = max_w;
                     let aspect = f64::from(orig_h) / f64::from(orig_w);
                     let h_from_w = (f64::from(w) * aspect / 2.0).ceil() as u32;
@@ -110,13 +83,8 @@ impl RenderOptions {
             },
             |tw| {
                 // User provided width 'tw' — derive height from it.
-                // Kanji/Chinese: 2× col cost cancels cell aspect, so no /2 correction.
                 let aspect = f64::from(orig_h) / f64::from(orig_w);
-                let h = if matches!(self.charset(), CharsetMode::Kanji | CharsetMode::Chinese) {
-                    (f64::from(tw) * aspect).ceil() as u32
-                } else {
-                    (f64::from(tw) * aspect / 2.0).ceil() as u32
-                };
+                let h = (f64::from(tw) * aspect / 2.0).ceil() as u32;
                 (tw, h)
             },
         );
@@ -139,6 +107,7 @@ impl RenderOptions {
         result
     }
 }
+
 /// Use Env vars to get the terminal size
 #[must_use]
 pub fn get_terminal_size() -> (u32, u32) {

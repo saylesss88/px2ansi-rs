@@ -241,14 +241,28 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                 .map(|row| {
                     let mut lo = u32::MAX;
                     let mut hi = u32::MIN;
-                    for px in row.chunks_exact(8) {
-                        // 8 bytes = 2 pixels (x_step 2)
-                        let luma = crate::simd::luma_scalar(px[0], px[1], px[2]);
+
+                    let mut process_px = |px: &[u8]| {
                         if px[3] >= ALPHA_THRESHOLD {
+                            let luma = crate::simd::luma_scalar(px[0], px[1], px[2]);
                             lo = lo.min(luma);
                             hi = hi.max(luma);
                         }
+                    };
+
+                    let chunks = row.chunks_exact(8);
+                    let remainder = chunks.remainder();
+
+                    for px in chunks {
+                        // 8 bytes = 2 pixels. We only want the first pixel (x_step = 2)
+                        process_px(&px[0..4]);
                     }
+
+                    // If the width is odd, the remainder contains exactly 4 bytes (1 pixel)
+                    if !remainder.is_empty() {
+                        process_px(remainder);
+                    }
+
                     (lo, hi)
                 })
                 .reduce(
@@ -256,9 +270,10 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                     |(m1, x1), (m2, x2)| (m1.min(m2), x1.max(x2)),
                 )
         } else {
-            // Narrow mode: Rayon handles rows, SIMD handles pixels
+            // Narrow mode: Rayon processes large chunks to maximize SIMD efficiency
+            // 32768 bytes = 8192 pixels. Multiple of 32 bytes ensures SIMD never breaks alignment.
             rgba.as_raw()
-                .par_chunks_exact(width as usize * 4)
+                .par_chunks(32 * 1024)
                 .map(crate::simd::find_luma_range_rgba_bytes)
                 .reduce(
                     || (u32::MAX, u32::MIN),
@@ -322,7 +337,6 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
 
                     if color_enabled {
                         // Internal helper that writes to a String buffer instead of IO
-
                         write_colored_glyph_to_str(&mut row_str, glyph, r, g, b, color_mode);
                     } else {
                         row_str.push_str(glyph);
@@ -344,8 +358,6 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
 
         #[cfg(not(feature = "parallel"))]
         {
-            // let num_chars_u32 = u32::try_from(charset.len()).unwrap_or(1);
-            // let num_chars = charset.len();
             for y in 0..height {
                 for x in (0..width).step_by(x_step) {
                     let [red, green, blue, alpha] = rgba.get_pixel(x, y).0;
@@ -385,88 +397,6 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
 
         Ok(())
     }
-    // fn charset_colored(&mut self, charset: &[&str], wide: bool) -> std::io::Result<()> {
-    //     let rgba = self.img.to_rgba8();
-    //     let (width, height) = rgba.dimensions();
-    //     // let num_chars_u32 = u32::try_from(charset.len()).unwrap_or(1);
-    //     // let num_chars = charset.len();
-    //     let x_step = if wide { 2 } else { 1 };
-    //     let blank = if wide { "  " } else { " " };
-
-    //     // First pass: find the actual luma range of opaque pixels
-    //     let (luma_min, luma_max) = if wide {
-    //         // Wide modes skip every other column — fall back to per-pixel scan
-    //         let mut lo = u32::MAX;
-    //         let mut hi = u32::MIN;
-    //         for y in 0..height {
-    //             for x in (0..width).step_by(x_step) {
-    //                 let [r, g, b, a] = rgba.get_pixel(x, y).0;
-    //                 if a >= ALPHA_THRESHOLD {
-    //                     let luma = crate::simd::luma_scalar(r, g, b);
-    //                     lo = lo.min(luma);
-    //                     hi = hi.max(luma);
-    //                 }
-    //             }
-    //         }
-    //         (lo, hi)
-    //     } else {
-    //         // x_step == 1: every pixel is visited — use the bulk SIMD scan
-    //         crate::simd::find_luma_range_rgba_bytes(rgba.as_raw())
-    //     };
-
-    //     // Guard: fully transparent image — write all blanks and return
-    //     if luma_min == u32::MAX {
-    //         for _ in 0..height {
-    //             for _ in (0..width).step_by(x_step) {
-    //                 write!(self.writer, "{blank}")?;
-    //             }
-    //             writeln!(self.writer)?;
-    //         }
-    //         return Ok(());
-    //     }
-
-    //     let luma_range = (luma_max - luma_min).max(1);
-
-    //     // Second pass: render each pixel as a colored glyph
-    //     for y in 0..height {
-    //         for x in (0..width).step_by(x_step) {
-    //             let [red, green, blue, alpha] = rgba.get_pixel(x, y).0;
-    //             if alpha < ALPHA_THRESHOLD {
-    //                 if self.options.color() {
-    //                     write!(self.writer, "\x1b[0m{blank}")?;
-    //                 } else {
-    //                     write!(self.writer, "{blank}")?;
-    //                 }
-    //                 continue;
-    //             }
-    //             let luma =
-    //                 (2126 * u32::from(red) + 7152 * u32::from(green) + 722 * u32::from(blue))
-    //                     / 10000;
-    //             let normalized = ((luma - luma_min) * 255) / luma_range;
-    //             let idx = ((normalized * (num_chars_u32 - 1) / 255) as usize).min(num_chars - 1);
-    //             let glyph = charset[idx];
-    //             if self.options.color() {
-    //                 write_colored_glyph(
-    //                     self.writer,
-    //                     glyph,
-    //                     red,
-    //                     green,
-    //                     blue,
-    //                     self.options.color_mode(),
-    //                 )?;
-    //             } else {
-    //                 write!(self.writer, "{glyph}")?;
-    //             }
-    //         }
-    //         // End of row reset
-    //         if self.options.color() {
-    //             writeln!(self.writer, "\x1b[0m")?;
-    //         } else {
-    //             writeln!(self.writer)?;
-    //         }
-    //     }
-    //     Ok(())
-    // }
 }
 
 /// Renders a prepared image to `writer` using the mode specified in `options`.
@@ -573,11 +503,11 @@ fn write_colored_glyph_to_str(
 ) {
     match color_mode {
         ColorMode::TrueColor => {
-            let _ = write!(buf, "\\x1b[38;2;{r};{g};{b}m{glyph}");
+            let _ = write!(buf, "\x1b[38;2;{r};{g};{b}m{glyph}");
         }
         ColorMode::Ansi256 => {
             let idx = crate::color::rgb_to_xterm256(r, g, b);
-            let _ = write!(buf, "\\x1b[38;5;{idx}m{glyph}");
+            let _ = write!(buf, "\x1b[38;5;{idx}m{glyph}");
         }
         ColorMode::None => {
             buf.push_str(glyph);
