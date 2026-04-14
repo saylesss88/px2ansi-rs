@@ -240,7 +240,7 @@ px2ansi-rs convert tests/test.png --style ascii --filter nearest --no-color
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii.png" width="400" alt="ASCII Pikachu example">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii2.png" width="400" alt="ASCII Pikachu example">
 </p>
 
 #### Disable color
@@ -583,7 +583,7 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-ascii.png" width="300" alt="Rasterized output example">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-rasterized.png" width="300" alt="Rasterized output example">
 </p>
 
 > [!NOTE] Some styles look better than others. The default background theme is
