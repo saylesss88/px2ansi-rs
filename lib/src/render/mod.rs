@@ -432,7 +432,7 @@ pub fn write_ansi_art<W: Write>(
         CharsetMode::Kanji => renderer.kanji(),
         CharsetMode::Chinese => renderer.chinese(),
         #[cfg(feature = "sixel")]
-        CharsetMode::Sixel => write_sixel(img),
+        CharsetMode::Sixel => write_sixel(img, &options),
         #[cfg(not(feature = "sixel"))]
         CharsetMode::Sixel => {
             eprintln!("Sixel support requires the 'sixel' feature.");
@@ -474,8 +474,29 @@ fn write_full_block<W: Write>(out: &mut W, px: Rgba<u8>) -> std::io::Result<()> 
 /// This function will return an error if `viuer` fails to write to the terminal
 /// buffer or if the image cannot be encoded into the Sixel format.
 #[cfg(feature = "sixel")]
-pub fn write_sixel(img: &image::DynamicImage) -> std::io::Result<()> {
-    viuer::print(img, &viuer::Config::default())
+pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> std::io::Result<()> {
+    use crate::render::get_terminal_size;
+
+    let (term_w, term_h) = get_terminal_size();
+
+    // Use the already-calculated render width if the user supplied one,
+    // otherwise fall back to the full terminal width.
+    let width = options.width().unwrap_or(term_w);
+
+    let cfg = viuer::Config {
+        use_kitty: false,
+        use_iterm: false,
+        absolute_offset: false,
+        x: 0,
+        y: 0,
+        width: Some(width),
+        height: Some(term_h),
+        restore_cursor: false,
+        truecolor: true,
+        ..viuer::Config::default()
+    };
+
+    viuer::print(img, &cfg)
         .map(|_| ())
         .map_err(|e| std::io::Error::other(e.to_string()))
 }

@@ -413,6 +413,98 @@ png.save("output.png")?;
 
 ## Performance
 
+## ⚡ Performance
+
+### SIMD Acceleration (`simd` feature)
+
+The `simd` feature enables hardware-accelerated pixel processing via the
+[`wide`](https://crates.io/crates/wide) crate. It is portable, no `unsafe`, no
+architecture-specific intrinsics, no `nightly` compiler required. LLVM compiles
+the `wide` vector types down to real AVX2/SSE4/NEON instructions automatically
+on supported hardware.
+
+#### What it accelerates
+
+The most expensive pass in any ANSI art renderer is the **luma range scan** 
+reading every pixel, computing its perceptual brightness, and finding the
+minimum and maximum values so the character density ramp can be normalized.
+
+With the `simd` feature enabled, this scan processes **8 pixels at a time** in
+a single `u32x8` SIMD lane instead of one at a time:
+
+```rust
+// 8 Rec.709 luma values computed simultaneously
+let luma_unscaled = r * w_r + g * w_g + b * w_b;
+//                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//           u32x8 × u32x8 — 8 multiplies in one instruction
+```
+
+Transparent pixels (alpha < 30) are skipped with an early-out mask check
+before any per-pixel branching occurs, keeping the hot loop branchless.
+
+Any remaining pixels that don't fill a full 8-pixel chunk are handled by an
+identical scalar fallback, so results are always exact.
+
+#### Rec.709 luma formula
+
+Both the SIMD and scalar paths use the same perceptually-weighted formula:
+
+```
+luma = (2126·R + 7152·G + 722·B) / 10000
+```
+
+This matches the [ITU-R BT.709](https://www.itu.int/rec/R-REC-BT.709)
+standard used in HDTV and sRGB colour spaces, giving accurate brightness
+perception across all charset modes.
+
+#### Enabling SIMD
+
+```toml
+[dependencies]
+px2ansi = { version = "0.2.2", features = ["simd"] }
+```
+
+Or to enable everything:
+
+```toml
+[dependencies]
+px2ansi = { version = "0.2.2", features = ["full"] }
+```
+
+If the `simd` feature is **not** enabled, the library automatically falls back
+to a scalar implementation with identical output — no code changes required.
+
+#### Benchmark (nixos.png, 1183×1024, release build)
+
+| Mode | Wall time | User CPU |
+|---|---|---|
+| scalar only | ~10 ms | ~4.5 ms |
+| `simd` enabled | ~7.6 ms | ~2.2 ms |
+| vs `rascii --color` | ~10.0 ms | ~4.5 ms |
+
+The SIMD luma scan alone roughly **halves CPU time** for the render pass.
+
+---
+
+### Parallel Rendering (`parallel` feature)
+
+The `parallel` feature enables [Rayon](https://crates.io/crates/rayon)-based
+multi-threaded rendering via `into_par_iter()` for Pass 2 (glyph mapping and
+colorization).
+
+**Important:** Rayon has a fixed thread-pool startup cost of ~1–2 ms. For
+typical terminal-sized output (~200×100 = 20,000 pixels) this overhead
+**exceeds** the render time itself. The library therefore only activates
+parallel rendering dynamically when the pixel count exceeds **120,000 pixels**,
+falling back to the fast serial + SIMD path otherwise:
+
+```rust
+let use_parallel = cfg!(feature = "parallel") && (width * height > 120_000);
+```
+
+This means standard terminal rendering always hits the fast path, while
+large off-screen or file renders automatically scale across all cores.
+
 ### SIMD Acceleration
 
 The `simd` feature enables SIMD-accelerated pixel processing using the
