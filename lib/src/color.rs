@@ -17,6 +17,22 @@ fn get_oklab_palette() -> &'static [[f32; 3]; 256] {
     })
 }
 
+// static SRGB_LUT: OnceLock<[f32; 256]> = OnceLock::new();
+
+// fn srgb_to_linear_fast(c: u8) -> f32 {
+//     *SRGB_LUT.get_or_init(|| {
+//         let mut table = [0.0f32; 256];
+//         for i in 0..256 {
+//             let val = i as f32 / 255.0;
+//             table[i] = if val <= 0.04045 {
+//                 val / 12.92
+//             } else {
+//                 ((val + 0.055) / 1.055).powf(2.4)
+//             };
+//         }
+//         table
+//     })[c as usize]
+// }
 /// Convert sRGB u8 to linear float.
 #[inline]
 fn srgb_to_linear(c: u8) -> f32 {

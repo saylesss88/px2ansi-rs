@@ -515,7 +515,7 @@ fn render_serial<W: Write>(
                         b: px[2],
                         a: px[3],
                     };
-                    write_pixel_scalar(writer, charset, px, lp, cp, &mut last_color)?;
+                    write_pixel_scalar(writer, ctx.charset, px, lp, cp, &mut last_color)?;
                 }
             }
 
