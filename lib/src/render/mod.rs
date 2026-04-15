@@ -238,83 +238,17 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
     /// `wide` should be `true` for double-width glyphs (kanji, emoji) — this
     /// steps the x iterator by 2 and uses two spaces for transparent cells so
     /// the grid stays aligned.
-    #[allow(clippy::too_many_lines)]
     fn charset_colored(&mut self, charset: &[&str], wide: bool) -> std::io::Result<()> {
         let rgba = self.img.to_rgba8();
         let (width, height) = rgba.dimensions();
-        let x_step = if wide { 2 } else { 1 };
-        let blank = if wide { "  " } else { " " };
-        let num_chars_u32 = u32::try_from(charset.len()).unwrap_or(1);
-        let num_chars_minus_1 = num_chars_u32 - 1;
-
-        // Thread pool overhead (~1–2 ms) dominates for small images.
-        // Only parallelize when the pixel count justifies it.
+        let x_step: usize = if wide { 2 } else { 1 };
+        let blank: &str = if wide { "  " } else { " " };
+        let num_chars_minus_1 = u32::try_from(charset.len()).unwrap_or(1) - 1;
         let use_parallel = cfg!(feature = "parallel") && (width * height > 120_000);
 
-        // ── Pass 1: Luma range ────────────────────────────────────────────────
-        let (luma_min, luma_max) = if use_parallel {
-            #[cfg(feature = "parallel")]
-            {
-                if wide {
-                    rgba.as_raw()
-                        .par_chunks_exact(width as usize * 4)
-                        .map(|row| {
-                            let mut lo = u32::MAX;
-                            let mut hi = u32::MIN;
-                            let mut process = |px: &[u8]| {
-                                if px[3] >= ALPHA_THRESHOLD {
-                                    let l = crate::simd::luma_scalar(px[0], px[1], px[2]);
-                                    lo = lo.min(l);
-                                    hi = hi.max(l);
-                                }
-                            };
-                            let chunks = row.chunks_exact(8);
-                            let rem = chunks.remainder();
-                            for px in chunks {
-                                process(&px[0..4]);
-                            }
-                            if !rem.is_empty() {
-                                process(rem);
-                            }
-                            (lo, hi)
-                        })
-                        .reduce(
-                            || (u32::MAX, u32::MIN),
-                            |(m1, x1), (m2, x2)| (m1.min(m2), x1.max(x2)),
-                        )
-                } else {
-                    rgba.as_raw()
-                        .par_chunks(32 * 1024)
-                        .map(crate::simd::find_luma_range_rgba_bytes)
-                        .reduce(
-                            || (u32::MAX, u32::MIN),
-                            |(m1, x1), (m2, x2)| (m1.min(m2), x1.max(x2)),
-                        )
-                }
-            }
-            #[cfg(not(feature = "parallel"))]
-            {
-                unreachable!()
-            }
-        } else if wide {
-            let mut lo = u32::MAX;
-            let mut hi = u32::MIN;
-            for y in 0..height {
-                for x in (0..width).step_by(x_step) {
-                    let [r, g, b, a] = rgba.get_pixel(x, y).0;
-                    if a >= ALPHA_THRESHOLD {
-                        let l = crate::simd::luma_scalar(r, g, b);
-                        lo = lo.min(l);
-                        hi = hi.max(l);
-                    }
-                }
-            }
-            (lo, hi)
-        } else {
-            crate::simd::find_luma_range_rgba_bytes(rgba.as_raw())
-        };
+        let (luma_min, luma_max) =
+            luma_range_pass1(&rgba, width, height, x_step, wide, use_parallel);
 
-        // Guard: fully transparent image
         if luma_min == u32::MAX {
             for _ in 0..height {
                 for _ in (0..width).step_by(x_step) {
@@ -325,264 +259,352 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
             return Ok(());
         }
 
-        let luma_range = (luma_max - luma_min).max(1);
-        let color_enabled = self.options.color();
-        let color_mode = self.options.color_mode();
+        let lp = LumaParams {
+            min: luma_min,
+            range: (luma_max - luma_min).max(1),
+            num_chars_minus_1,
+        };
+        let cp = ColorParams {
+            enabled: self.options.color(),
+            mode: self.options.color_mode(),
+            blank,
+        };
 
-        // ── Pass 2: Rendering ─────────────────────────────────────────────────
         if use_parallel {
             #[cfg(feature = "parallel")]
-            {
-                // Each row is rendered independently; no shared ColorState.
-                let rows: Vec<String> = (0..height)
-                    .into_par_iter()
-                    .map(|y| {
-                        let mut row = String::with_capacity(width as usize * 12);
-                        for x in (0..width).step_by(x_step) {
-                            let [r, g, b, a] = rgba.get_pixel(x, y).0;
-                            if a < ALPHA_THRESHOLD {
-                                if color_enabled {
-                                    row.push_str("\x1b[0m");
-                                }
-                                row.push_str(blank);
-                                continue;
-                            }
-                            let luma = crate::simd::luma_scalar(r, g, b);
-                            let norm = ((luma - luma_min) * 255) / luma_range;
-                            let idx =
-                                ((norm * num_chars_minus_1 / 255) as usize).min(charset.len() - 1);
-                            if color_enabled {
-                                write_colored_glyph_to_str(
-                                    &mut row,
-                                    charset[idx],
-                                    r,
-                                    g,
-                                    b,
-                                    color_mode,
-                                );
-                            } else {
-                                row.push_str(charset[idx]);
-                            }
-                        }
-                        if color_enabled {
-                            row.push_str("\x1b[0m\n");
-                        } else {
-                            row.push('\n');
-                        }
-                        row
-                    })
-                    .collect();
-
-                for row in rows {
-                    self.writer.write_all(row.as_bytes())?;
-                }
-            }
+            render_parallel(self.writer, &rgba, charset, width, height, x_step, lp, cp)?;
         } else {
-            // Serial path — ColorState deduplicates escape sequences across
-            // the whole frame. SIMD computes 8 luma+indices at a time for
-            // non-wide glyphs; wide and remainder pixels fall back to scalar.
-            let mut last_color = ColorState::default();
-            let raw = rgba.as_raw();
-
-            for y in 0..height {
-                let row_start = (y * width) as usize * 4;
-                let row_bytes = &raw[row_start..row_start + width as usize * 4];
-
-                if wide {
-                    // Wide glyphs: step by 2, always scalar
-                    for x in (0..width).step_by(2) {
-                        let base = x as usize * 4;
-                        let [r, g, b, a] = [
-                            row_bytes[base],
-                            row_bytes[base + 1],
-                            row_bytes[base + 2],
-                            row_bytes[base + 3],
-                        ];
-                        write_pixel_scalar(
-                            self.writer,
-                            charset,
-                            r,
-                            g,
-                            b,
-                            a,
-                            luma_min,
-                            luma_range,
-                            num_chars_minus_1,
-                            blank,
-                            color_enabled,
-                            color_mode,
-                            &mut last_color,
-                        )?;
-                    }
-                } else {
-                    // Non-wide: SIMD 8-wide chunks + scalar remainder
-                    let chunks = row_bytes.chunks_exact(32);
-                    let remainder = chunks.remainder();
-
-                    #[cfg(feature = "simd")]
-                    {
-                        let mut x_off = 0usize;
-                        for chunk in chunks {
-                            let chunk32: &[u8; 32] = chunk.try_into().unwrap();
-                            let pairs = crate::simd::compute_charset_indices(
-                                chunk32,
-                                luma_min,
-                                luma_range,
-                                num_chars_minus_1,
-                            );
-                            for (idx, opaque) in pairs {
-                                let base = x_off * 4;
-                                let (r, g, b, a) = (
-                                    row_bytes[base],
-                                    row_bytes[base + 1],
-                                    row_bytes[base + 2],
-                                    row_bytes[base + 3],
-                                );
-                                write_pixel(
-                                    self.writer,
-                                    charset,
-                                    idx as usize,
-                                    r,
-                                    g,
-                                    b,
-                                    a,
-                                    opaque,
-                                    blank,
-                                    color_enabled,
-                                    color_mode,
-                                    &mut last_color,
-                                )?;
-                                x_off += 1;
-                            }
-                        }
-                    }
-                    #[cfg(not(feature = "simd"))]
-                    {
-                        for chunk in chunks {
-                            for px in chunk.chunks_exact(4) {
-                                let [r, g, b, a] = [px[0], px[1], px[2], px[3]];
-                                write_pixel_scalar(
-                                    self.writer,
-                                    charset,
-                                    r,
-                                    g,
-                                    b,
-                                    a,
-                                    luma_min,
-                                    luma_range,
-                                    num_chars_minus_1,
-                                    blank,
-                                    color_enabled,
-                                    color_mode,
-                                    &mut last_color,
-                                )?;
-                            }
-                        }
-                    }
-
-                    // Scalar remainder (< 8 pixels at end of row)
-                    for px in remainder.chunks_exact(4) {
-                        let [r, g, b, a] = [px[0], px[1], px[2], px[3]];
-                        write_pixel_scalar(
-                            self.writer,
-                            charset,
-                            r,
-                            g,
-                            b,
-                            a,
-                            luma_min,
-                            luma_range,
-                            num_chars_minus_1,
-                            blank,
-                            color_enabled,
-                            color_mode,
-                            &mut last_color,
-                        )?;
-                    }
-                }
-
-                if color_enabled {
-                    writeln!(self.writer, "\x1b[0m")?;
-                    last_color = ColorState::default();
-                } else {
-                    writeln!(self.writer)?;
-                }
-            }
+            render_serial(self.writer, &rgba, charset, width, height, wide, lp, cp)?;
         }
 
         Ok(())
     }
 }
 
+// ─── Context structs ──────────────────────────────────────────────────────────
+
+/// Luma normalization parameters computed in Pass 1, passed into Pass 2.
+#[derive(Clone, Copy)]
+struct LumaParams {
+    min: u32,
+    range: u32,
+    num_chars_minus_1: u32,
+}
+
+/// Color output configuration passed to pixel-writing helpers.
+#[derive(Clone, Copy)]
+struct ColorParams<'a> {
+    enabled: bool,
+    mode: ColorMode,
+    blank: &'a str,
+}
+
+// ─── Pass 1: luma range ───────────────────────────────────────────────────────
+
+fn luma_range_pass1(
+    rgba: &image::RgbaImage,
+    width: u32,
+    height: u32,
+    x_step: usize,
+    wide: bool,
+    use_parallel: bool,
+) -> (u32, u32) {
+    if use_parallel {
+        #[cfg(feature = "parallel")]
+        {
+            if wide {
+                return rgba
+                    .as_raw()
+                    .par_chunks_exact(width as usize * 4)
+                    .map(|row| {
+                        let mut lo = u32::MAX;
+                        let mut hi = u32::MIN;
+                        let chunks = row.chunks_exact(8);
+                        let rem = chunks.remainder();
+                        for px in chunks {
+                            if px[3] >= ALPHA_THRESHOLD {
+                                let l = crate::simd::luma_scalar(px[0], px[1], px[2]);
+                                lo = lo.min(l);
+                                hi = hi.max(l);
+                            }
+                        }
+                        if rem.len() >= 4 && rem[3] >= ALPHA_THRESHOLD {
+                            let l = crate::simd::luma_scalar(rem[0], rem[1], rem[2]);
+                            lo = lo.min(l);
+                            hi = hi.max(l);
+                        }
+                        (lo, hi)
+                    })
+                    .reduce(
+                        || (u32::MAX, u32::MIN),
+                        |(m1, x1), (m2, x2)| (m1.min(m2), x1.max(x2)),
+                    );
+            }
+            return rgba
+                .as_raw()
+                .par_chunks(32 * 1024)
+                .map(crate::simd::find_luma_range_rgba_bytes)
+                .reduce(
+                    || (u32::MAX, u32::MIN),
+                    |(m1, x1), (m2, x2)| (m1.min(m2), x1.max(x2)),
+                );
+        }
+        #[cfg(not(feature = "parallel"))]
+        let _ = (width, height, x_step, wide);
+    }
+
+    if wide {
+        let mut lo = u32::MAX;
+        let mut hi = u32::MIN;
+        for y in 0..height {
+            for x in (0..width).step_by(x_step) {
+                let [red, green, blue, alpha] = rgba.get_pixel(x, y).0;
+                if alpha >= ALPHA_THRESHOLD {
+                    let l = crate::simd::luma_scalar(red, green, blue);
+                    lo = lo.min(l);
+                    hi = hi.max(l);
+                }
+            }
+        }
+        (lo, hi)
+    } else {
+        crate::simd::find_luma_range_rgba_bytes(rgba.as_raw())
+    }
+}
+
+// ─── Pass 2: parallel ─────────────────────────────────────────────────────────
+
+#[allow(clippy::too_many_arguments)]
+#[cfg(feature = "parallel")]
+fn render_parallel<W: Write>(
+    writer: &mut W,
+    rgba: &image::RgbaImage,
+    charset: &[&str],
+    width: u32,
+    height: u32,
+    x_step: usize,
+    lp: LumaParams,
+    cp: ColorParams<'_>,
+) -> std::io::Result<()> {
+    let rows: Vec<String> = (0..height)
+        .into_par_iter()
+        .map(|y| {
+            let mut row = String::with_capacity(width as usize * 12);
+            for x in (0..width).step_by(x_step) {
+                let [r, g, b, a] = rgba.get_pixel(x, y).0;
+                if a < ALPHA_THRESHOLD {
+                    if cp.enabled {
+                        row.push_str("\x1b[0m");
+                    }
+                    row.push_str(cp.blank);
+                    continue;
+                }
+                let luma = crate::simd::luma_scalar(r, g, b);
+                let norm = ((luma - lp.min) * 255) / lp.range;
+                let idx = ((norm * lp.num_chars_minus_1 / 255) as usize).min(charset.len() - 1);
+                if cp.enabled {
+                    write_colored_glyph_to_str(&mut row, charset[idx], r, g, b, cp.mode);
+                } else {
+                    row.push_str(charset[idx]);
+                }
+            }
+            if cp.enabled {
+                row.push_str("\x1b[0m\n");
+            } else {
+                row.push('\n');
+            }
+            row
+        })
+        .collect();
+
+    for row in rows {
+        writer.write_all(row.as_bytes())?;
+    }
+    Ok(())
+}
+
+// ─── Pass 2: serial ───────────────────────────────────────────────────────────
+
+#[allow(clippy::too_many_arguments)]
+fn render_serial<W: Write>(
+    writer: &mut W,
+    rgba: &image::RgbaImage,
+    charset: &[&str],
+    width: u32,
+    height: u32,
+    wide: bool,
+    lp: LumaParams,
+    cp: ColorParams<'_>,
+) -> std::io::Result<()> {
+    let raw = rgba.as_raw();
+    let mut last_color = ColorState::default();
+
+    for y in 0..height {
+        let row_start = (y * width) as usize * 4;
+        let row_bytes = &raw[row_start..row_start + width as usize * 4];
+
+        if wide {
+            for x in (0..width as usize).step_by(2) {
+                let base = x * 4;
+                let px = PixelRgba {
+                    r: row_bytes[base],
+                    g: row_bytes[base + 1],
+                    b: row_bytes[base + 2],
+                    a: row_bytes[base + 3],
+                };
+                write_pixel_scalar(writer, charset, px, lp, cp, &mut last_color)?;
+            }
+        } else {
+            let chunks = row_bytes.chunks_exact(32);
+            let remainder = chunks.remainder();
+
+            #[cfg(feature = "simd")]
+            {
+                let mut x_off = 0usize;
+                for chunk in chunks {
+                    let chunk32: &[u8; 32] = chunk.try_into().unwrap();
+                    let pairs = crate::simd::compute_charset_indices(
+                        chunk32,
+                        lp.min,
+                        lp.range,
+                        lp.num_chars_minus_1,
+                    );
+                    for (idx, opaque) in pairs {
+                        let base = x_off * 4;
+                        let px = PixelRgba {
+                            r: row_bytes[base],
+                            g: row_bytes[base + 1],
+                            b: row_bytes[base + 2],
+                            a: row_bytes[base + 3],
+                        };
+                        write_pixel(
+                            writer,
+                            charset,
+                            idx as usize,
+                            px,
+                            opaque,
+                            cp,
+                            &mut last_color,
+                        )?;
+                        x_off += 1;
+                    }
+                }
+            }
+            #[cfg(not(feature = "simd"))]
+            for chunk in chunks {
+                for px in chunk.chunks_exact(4) {
+                    let px = PixelRgba {
+                        r: px[0],
+                        g: px[1],
+                        b: px[2],
+                        a: px[3],
+                    };
+                    write_pixel_scalar(writer, charset, px, lp, cp, &mut last_color)?;
+                }
+            }
+
+            for px in remainder.chunks_exact(4) {
+                let px = PixelRgba {
+                    r: px[0],
+                    g: px[1],
+                    b: px[2],
+                    a: px[3],
+                };
+                write_pixel_scalar(writer, charset, px, lp, cp, &mut last_color)?;
+            }
+        }
+
+        if cp.enabled {
+            writeln!(writer, "\x1b[0m")?;
+            last_color = ColorState::default();
+        } else {
+            writeln!(writer)?;
+        }
+    }
+    Ok(())
+}
+
 // ─── Pixel-writing helpers ────────────────────────────────────────────────────
 
-/// Writes one opaque pixel cell in the serial path.
-/// `idx` is the pre-computed charset index; `opaque` comes from the SIMD mask.
+/// One pixel's RGBA channels, passed by value to pixel-writing helpers.
+#[derive(Clone, Copy)]
+struct PixelRgba {
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
+}
+
+/// Writes one pixel whose charset index was pre-computed by SIMD.
+/// Only compiled with the `simd` feature — its only call site is gated the same way.
+#[cfg(feature = "simd")]
 #[inline]
 fn write_pixel<W: Write>(
     writer: &mut W,
     charset: &[&str],
     idx: usize,
-    r: u8,
-    g: u8,
-    b: u8,
-    a: u8,
+    px: PixelRgba,
     opaque: bool,
-    blank: &str,
-    color_enabled: bool,
-    color_mode: ColorMode,
+    cp: ColorParams<'_>,
     last: &mut ColorState,
 ) -> std::io::Result<()> {
-    if !opaque || a < ALPHA_THRESHOLD {
-        if color_enabled {
-            write!(writer, "\x1b[0m{blank}")?;
-            *last = ColorState::default();
-        } else {
-            write!(writer, "{blank}")?;
-        }
-        return Ok(());
-    }
-    let glyph = charset[idx.min(charset.len() - 1)];
-    if color_enabled {
-        write_colored_glyph(writer, glyph, r, g, b, color_mode, last)
+    if !opaque || px.a < ALPHA_THRESHOLD {
+        write_blank(writer, cp, last)
     } else {
-        write!(writer, "{glyph}")
+        let glyph = charset[idx.min(charset.len() - 1)];
+        write_glyph(writer, glyph, px.r, px.g, px.b, cp, last)
     }
 }
 
 /// Scalar luma → index → write for one pixel.
-/// Used for the `wide`-glyph path, SIMD remainders, and the no-simd build.
+/// Used for the `wide` path, SIMD remainders, and the no-simd build.
 #[inline]
 fn write_pixel_scalar<W: Write>(
     writer: &mut W,
     charset: &[&str],
+    px: PixelRgba,
+    lp: LumaParams,
+    cp: ColorParams<'_>,
+    last: &mut ColorState,
+) -> std::io::Result<()> {
+    if px.a < ALPHA_THRESHOLD {
+        return write_blank(writer, cp, last);
+    }
+    let luma = crate::simd::luma_scalar(px.r, px.g, px.b);
+    let norm = ((luma - lp.min) * 255) / lp.range;
+    let idx = ((norm * lp.num_chars_minus_1 / 255) as usize).min(charset.len() - 1);
+    write_glyph(writer, charset[idx], px.r, px.g, px.b, cp, last)
+}
+
+/// Writes a transparent cell (blank + optional reset escape).
+#[inline]
+fn write_blank<W: Write>(
+    writer: &mut W,
+    cp: ColorParams<'_>,
+    last: &mut ColorState,
+) -> std::io::Result<()> {
+    if cp.enabled {
+        write!(writer, "\x1b[0m{}", cp.blank)?;
+        *last = ColorState::default();
+    } else {
+        write!(writer, "{}", cp.blank)?;
+    }
+    Ok(())
+}
+
+/// Writes a colored or plain glyph.
+#[inline]
+fn write_glyph<W: Write>(
+    writer: &mut W,
+    glyph: &str,
     r: u8,
     g: u8,
     b: u8,
-    a: u8,
-    luma_min: u32,
-    luma_range: u32,
-    num_chars_minus_1: u32,
-    blank: &str,
-    color_enabled: bool,
-    color_mode: ColorMode,
+    cp: ColorParams<'_>,
     last: &mut ColorState,
 ) -> std::io::Result<()> {
-    if a < ALPHA_THRESHOLD {
-        if color_enabled {
-            write!(writer, "\x1b[0m{blank}")?;
-            *last = ColorState::default();
-        } else {
-            write!(writer, "{blank}")?;
-        }
-        return Ok(());
-    }
-    let luma = crate::simd::luma_scalar(r, g, b);
-    let norm = ((luma - luma_min) * 255) / luma_range;
-    let idx = ((norm * num_chars_minus_1 / 255) as usize).min(charset.len() - 1);
-    let glyph = charset[idx];
-    if color_enabled {
-        write_colored_glyph(writer, glyph, r, g, b, color_mode, last)
+    if cp.enabled {
+        write_colored_glyph(writer, glyph, r, g, b, cp.mode, last)
     } else {
         write!(writer, "{glyph}")
     }
