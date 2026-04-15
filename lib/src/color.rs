@@ -3,6 +3,20 @@
 //! Oklab is a perceptually uniform color space that produces better
 //! palette matching than naive RGB distance.
 
+use std::sync::OnceLock;
+
+static XTERM_256_OKLAB: OnceLock<[[f32; 3]; 256]> = OnceLock::new();
+
+fn get_oklab_palette() -> &'static [[f32; 3]; 256] {
+    XTERM_256_OKLAB.get_or_init(|| {
+        let mut oklab = [[0f32; 3]; 256];
+        for (i, &[r, g, b]) in XTERM_256.iter().enumerate() {
+            oklab[i] = rgb_to_oklab(r, g, b);
+        }
+        oklab
+    })
+}
+
 /// Convert sRGB u8 to linear float.
 #[inline]
 fn srgb_to_linear(c: u8) -> f32 {
@@ -116,20 +130,35 @@ const fn generate_xterm_256() -> [[u8; 3]; 256] {
 #[must_use]
 pub fn rgb_to_xterm256(r: u8, g: u8, b: u8) -> u8 {
     let target = rgb_to_oklab(r, g, b);
+    let palette = get_oklab_palette();
     let mut best_idx = 0u8;
     let mut best_dist = f32::MAX;
-
-    for (i, &[pr, pg, pb]) in XTERM_256.iter().enumerate() {
-        let candidate = rgb_to_oklab(pr, pg, pb);
+    for (i, &candidate) in palette.iter().enumerate() {
         let dist = oklab_distance(target, candidate);
         if dist < best_dist {
             best_dist = dist;
             best_idx = u8::try_from(i).expect("palette index fits in u8");
         }
     }
-
     best_idx
 }
+
+// pub fn rgb_to_xterm256(r: u8, g: u8, b: u8) -> u8 {
+//     let target = rgb_to_oklab(r, g, b);
+//     let mut best_idx = 0u8;
+//     let mut best_dist = f32::MAX;
+
+//     for (i, &[pr, pg, pb]) in XTERM_256.iter().enumerate() {
+//         let candidate = rgb_to_oklab(pr, pg, pb);
+//         let dist = oklab_distance(target, candidate);
+//         if dist < best_dist {
+//             best_dist = dist;
+//             best_idx = u8::try_from(i).expect("palette index fits in u8");
+//         }
+//     }
+
+//     best_idx
+// }
 /// Detects whether the terminal supports 24-bit truecolor.
 ///
 /// Checks `COLORTERM` env var first (most reliable), then falls back

@@ -139,6 +139,88 @@ fn find_luma_range_simd(bytes: &[u8]) -> (u32, u32) {
     (min, max)
 }
 
+// Add after find_luma_range_simd (inside the #[cfg(feature = "simd")] block)
+
+/// For 8 RGBA pixels, compute the charset index for each opaque pixel.
+///
+/// Returns an array of `(luma_index, is_opaque)` pairs — `is_opaque` is `true`
+/// when the pixel's alpha ≥ `ALPHA_THRESHOLD`.
+///
+/// `luma_min`, `luma_range`, `num_chars_minus_1` are pre-computed from Pass 1.
+#[cfg(feature = "simd")]
+#[must_use]
+pub fn compute_charset_indices(
+    chunk: &[u8; 32],
+    luma_min: u32,
+    luma_range: u32,
+    num_chars_minus_1: u32,
+) -> [(u32, bool); 8] {
+    use wide::u32x8;
+
+    let r = u32x8::new([
+        u32::from(chunk[0]),
+        u32::from(chunk[4]),
+        u32::from(chunk[8]),
+        u32::from(chunk[12]),
+        u32::from(chunk[16]),
+        u32::from(chunk[20]),
+        u32::from(chunk[24]),
+        u32::from(chunk[28]),
+    ]);
+    let g = u32x8::new([
+        u32::from(chunk[1]),
+        u32::from(chunk[5]),
+        u32::from(chunk[9]),
+        u32::from(chunk[13]),
+        u32::from(chunk[17]),
+        u32::from(chunk[21]),
+        u32::from(chunk[25]),
+        u32::from(chunk[29]),
+    ]);
+    let b = u32x8::new([
+        u32::from(chunk[2]),
+        u32::from(chunk[6]),
+        u32::from(chunk[10]),
+        u32::from(chunk[14]),
+        u32::from(chunk[18]),
+        u32::from(chunk[22]),
+        u32::from(chunk[26]),
+        u32::from(chunk[30]),
+    ]);
+    let a: [u32; 8] = [
+        u32::from(chunk[3]),
+        u32::from(chunk[7]),
+        u32::from(chunk[11]),
+        u32::from(chunk[15]),
+        u32::from(chunk[19]),
+        u32::from(chunk[23]),
+        u32::from(chunk[27]),
+        u32::from(chunk[31]),
+    ];
+
+    // luma_unscaled = 2126*R + 7152*G + 722*B  (still needs /10000)
+    let luma_raw: [u32; 8] =
+        (r * u32x8::splat(2126) + g * u32x8::splat(7152) + b * u32x8::splat(722)).into();
+
+    let min = u32x8::splat(luma_min);
+    let range = u32x8::splat(luma_range);
+    let nchars = u32x8::splat(num_chars_minus_1);
+
+    // Assemble scaled luma as u32x8 for the vectorized index computation
+    let luma_scaled = u32x8::new(luma_raw.map(|v| v / 10000));
+    // norm = (luma - luma_min) * 255 / luma_range
+    let norm = (luma_scaled - min) * u32x8::splat(255) / range;
+    // idx  = norm * (num_chars - 1) / 255
+    let idx: [u32; 8] = (norm * nchars / u32x8::splat(255)).into();
+
+    let thresh = u32::from(ALPHA_THRESHOLD);
+    let mut out = [(0u32, false); 8];
+    for i in 0..8 {
+        out[i] = (idx[i].min(num_chars_minus_1), a[i] >= thresh);
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
