@@ -270,11 +270,13 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
             blank,
         };
 
+        let ctx = RenderCtx::new(&rgba, charset, wide);
+
         if use_parallel {
             #[cfg(feature = "parallel")]
-            render_parallel(self.writer, &rgba, charset, width, height, x_step, lp, cp)?;
+            render_parallel(self.writer, &ctx, lp, cp)?;
         } else {
-            render_serial(self.writer, &rgba, charset, width, height, wide, lp, cp)?;
+            render_serial(self.writer, &ctx, lp, cp)?;
         }
 
         Ok(())
@@ -372,26 +374,44 @@ fn luma_range_pass1(
     }
 }
 
+struct RenderCtx<'a> {
+    rgba: &'a image::RgbaImage,
+    charset: &'a [&'a str],
+    width: u32,
+    height: u32,
+    x_step: usize,
+    wide: bool,
+}
+
+impl<'a> RenderCtx<'a> {
+    fn new(rgba: &'a image::RgbaImage, charset: &'a [&'a str], wide: bool) -> Self {
+        let (width, height) = rgba.dimensions();
+        Self {
+            rgba,
+            charset,
+            width,
+            height,
+            x_step: if wide { 2 } else { 1 },
+            wide,
+        }
+    }
+}
 // ─── Pass 2: parallel ─────────────────────────────────────────────────────────
 
 #[allow(clippy::too_many_arguments)]
 #[cfg(feature = "parallel")]
 fn render_parallel<W: Write>(
     writer: &mut W,
-    rgba: &image::RgbaImage,
-    charset: &[&str],
-    width: u32,
-    height: u32,
-    x_step: usize,
+    ctx: &RenderCtx,
     lp: LumaParams,
     cp: ColorParams<'_>,
 ) -> std::io::Result<()> {
-    let rows: Vec<String> = (0..height)
+    let rows: Vec<String> = (0..ctx.height)
         .into_par_iter()
         .map(|y| {
-            let mut row = String::with_capacity(width as usize * 12);
-            for x in (0..width).step_by(x_step) {
-                let [r, g, b, a] = rgba.get_pixel(x, y).0;
+            let mut row = String::with_capacity(ctx.width as usize * 12);
+            for x in (0..ctx.width).step_by(ctx.x_step) {
+                let [r, g, b, a] = ctx.rgba.get_pixel(x, y).0;
                 if a < ALPHA_THRESHOLD {
                     if cp.enabled {
                         row.push_str("\x1b[0m");
@@ -401,11 +421,12 @@ fn render_parallel<W: Write>(
                 }
                 let luma = crate::simd::luma_scalar(r, g, b);
                 let norm = ((luma - lp.min) * 255) / lp.range;
-                let idx = ((norm * lp.num_chars_minus_1 / 255) as usize).min(charset.len() - 1);
+                let idx = ((norm * lp.num_chars_minus_1 / 255) as usize).min(ctx.charset.len() - 1);
+
                 if cp.enabled {
-                    write_colored_glyph_to_str(&mut row, charset[idx], r, g, b, cp.mode);
+                    write_colored_glyph_to_str(&mut row, ctx.charset[idx], r, g, b, cp.mode);
                 } else {
-                    row.push_str(charset[idx]);
+                    row.push_str(ctx.charset[idx]);
                 }
             }
             if cp.enabled {
@@ -422,29 +443,24 @@ fn render_parallel<W: Write>(
     }
     Ok(())
 }
-
 // ─── Pass 2: serial ───────────────────────────────────────────────────────────
 
 #[allow(clippy::too_many_arguments)]
 fn render_serial<W: Write>(
     writer: &mut W,
-    rgba: &image::RgbaImage,
-    charset: &[&str],
-    width: u32,
-    height: u32,
-    wide: bool,
+    ctx: &RenderCtx,
     lp: LumaParams,
     cp: ColorParams<'_>,
 ) -> std::io::Result<()> {
-    let raw = rgba.as_raw();
+    let raw = ctx.rgba.as_raw();
     let mut last_color = ColorState::default();
 
-    for y in 0..height {
-        let row_start = (y * width) as usize * 4;
-        let row_bytes = &raw[row_start..row_start + width as usize * 4];
+    for y in 0..ctx.height {
+        let row_start = (y * ctx.width) as usize * 4;
+        let row_bytes = &raw[row_start..row_start + ctx.width as usize * 4];
 
-        if wide {
-            for x in (0..width as usize).step_by(2) {
+        if ctx.wide {
+            for x in (0..ctx.width as usize).step_by(2) {
                 let base = x * 4;
                 let px = PixelRgba {
                     r: row_bytes[base],
@@ -452,7 +468,7 @@ fn render_serial<W: Write>(
                     b: row_bytes[base + 2],
                     a: row_bytes[base + 3],
                 };
-                write_pixel_scalar(writer, charset, px, lp, cp, &mut last_color)?;
+                write_pixel_scalar(writer, ctx.charset, px, lp, cp, &mut last_color)?;
             }
         } else {
             let chunks = row_bytes.chunks_exact(32);
@@ -479,7 +495,7 @@ fn render_serial<W: Write>(
                         };
                         write_pixel(
                             writer,
-                            charset,
+                            ctx.charset,
                             idx as usize,
                             px,
                             opaque,
@@ -510,7 +526,7 @@ fn render_serial<W: Write>(
                     b: px[2],
                     a: px[3],
                 };
-                write_pixel_scalar(writer, charset, px, lp, cp, &mut last_color)?;
+                write_pixel_scalar(writer, ctx.charset, px, lp, cp, &mut last_color)?;
             }
         }
 
