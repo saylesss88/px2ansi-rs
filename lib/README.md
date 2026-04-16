@@ -6,6 +6,37 @@
 
 If you want the command-line interface, check out [px2ansi-rs](../cli).
 
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+  - [Automatic Centering](#automatic-centering)
+  - [Rendering to a Buffer](#rendering-to-a-buffer)
+  - [Manual Image Preparation](#manual-image-preparation)
+- [Core Types](#core-types)
+  - [RenderOptions](#renderoptions-1)
+  - [RenderStylePreset](#renderstylepreset-1)
+  - [Density](#density-1)
+  - [ResizeFilter](#resizefilter-1)
+- [Builder API](#builder-api)
+  - [Inspecting Options](#inspecting-options)
+- [Indexer](#indexer)
+  - [Index Format](#index-format)
+- [Optional Features](#optional-features)
+  - [Controlling Features](#controlling-features)
+  - [Sixel](#sixel)
+  - [Rasterize](#rasterize)
+- [⚡ Performance](#-performance)
+  - [SIMD Acceleration](#simd-acceleration-simd-feature)
+  - [Parallel Rendering](#parallel-rendering-parallel-feature)
+- [Re-exports](#re-exports)
+- [Error Handling](#error-handling)
+- [Library vs CLI](#library-vs-cli)
+- [License](#license)
+
+---
+
 `px2ansi` converts images into terminal art by resizing them to terminal cell
 proportions, mapping pixels to several character sets, and writing ANSI-colored
 output to any `Write` target.
@@ -137,17 +168,17 @@ fn custom_pipeline(img: &image::DynamicImage) -> anyhow::Result<()> {
 
 ## Core Types
 
-| **Type**              | **Purpose**                                                  |
-| --------------------- | ------------------------------------------------------------ |
-| `RenderOptions`       | Main render settings (width, filter, charset, color, etc.).  |
-| `RenderOptionsBuilder`| Builder for constructing `RenderOptions` step-by-step.       |
-| `RenderStylePreset`   | Ready-made presets for common styles.                        |
-| `CharsetMode`         | The character set used to render pixels.                     |
-| `Density`             | Output density for ASCII-style rendering (`Light`, `Medium`, `Heavy`). |
-| `RenderStyle`         | Low-level style tweaks (`is_full()`, `density()`).           |
-| `ResizeFilter`        | Controls image resampling quality.                           |
-| `ColorMode`           | Color output mode: `TrueColor`, `Ansi256`, or `None`.       |
-| `RenderError`         | Structured error type for rendering failures.                |
+| **Type**               | **Purpose**                                                            |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `RenderOptions`        | Main render settings (width, filter, charset, color, etc.).            |
+| `RenderOptionsBuilder` | Builder for constructing `RenderOptions` step-by-step.                 |
+| `RenderStylePreset`    | Ready-made presets for common styles.                                  |
+| `CharsetMode`          | The character set used to render pixels.                               |
+| `Density`              | Output density for ASCII-style rendering (`Light`, `Medium`, `Heavy`). |
+| `RenderStyle`          | Low-level style tweaks (`is_full()`, `density()`).                     |
+| `ResizeFilter`         | Controls image resampling quality.                                     |
+| `ColorMode`            | Color output mode: `TrueColor`, `Ansi256`, or `None`.                  |
+| `RenderError`          | Structured error type for rendering failures.                          |
 
 ### `RenderOptions`
 
@@ -155,6 +186,7 @@ The main configuration object for rendering. Controls target width, resize
 filter, charset mode, density, and color output.
 
 Default configuration:
+
 - Charset: `Ansi`
 - Color: `true`
 - Width: `None` (auto-detect from terminal)
@@ -170,18 +202,18 @@ assert_eq!(opts.width(), None);
 
 A convenience enum for quickly choosing a style:
 
-| Preset      | Charset     | Notes                              |
-| ----------- | ----------- | ---------------------------------- |
-| `Ansi`      | `Ansi`      | Half-block characters (▀/▄)        |
-| `Unicode`   | `Unicode`   | Half or full blocks                |
-| `Braille`   | `Braille`   | 2×4 Braille dot patterns           |
-| `Fade`      | `Fade`      | Block-shade ramp (░▒▓█)            |
-| `Ascii`     | `Ascii`     | 92-character density ramp          |
-| `Kanji`     | `Kanji`     | Double-width Japanese characters   |
-| `Chinese`   | `Chinese`   | Double-width Chinese characters    |
-| `FullBlock` | `Unicode`   | Forces double-width full blocks (██), sets `is_full() = true` |
-| `Dense`     | `Ascii`     | ASCII with `Density::Heavy`        |
-| `Sixel`     | `Sixel`     | Pixel-accurate Sixel output        |
+| Preset      | Charset   | Notes                                                         |
+| ----------- | --------- | ------------------------------------------------------------- |
+| `Ansi`      | `Ansi`    | Half-block characters (▀/▄)                                   |
+| `Unicode`   | `Unicode` | Half or full blocks                                           |
+| `Braille`   | `Braille` | 2×4 Braille dot patterns                                      |
+| `Fade`      | `Fade`    | Block-shade ramp (░▒▓█)                                       |
+| `Ascii`     | `Ascii`   | 92-character density ramp                                     |
+| `Kanji`     | `Kanji`   | Double-width Japanese characters                              |
+| `Chinese`   | `Chinese` | Double-width Chinese characters                               |
+| `FullBlock` | `Unicode` | Forces double-width full blocks (██), sets `is_full() = true` |
+| `Dense`     | `Ascii`   | ASCII with `Density::Heavy`                                   |
+| `Sixel`     | `Sixel`   | Pixel-accurate Sixel output                                   |
 
 ### `Density`
 
@@ -195,13 +227,13 @@ Controls the complexity of the ASCII character ramp. Only affects `Ascii` mode:
 
 Controls image resampling quality:
 
-| Filter       | Description                          |
-| ------------ | ------------------------------------ |
-| `Nearest`    | Best for pixel art                   |
-| `Triangle`   | Linear interpolation                 |
-| `CatmullRom` | Sharp cubic filter                   |
-| `Gaussian`   | Blurry cubic filter                  |
-| `Lanczos3`   | High-quality resampling (slowest)    |
+| Filter       | Description                       |
+| ------------ | --------------------------------- |
+| `Nearest`    | Best for pixel art                |
+| `Triangle`   | Linear interpolation              |
+| `CatmullRom` | Sharp cubic filter                |
+| `Gaussian`   | Blurry cubic filter               |
+| `Lanczos3`   | High-quality resampling (slowest) |
 
 ---
 
@@ -316,7 +348,7 @@ for minimal builds.
 
 | Feature     | Dependency | What it does                                                         |
 | ----------- | ---------- | -------------------------------------------------------------------- |
-| `rasterize` | `fontdue`  | Renders ANSI art to a PNG image using an embedded monospace font      |
+| `rasterize` | `fontdue`  | Renders ANSI art to a PNG image using an embedded monospace font     |
 | `sixel`     | `viuer`    | Streams pixel-accurate images directly to Sixel-compatible terminals |
 | `parallel`  | `rayon`    | Enables parallel processing for performance                          |
 
@@ -406,8 +438,8 @@ png.save("output.png")?;
 **Available themes:** `TokyoNight` (default), `Dracula`, `Nord`, `GruvboxDark`,
 `OneDark`, `SolarizedDark`, `Black`, `White`
 
-> Different themes produce different background colors. For example, `TokyoNight`
-> and `White` will render visibly different backgrounds.
+> Different themes produce different background colors. For example,
+> `TokyoNight` and `White` will render visibly different backgrounds.
 
 ---
 
@@ -425,12 +457,12 @@ on supported hardware.
 
 #### What it accelerates
 
-The most expensive pass in any ANSI art renderer is the **luma range scan** 
+The most expensive pass in any ANSI art renderer is the **luma range scan**
 reading every pixel, computing its perceptual brightness, and finding the
 minimum and maximum values so the character density ramp can be normalized.
 
-With the `simd` feature enabled, this scan processes **8 pixels at a time** in
-a single `u32x8` SIMD lane instead of one at a time:
+With the `simd` feature enabled, this scan processes **8 pixels at a time** in a
+single `u32x8` SIMD lane instead of one at a time:
 
 ```rust
 // 8 Rec.709 luma values computed simultaneously
@@ -439,8 +471,8 @@ let luma_unscaled = r * w_r + g * w_g + b * w_b;
 //           u32x8 × u32x8 — 8 multiplies in one instruction
 ```
 
-Transparent pixels (alpha < 30) are skipped with an early-out mask check
-before any per-pixel branching occurs, keeping the hot loop branchless.
+Transparent pixels (alpha < 30) are skipped with an early-out mask check before
+any per-pixel branching occurs, keeping the hot loop branchless.
 
 Any remaining pixels that don't fill a full 8-pixel chunk are handled by an
 identical scalar fallback, so results are always exact.
@@ -453,9 +485,9 @@ Both the SIMD and scalar paths use the same perceptually-weighted formula:
 luma = (2126·R + 7152·G + 722·B) / 10000
 ```
 
-This matches the [ITU-R BT.709](https://www.itu.int/rec/R-REC-BT.709)
-standard used in HDTV and sRGB colour spaces, giving accurate brightness
-perception across all charset modes.
+This matches the [ITU-R BT.709](https://www.itu.int/rec/R-REC-BT.709) standard
+used in HDTV and sRGB colour spaces, giving accurate brightness perception
+across all charset modes.
 
 #### Enabling SIMD
 
@@ -476,11 +508,11 @@ to a scalar implementation with identical output — no code changes required.
 
 #### Benchmark (nixos.png, 1183×1024, release build)
 
-| Mode | Wall time | User CPU |
-|---|---|---|
-| scalar only | ~10 ms | ~4.5 ms |
-| `simd` enabled | ~7.6 ms | ~2.2 ms |
-| vs `rascii --color` | ~10.0 ms | ~4.5 ms |
+| Mode                | Wall time | User CPU |
+| ------------------- | --------- | -------- |
+| scalar only         | ~10 ms    | ~4.5 ms  |
+| `simd` enabled      | ~7.6 ms   | ~2.2 ms  |
+| vs `rascii --color` | ~10.0 ms  | ~4.5 ms  |
 
 The SIMD luma scan alone roughly **halves CPU time** for the render pass.
 
@@ -502,14 +534,14 @@ falling back to the fast serial + SIMD path otherwise:
 let use_parallel = cfg!(feature = "parallel") && (width * height > 120_000);
 ```
 
-This means standard terminal rendering always hits the fast path, while
-large off-screen or file renders automatically scale across all cores.
+This means standard terminal rendering always hits the fast path, while large
+off-screen or file renders automatically scale across all cores.
 
 ### SIMD Acceleration
 
 The `simd` feature enables SIMD-accelerated pixel processing using the
-[`wide`](https://crates.io/crates/wide) crate. When enabled, the luma range
-scan (the first pass over every pixel during ASCII, Fade, Kanji, and Chinese
+[`wide`](https://crates.io/crates/wide) crate. When enabled, the luma range scan
+(the first pass over every pixel during ASCII, Fade, Kanji, and Chinese
 rendering) processes 8 pixels simultaneously instead of one at a time.
 
 ```toml
@@ -519,15 +551,16 @@ px2ansi = { version = "0.1", features = ["simd"] }
 
 The `wide` crate provides portable SIMD that automatically targets the best
 available instruction set at compile time — AVX2 on modern x86_64, SSE2 as
-fallback, and NEON on ARM. No unsafe code or architecture-specific feature
-flags required.
+fallback, and NEON on ARM. No unsafe code or architecture-specific feature flags
+required.
 
 **When to enable it:** Large images (>200×200 pixels) with ASCII, Fade, Kanji,
 or Chinese rendering will see the most benefit since those modes do two full
-passes over every pixel. Half-block and Braille modes are less affected as
-their hot path is different.
+passes over every pixel. Half-block and Braille modes are less affected as their
+hot path is different.
 
 **Benchmarking:**
+
 ```sh
 cargo bench --features simd
 ```
@@ -559,9 +592,9 @@ use px2ansi::{
 
 ## Error Handling
 
-Unlike the CLI which uses `anyhow` for simplicity, the `px2ansi` library provides
-a structured `RenderError` enum. This allows you to programmatically react to
-specific failure states.
+Unlike the CLI which uses `anyhow` for simplicity, the `px2ansi` library
+provides a structured `RenderError` enum. This allows you to programmatically
+react to specific failure states.
 
 ```rust
 use px2ansi::{CharsetMode, RenderError};
@@ -584,12 +617,12 @@ fn main() {
 
 **Error Variants**
 
-| **Variant**              | **Description**                                                               |
-| ------------------------ | ----------------------------------------------------------------------------- |
-| `InvalidCharset(String)` | Triggered when a string cannot be parsed into a valid `CharsetMode`.          |
-| `InvalidDensity(String)` | Triggered when a string cannot be parsed into a valid `Density`.              |
-| `Io(std::io::Error)`     | Wrapped standard I/O errors (e.g., pipe broken, disk full).                   |
-| `Image(String)`          | Errors during image manipulation or resizing.                                 |
+| **Variant**              | **Description**                                                      |
+| ------------------------ | -------------------------------------------------------------------- |
+| `InvalidCharset(String)` | Triggered when a string cannot be parsed into a valid `CharsetMode`. |
+| `InvalidDensity(String)` | Triggered when a string cannot be parsed into a valid `Density`.     |
+| `Io(std::io::Error)`     | Wrapped standard I/O errors (e.g., pipe broken, disk full).          |
+| `Image(String)`          | Errors during image manipulation or resizing.                        |
 
 ---
 
@@ -602,4 +635,3 @@ If you want the command-line interface, install `px2ansi-rs` instead.
 ## License
 
 [GNU General Public License 3.0](https://github.com/saylesss88/px2ansi-rs/blob/main/LICENSE)
-

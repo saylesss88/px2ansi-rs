@@ -554,10 +554,10 @@ All benchmarks run with `hyperfine --warmup 3` on the same machine. Images used:
 
 ### Half-block rendering (`--style ansi` vs `viu --blocks`)
 
-| Image        | `px2ansi-rs`        | `viu`            | Winner          |
-| ------------ | ------------------- | ---------------- | --------------- |
-| `nixos.png`  | **8.5 ms** ± 0.7 ms | 18.6 ms ± 0.7 ms | `px2ansi-rs` 🏆 |
-| `scream.png` | **9.3 ms** ± 0.4 ms | 15.4 ms ± 0.6 ms | `px2ansi-rs` 🏆 |
+| Image        | `px2ansi-rs`        | `viu`            | Improvement (Total) | Winner          |
+| ------------ | ------------------- | ---------------- | ------------------- | --------------- |
+| `nixos.png`  | **8.5 ms** ± 0.7 ms | 18.6 ms ± 0.7 ms | 2.29x faster        | `px2ansi-rs` 🏆 |
+| `scream.png` | **9.3 ms** ± 0.4 ms | 15.4 ms ± 0.6 ms | 1.64x faster        | `px2ansi-rs` 🏆 |
 
 `px2ansi-rs` renders ANSI half-blocks **2.2× faster** than `viu` on large
 images. User CPU time is 2.2 ms vs 10.6 ms — a 4.8× reduction in actual compute,
@@ -565,18 +565,17 @@ with the remainder being process startup and I/O.
 
 ---
 
-
 ### Sixel rendering (`--style sixel` vs `viu --static`)
 
-| Image | `px2ansi-rs` | `viu` | Winner |
-|---|---|---|---|
-| `nixos.png` | 19.3 ms ± 1.0 ms | **18.7 ms** ± 0.7 ms | `viu` |
-| `scream.png` | 16.5 ms ± 0.8 ms | **15.4 ms** ± 0.6 ms | `viu` |
+| Image        | `px2ansi-rs`     | `viu`                | Gap/Delta   | Winner           |
+| ------------ | ---------------- | -------------------- | ----------- | ---------------- |
+| `nixos.png`  | 17.7 ms ± 0.4 ms | **17.9 ms** ± 0.6 ms | +0.2 ms(🚀) | Tie/`px2ansi-rs` |
+| `scream.png` | 16.5 ms ± 0.8 ms | **15.4 ms** ± 0.6 ms | -0.7 ms     | `viu`            |
 
-Sixel encoding is CPU-bound inside the shared `viuer` encoder, both tools
-use the same underlying library. `px2ansi-rs` carries ~0.6–1.1 ms of
-additional overhead from process startup and image preparation before
-handing off to the encoder, putting it marginally behind `viu` in this mode.
+Sixel encoding is CPU-bound inside the shared `viuer` encoder, both tools use
+the same underlying library. `px2ansi-rs` carries ~0.6–1.1 ms of additional
+overhead from process startup and image preparation before handing off to the
+encoder, putting it marginally behind `viu` in this mode.
 
 ---
 
