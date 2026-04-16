@@ -1,18 +1,32 @@
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
+/// Specifies the visual style used to render output.
+///
+/// This determines which character sets or protocols are used to represent
+/// image data or visual elements in the terminal.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RenderStylePreset {
+    /// Standard ANSI color blocks and basic styling.
     #[default]
     Ansi,
+    /// Uses Unicode box-drawing and geometric characters for higher resolution.
     Unicode,
+    /// Uses 2x4 dot Braille patterns to significantly increase effective resolution.
     Braille,
+    /// Uses varying character densities to simulate color gradients or shadows.
     Fade,
+    /// Uses standard 7-bit ASCII characters (e.g., #, @, ., :).
     Ascii,
+    /// Uses the full block character (U+2588) for solid color rendering.
     FullBlock,
+    /// Uses high-density Unicode characters for a detailed grayscale effect.
     Dense,
+    /// Renders using Kanji characters; often used for stylistic "matrix" effects.
     Kanji,
+    /// Renders using Chinese characters for unique visual textures.
     Chinese,
+    /// Uses the SIXEL bitmap protocol for true high-resolution graphics in supported terminals.
     Sixel,
 }
 
@@ -38,18 +52,32 @@ impl FromStr for RenderStylePreset {
     }
 }
 
+/// Strategies used for resampling images when resizing.
+///
+/// Different filters balance the trade-off between processing speed and
+/// visual quality (aliasing, sharpness, and blurring).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ResizeFilter {
-    /// Nearest Neighbor (Best for pixel art)
+    /// Nearest Neighbor interpolation.
+    ///
+    /// Fast but pixelated; preserves hard edges, making it ideal for pixel art.
     Nearest,
-    /// Linear interpolation
+    /// Linear interpolation (Triangle filter).
+    ///
+    /// Provides a good balance between speed and quality for downscaling.
     Triangle,
-    /// Sharp cubic filter
+    /// Catmull-Rom cubic interpolation.
+    ///
+    /// A sharp cubic filter that produces crisp results without excessive ringing.
     CatmullRom,
-    /// Blurry cubic filter
+    /// Gaussian blurring filter.
+    ///
+    /// Useful for reducing noise or creating a softer look during resizing.
     Gaussian,
-    /// High-quality resampling (Slowest)
+    /// Lanczos windowed sinc interpolation (size 3).
+    ///
+    /// Highest quality resampling; reduces aliasing significantly but is computationally expensive.
     Lanczos3,
 }
 

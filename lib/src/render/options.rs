@@ -57,6 +57,9 @@ impl From<RenderStylePreset> for RenderOptions {
     }
 }
 
+/// A builder for constructing [`RenderOptions`] with a fluent interface.
+///
+/// This allows for optional overrides on top of a [`RenderStylePreset`].
 #[derive(Default)]
 pub struct RenderOptionsBuilder {
     preset: Option<RenderStylePreset>,
@@ -68,6 +71,11 @@ pub struct RenderOptionsBuilder {
 }
 
 impl RenderOptionsBuilder {
+    /// Creates a new builder instance with default settings.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
     /// Sets a high-level preset, such as ANSI or Braille.
     /// Presets provide baseline charset and style defaults.
     #[must_use]
@@ -76,40 +84,47 @@ impl RenderOptionsBuilder {
         self
     }
 
+    /// Sets the character density for the rendering output.
     #[must_use]
     pub fn density(mut self, density: Density) -> Self {
         self.density = Some(density);
         self
     }
 
+    /// Sets the target width for the rendered output.
+    /// If `None`, the output may scale to the terminal width.
     #[must_use]
     pub fn width(mut self, width: u32) -> Self {
         self.width = Some(width);
         self
     }
 
+    /// Sets the resampling filter used when resizing the input image.
     #[must_use]
     pub fn filter(mut self, filter: ResizeFilter) -> Self {
         self.filter = Some(filter);
         self
     }
 
+    /// Enables or disables color output.
     #[must_use]
     pub fn color(mut self, color: bool) -> Self {
         self.color = color;
         self
     }
 
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
+    /// Sets the specific color mode (e.g., `TrueColor`, 256-color) for the output.
     #[must_use]
     pub fn with_color_mode(mut self, color_mode: ColorMode) -> Self {
         self.color_mode = Some(color_mode);
         self
     }
+
+    /// Finalizes the builder and returns a configured [`RenderOptions`].
+    ///
+    /// This follows a specific priority:
+    /// 1. If a preset is provided, it provides the base configuration.
+    /// 2. Any explicitly set fields on this builder will override the preset's values.
     #[must_use]
     pub fn build(self) -> RenderOptions {
         // 1. Start with the preset's defaults, or the global defaults if no preset
@@ -132,6 +147,7 @@ impl RenderOptionsBuilder {
 }
 
 impl RenderOptions {
+    /// Returns a new builder to configure rendering options.
     #[must_use]
     pub fn builder() -> RenderOptionsBuilder {
         RenderOptionsBuilder {
@@ -139,39 +155,50 @@ impl RenderOptions {
             ..Default::default()
         }
     }
+
+    /// Creates options based on a predefined visual style.
     #[must_use]
     pub fn with_preset(preset: RenderStylePreset) -> Self {
         Self::from(preset)
     }
+
+    /// Returns the target width for rendering, if set.
     #[must_use]
     pub const fn width(&self) -> Option<u32> {
         self.width
     }
 
+    /// Returns the current image resizing filter.
     #[must_use]
     pub const fn filter(&self) -> FilterType {
         self.filter
     }
 
+    /// Returns the character set mode used for the output.
     #[must_use]
     pub const fn charset(&self) -> CharsetMode {
         self.charset
     }
 
+    /// Returns the specific rendering style configuration.
     #[must_use]
     pub const fn style(&self) -> RenderStyle {
         self.style
     }
 
+    /// Returns true if color output is enabled.
     #[must_use]
     pub const fn color(&self) -> bool {
         self.color
     }
+
+    /// Disables color output and returns the modified options.
     #[must_use]
     pub const fn no_color(mut self) -> Self {
         self.color = false;
         self
     }
+    /// Returns the current color mode configuration.
     #[must_use]
     pub const fn color_mode(&self) -> ColorMode {
         self.color_mode

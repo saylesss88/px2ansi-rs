@@ -37,7 +37,14 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
+#![deny(missing_docs)]
+
+/// User-facing enums for selecting render styles and image resize filters,
+/// shared between the CLI and the public API.
 pub mod cli_enums;
+
+/// Image directory indexing: scans folders for supported image files and
+/// writes a sorted JSON manifest for use in search and display workflows.
 pub mod indexer;
 pub mod render;
 pub mod simd;

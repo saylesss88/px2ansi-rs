@@ -18,10 +18,16 @@ pub enum CharsetMode {
     /// Traditional 92-character density ramp for classic ASCII art.
     Ascii,
 
+    /// Uses Japanese Kanji characters to represent visual density.
+    /// Often used for a "Matrix-style" or highly stylized terminal aesthetic.
     Kanji,
 
+    /// Uses Chinese characters to represent visual density.
+    /// Provides a unique texture and complex character patterns for image rendering.
     Chinese,
 
+    /// A high-performance bitmap protocol that renders actual image pixels
+    /// directly in the terminal (requires a compatible terminal emulator).
     Sixel,
 }
 
@@ -42,12 +48,18 @@ impl FromStr for CharsetMode {
     }
 }
 
-/// Aesthetic density settings for `--style ascii`
+/// Aesthetic density settings for the ASCII rendering style.
+///
+/// This determines the character set "ramp" used to map image brightness
+/// to character visual weight.
 #[derive(Clone, Copy, Debug, Default)]
 pub enum Density {
+    /// A balanced character ramp providing good contrast and detail.
     #[default]
     Medium,
+    /// A sparse character set that uses thinner, lighter characters for a minimalist look.
     Light,
+    /// A dense character set that uses bold, "heavy" characters to maximize coverage.
     Heavy,
 }
 
@@ -108,29 +120,37 @@ impl RenderStyle {
     }
 }
 
+/// Errors that can occur during the image rendering or conversion process.
 #[derive(Error, Debug)]
 pub enum RenderError {
+    /// Returned when a requested character set mode is not recognized.
     #[error("Invalid charset mode: {0}")]
     InvalidCharset(String),
 
+    /// Errors originating from underlying disk I/O or terminal stream operations.
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
+    /// Errors occurring during image decoding, resizing, or pixel manipulation.
     #[error("Image processing error: {0}")]
     Image(String),
 
+    /// Returned when an unsupported density string is provided via configuration.
     #[error("Invalid density: {0}. (valid: light, medium, heavy)")]
     InvalidDensity(String),
 }
 
+/// Specifies the color depth and encoding used for terminal output.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ColorMode {
-    /// 24-bit truecolor ANSI escapes
+    /// Uses 24-bit `TrueColor` (RGB) ANSI escape sequences.
+    /// Supported by most modern terminal emulators.
     #[default]
     TrueColor,
-    /// Oklab-quantized xterm 256-color escapes  
+    /// Uses xterm-compatible 256-color escape sequences.
+    /// Colors are quantized using the Oklab color space for better perceptual accuracy.
     Ansi256,
-    /// No color
+    /// Disables all color escape sequences, producing plain text output.
     None,
 }
 
