@@ -1,6 +1,6 @@
 [package]
 name = "px2ansi"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2024"
 authors = ["T. Sawyer <saylesss87@proton.me>"]
 license = "GPL-3.0"
@@ -17,12 +17,12 @@ path = "src/lib.rs"
 
 [dependencies]
 image.workspace = true
-anyhow = { version = "1.0" }
+anyhow.workspace = true
 terminal_size = { version = "0.4.3" }
-serde_json = { version = "1.0.149" }
-serde = { version = "1.0.228", features = ["derive"] }
+serde_json.workspace = true
+serde.workspace = true
 fontdue = { version = "0.9.3", optional = true }
-walkdir = { version = "2.5.0" }
+walkdir.workspace = true
 thiserror = "2.0.18"
 viuer = { version = "0.11.0", optional = true }
 rayon = { version = "1.11.0", optional = true }
@@ -33,7 +33,7 @@ tempfile = "3.0"
 image = { workspace = true }
 
 [features]
-default = ["rasterize", "sixel", "parallel"]
+default = ["rasterize", "sixel", "parallel", "simd"]
 sixel = ["dep:viuer"]
 rasterize = ["dep:fontdue"]
 full = ["rasterize", "sixel", "parallel"]

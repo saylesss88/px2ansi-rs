@@ -528,6 +528,13 @@ cargo build --release --features simd,sixel
 <details>
 <summary> Testing against rascii_art and viu </summary>
 
+| File         | Pixels    | File size | Size/pixel        |
+| ------------ | --------- | --------- | ----------------- |
+| `nixos.png`  | 1,210,592 | 90KB      | 0.076 bytes/pixel |
+| `scream.png` | 636,300   | 588KB     | 0.924 bytes/pixel |
+
+`nixos.png` is 6.5x larger in pixels but 6.5x smaller on disk 
+
 `rascii` is a well-established and fast terminal art tool. These benchmarks are
 a genuine comparison against a solid baseline, not a strawman.
 
