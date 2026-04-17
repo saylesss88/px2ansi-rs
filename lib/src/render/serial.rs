@@ -6,7 +6,6 @@ use super::pixel::{ColorParams, LumaParams, PixelRgba, RenderCtx, write_pixel_sc
 #[cfg(feature = "simd")]
 use super::pixel::write_pixel;
 
-#[allow(clippy::too_many_arguments)]
 pub(super) fn render_serial<W: Write>(
     writer: &mut W,
     ctx: &RenderCtx,

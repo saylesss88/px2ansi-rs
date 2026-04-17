@@ -6,7 +6,6 @@ use terminal_size::{Height, Width, terminal_size};
 
 impl RenderOptions {
     /// Calculates the optimal target dimensions for the terminal.
-    #[allow(clippy::too_many_lines)]
     #[must_use]
     pub fn calculate_dimensions(&self, orig_w: u32, orig_h: u32) -> (u32, u32) {
         const MAX_SAFE: u32 = 16384;

@@ -91,16 +91,7 @@ pub fn rasterize_ansi_with_theme(ansi: &[u8], theme: RasterTheme) -> anyhow::Res
 
                 // Half-block ▀: top half = fg color, bottom half = bg color.
                 Cell::HalfBlock { top, bot } => {
-                    fill_rect(
-                        &mut img,
-                        base_x,
-                        base_y,
-                        CELL_W,
-                        CELL_H / 2,
-                        *top,
-                        img_w,
-                        img_h,
-                    );
+                    fill_rect(&mut img, base_x, base_y, CELL_W, CELL_H / 2, *top);
                     fill_rect(
                         &mut img,
                         base_x,
@@ -108,8 +99,6 @@ pub fn rasterize_ansi_with_theme(ansi: &[u8], theme: RasterTheme) -> anyhow::Res
                         CELL_W,
                         CELL_H - CELL_H / 2,
                         *bot,
-                        img_w,
-                        img_h,
                     );
                 }
 
@@ -122,8 +111,6 @@ pub fn rasterize_ansi_with_theme(ansi: &[u8], theme: RasterTheme) -> anyhow::Res
                         CELL_W,
                         CELL_H - CELL_H / 2,
                         *color,
-                        img_w,
-                        img_h,
                     );
                 }
 
@@ -304,25 +291,11 @@ fn parse_color_params(params: &str, fg: &mut [u8; 3], bg: &mut Rgba<u8>, theme_b
 // ---------------------------------------------------------------------------
 
 /// Fills a rectangular region of the image with a solid color, clamped to bounds.
-#[allow(clippy::too_many_arguments)]
-fn fill_rect(
-    img: &mut RgbaImage,
-    x: u32,
-    y: u32,
-    w: u32,
-    h: u32,
-    color: Rgba<u8>,
-    img_w: u32,
-    img_h: u32,
-) {
-    for py in y..y.saturating_add(h) {
-        if py >= img_h {
-            break;
-        }
-        for px in x..x.saturating_add(w) {
-            if px >= img_w {
-                break;
-            }
+fn fill_rect(img: &mut RgbaImage, x: u32, y: u32, w: u32, h: u32, color: Rgba<u8>) {
+    let (img_w, img_h) = img.dimensions(); // Automatically get dimensions
+
+    for py in y..y.saturating_add(h).min(img_h) {
+        for px in x..x.saturating_add(w).min(img_w) {
             img.put_pixel(px, py, color);
         }
     }

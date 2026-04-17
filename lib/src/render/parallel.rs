@@ -5,7 +5,6 @@ use rayon::prelude::*;
 use super::color::write_colored_glyph_to_str;
 use super::pixel::{ALPHA_THRESHOLD, ColorParams, LumaParams, RenderCtx};
 
-#[allow(clippy::too_many_arguments)]
 pub(super) fn render_parallel<W: Write>(
     writer: &mut W,
     ctx: &RenderCtx,
