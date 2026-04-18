@@ -16,7 +16,7 @@ name = "px2ansi"
 path = "src/lib.rs"
 
 [dependencies]
-image = { workspace = true }
+image = { workspace = true}
 anyhow = { workspace = true }
 terminal_size = { workspace = true }
 serde_json = { workspace = true }
@@ -35,9 +35,10 @@ tempfile = { version = "3.0", default-features = false }
 workspace = true
 
 [features]
-default = ["rasterize", "sixel", "parallel", "simd"]
-sixel = ["dep:viuer"]
+default = []
 rasterize = ["dep:fontdue"]
-full = ["rasterize", "sixel", "parallel", "simd"]
+sixel = ["dep:viuer"]
 parallel = ["dep:rayon"]
 simd = ["dep:wide"]
+# Convenience bundle for users who want everything (and for the CLI)
+full = ["rasterize", "sixel", "parallel", "simd"]
