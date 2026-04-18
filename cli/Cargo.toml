@@ -46,6 +46,8 @@ rasterize = ["px2ansi/rasterize"]
 parallel = ["px2ansi/parallel"]
 simd = ["px2ansi/simd"]
 
+[lints]
+workspace = true
 
 [profile.release]
 opt-level = 3
