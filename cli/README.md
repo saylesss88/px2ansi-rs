@@ -51,6 +51,9 @@ browsing, and advanced filters. It is approximately 25x faster.
 
 ## Table of contents
 
+<details>
+<summary> Table Of Contents </summary>
+
 - [Features](#features)
   - [Optional Features](#optional-features)
 - [Installation](#installation)
@@ -72,11 +75,19 @@ browsing, and advanced filters. It is approximately 25x faster.
 - [Shell completions](#shell-completions)
 - [Rendering styles](#rendering-styles)
 - [Performance and workflow](#performance--workflow)
+  - [Benchmarks](#-benchmarks)
+    - [Latency Metrics](#latency-metrics)
+  - [Testing with PokéSprite](testing-with-pokésprite)
 - [Rasterize output to PNG](#rasterize-output-to-png)
-- [Using the Library Only](#-using-px2ansi-as-a-library)
+  - [Choosing a Raster theme](#choosing-a-theme)
+  - [Using the Library Only](#-using-px2ansi-as-a-library)
 - [Project builds](#project-builds)
 - [Troubleshooting](#troubleshooting--errors)
+  - [Man Page Generation](#man-page-generation)
+  - [Similar Crates](#similar-crates)
 - [License](#license)
+
+</details>
 
 ---
 
@@ -206,6 +217,8 @@ stdout:
 px2ansi-rs convert image.png --style braille --output out.txt
 ```
 
+[Back to TOC](#top)
+
 #### Unicode mode
 
 To get the chunky `pokemon-colorscripts` look:
@@ -225,6 +238,8 @@ For larger images, `lanczos3` usually looks better:
 ```bash
 px2ansi-rs convert tests/scream.png --filter lanczos3
 ```
+
+[Back to TOC](#top)
 
 #### Sixel
 
@@ -259,6 +274,8 @@ px2ansi-rs convert tests/test.png --style ascii --filter nearest --no-color
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii2.png" width="400" alt="ASCII Pikachu example">
 </p>
 
+[Back to TOC](#top)
+
 #### Disable color
 
 Use `--no-color` on any conversion to strip ANSI color escapes:
@@ -277,6 +294,8 @@ px2ansi-rs index ./assets/sprites --output index.json
 
 If `--output` is omitted, the index path falls back to the configured default
 (or `index.json`).
+
+[Back to TOC](#top)
 
 ### Show by name
 
@@ -315,6 +334,8 @@ px2ansi-rs show bul
 <p align="center">
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/bul.png" style="max-width: 100%; height: auto;" width="400" alt="Bulbasaur search example">
 </p>
+
+[Back to TOC](#top)
 
 #### Interactive search
 

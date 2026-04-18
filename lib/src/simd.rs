@@ -295,4 +295,35 @@ mod tests {
             }
         }
     }
+    #[test]
+    #[cfg(feature = "simd")]
+    fn find_range_simd_vs_scalar_fuzz() {
+        // Test various buffer lengths to check SIMD chunks + remainder logic
+        for len in [4, 12, 32, 36, 64, 128, 132] {
+            let mut bytes = Vec::with_capacity(len);
+            for i in 0..(len / 4) {
+                let v = (i % 255) as u8;
+                // Alternate alpha to test the SIMD mask logic
+                let alpha = if i % 3 == 0 { 0 } else { 255 };
+                bytes.extend_from_slice(&[v, v, v, alpha]);
+            }
+
+            // 1. Calculate using your SIMD function
+            let (simd_min, simd_max) = find_luma_range_simd(&bytes);
+
+            // 2. Calculate using a simple manual scalar loop
+            let mut scalar_min = u32::MAX;
+            let mut scalar_max = u32::MIN;
+            for pixel in bytes.chunks_exact(4) {
+                if pixel[3] >= ALPHA_THRESHOLD {
+                    let l = luma_scalar(pixel[0], pixel[1], pixel[2]);
+                    scalar_min = scalar_min.min(l);
+                    scalar_max = scalar_max.max(l);
+                }
+            }
+
+            assert_eq!(simd_min, scalar_min, "Min mismatch at len {len}");
+            assert_eq!(simd_max, scalar_max, "Max mismatch at len {len}");
+        }
+    }
 }

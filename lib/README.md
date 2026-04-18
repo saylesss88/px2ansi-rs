@@ -8,6 +8,9 @@ If you want the command-line interface, check out [px2ansi-rs](../cli).
 
 ## Table of Contents
 
+<details>
+<summary> Table of Contents </summary>
+
 - [Features](#features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
@@ -29,12 +32,14 @@ If you want the command-line interface, check out [px2ansi-rs](../cli).
   - [Rasterize](#rasterize)
 - [⚡ Performance](#-performance)
   - [SIMD Acceleration](#simd-acceleration-simd-feature)
+    - [Benchmark](#benchmark)
   - [Parallel Rendering](#parallel-rendering-parallel-feature)
 - [Re-exports](#re-exports)
 - [Error Handling](#error-handling)
 - [Library vs CLI](#library-vs-cli)
 - [License](#license)
 
+</details>
 ---
 
 `px2ansi` converts images into terminal art by resizing them to terminal cell
