@@ -304,12 +304,19 @@ fn fill_rect(img: &mut RgbaImage, x: u32, y: u32, w: u32, h: u32, color: Rgba<u8
 /// Alpha-blends a foreground color against a background color using glyph coverage.
 fn blend_pixel([r, g, b]: [u8; 3], coverage: u8, bg: Rgba<u8>) -> Rgba<u8> {
     let alpha = f32::from(coverage) / 255.0;
+
     let blend = |fg: u8, bg_val: u8| -> u8 {
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "Linear interpolation of u8 color components via f32 is safe"
+        )]
         {
+            // Linear interpolation: bg * (1 - alpha) + fg * alpha
             f32::from(bg_val).mul_add(1.0 - alpha, f32::from(fg) * alpha) as u8
         }
     };
+
     let [br, bg_c, bb, _] = bg.0;
     Rgba([blend(r, br), blend(g, bg_c), blend(b, bb), 255])
 }

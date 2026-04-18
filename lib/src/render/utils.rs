@@ -16,36 +16,43 @@ impl RenderOptions {
                 CharsetMode::Unicode if self.style().full => (term_w / 2, term_h),
                 CharsetMode::Sixel => (term_w * 8, term_h * 16),
 
-                // Group Kanji/Chinese with Ascii/Fade so they share the exact
-                // same pixel budget (e.g. 108x47 instead of 54x47).
                 CharsetMode::Kanji
                 | CharsetMode::Chinese
                 | CharsetMode::Ascii
                 | CharsetMode::Fade => {
-                    let w = term_w.saturating_sub(2);
-                    let aspect = f64::from(orig_h) / f64::from(orig_w);
-                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                    let h_from_w = (f64::from(w) * aspect / 2.0).ceil() as u32;
-                    if h_from_w <= term_h {
-                        (w, h_from_w)
-                    } else {
-                        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                        let w_from_h = ((f64::from(term_h) * 2.0) / aspect).floor() as u32;
-                        let chosen_w = w_from_h.min(w);
-                        (chosen_w, term_h)
+                    #[expect(
+                        clippy::cast_possible_truncation,
+                        clippy::cast_sign_loss,
+                        reason = "Terminal dimension math involves safe float-to-u32 conversions"
+                    )]
+                    {
+                        let w = term_w.saturating_sub(2);
+                        let aspect = f64::from(orig_h) / f64::from(orig_w);
+
+                        let h_from_w = (f64::from(w) * aspect / 2.0).ceil() as u32;
+
+                        if h_from_w <= term_h {
+                            (w, h_from_w)
+                        } else {
+                            let w_from_h = ((f64::from(term_h) * 2.0) / aspect).floor() as u32;
+                            let chosen_w = w_from_h.min(w);
+                            (chosen_w, term_h)
+                        }
                     }
                 }
-
                 _ => (term_w.saturating_sub(2), term_h * 2 / 3),
             }
         } else {
             (80, 40)
         };
 
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "Terminal scaling math involves intentional truncation of pixel coordinates"
+        )]
         let (render_w, render_h) = self.width().map_or_else(
             || {
-                // Group Kanji/Chinese with Ascii/Fade here as well
                 if matches!(
                     self.charset(),
                     CharsetMode::Kanji
@@ -81,7 +88,7 @@ impl RenderOptions {
                 }
             },
             |tw| {
-                // User provided width 'tw' — derive height from it.
+                // User provided width 'tw' derive height from it.
                 let aspect = f64::from(orig_h) / f64::from(orig_w);
                 let h = (f64::from(tw) * aspect / 2.0).ceil() as u32;
                 (tw, h)

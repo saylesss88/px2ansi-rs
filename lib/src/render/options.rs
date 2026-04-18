@@ -1,4 +1,3 @@
-#![allow(clippy::missing_const_for_fn)]
 use super::types::{CharsetMode, Density, RenderStyle};
 use crate::cli_enums::{RenderStylePreset, ResizeFilter};
 use crate::render::{ColorMode, get_terminal_size};

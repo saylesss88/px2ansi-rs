@@ -39,5 +39,14 @@ confy = "2.0.0"
 assert_cmd = "2.0"
 predicates = { version = "3.0", default-features = false }
 
+
+[features]
+default = ["rasterize", "sixel", "parallel", "simd"]
+rasterize = ["px2ansi/rasterize"]
+sixel = ["px2ansi/sixel"]
+parallel = ["px2ansi/parallel"]
+simd = ["px2ansi/simd"]
+full = ["rasterize", "sixel", "parallel", "simd"]
+
 [lints]
 workspace = true
