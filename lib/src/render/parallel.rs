@@ -7,7 +7,7 @@ use super::pixel::{ALPHA_THRESHOLD, ColorParams, LumaParams, RenderCtx};
 
 pub(super) fn render_parallel<W: Write>(
     writer: &mut W,
-    ctx: &RenderCtx,
+    ctx: &RenderCtx<'_>,
     lp: LumaParams,
     cp: ColorParams<'_>,
 ) -> std::io::Result<()> {

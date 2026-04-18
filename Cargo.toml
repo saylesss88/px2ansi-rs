@@ -33,7 +33,7 @@ clap = { version = "4.5", features = ["derive"] }
 clap_complete = "4.5.66"
 clap_mangen = "0.3.0"
 # Path dep: px2ansi-cli depends on the lib
-px2ansi = { path = "lib", version = "0.1.1" }
+px2ansi = { path = "lib", version = "0.2.3" }
 
 # ── Shared release profile ──────────────────────────────────────────────────
 [profile.release]

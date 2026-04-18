@@ -8,7 +8,7 @@ use super::pixel::write_pixel;
 
 pub(super) fn render_serial<W: Write>(
     writer: &mut W,
-    ctx: &RenderCtx,
+    ctx: &RenderCtx<'_>,
     lp: LumaParams,
     cp: ColorParams<'_>,
 ) -> std::io::Result<()> {
@@ -38,7 +38,9 @@ pub(super) fn render_serial<W: Write>(
             {
                 let mut x_off = 0usize;
                 for chunk in chunks {
-                    let chunk32: &[u8; 32] = chunk.try_into().unwrap();
+                    let Ok(chunk32) = chunk.try_into() else {
+                        continue;
+                    };
                     let pairs = crate::simd::compute_charset_indices(
                         chunk32,
                         lp.min,
