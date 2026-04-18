@@ -188,7 +188,7 @@ px2ansi-rs convert --help
 px2ansi-rs show --help
 ```
 
-### 1. Convert an image
+### Convert an image
 
 Basic conversion to stdout with automatic terminal sizing:
 
