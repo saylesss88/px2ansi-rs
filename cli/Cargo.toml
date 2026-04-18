@@ -21,7 +21,7 @@ name = "generate-manpage"
 path = "src/bin/generate_manpage.rs"
 
 [dependencies]
-px2ansi = { workspace = true }
+px2ansi = { workspace = true}
 anyhow = { workspace = true }
 clap = { workspace = true }
 clap_complete = { workspace = true }
@@ -37,7 +37,7 @@ confy = "2.0.0"
 
 [dev-dependencies]
 assert_cmd = "2.0"
-predicates = "3.0"
+predicates = { version = "3.0", default-features = false }
 
 [features]
 default = ["rasterize", "sixel", "parallel", "simd"]
@@ -46,12 +46,6 @@ rasterize = ["px2ansi/rasterize"]
 parallel = ["px2ansi/parallel"]
 simd = ["px2ansi/simd"]
 
+
 [lints]
 workspace = true
-
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-panic = 'abort'
-strip = true

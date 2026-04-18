@@ -38,6 +38,7 @@
             libpng
             zlib
             openssl
+            mold
           ];
 
           meta = with pkgs.lib; {
@@ -56,6 +57,7 @@
             pkg-config
             clang
             cmake
+            mold
             cargo
             rustc
             rust-analyzer
