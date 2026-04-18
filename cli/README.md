@@ -6,6 +6,8 @@
 
 [![Crates.io](https://img.shields.io/crates/v/px2ansi-rs.svg)](https://crates.io/crates/px2ansi-rs)
 [![Documentation](https://docs.rs/px2ansi-rs/badge.svg)](https://docs.rs/px2ansi-rs)
+[![Nix Flake](https://img.shields.io/badge/Nix_Flake-Geared-dddd00?logo=nixos&logoColor=white)](https://nixos.org/manual/nix/stable/command-ref/new-cli/nix3-flake.html)
+[![Nix](https://img.shields.io/badge/Nix-5277C3?style=flat&logo=nixos&logoColor=white)](https://nixos.org)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 `px2ansi-rs` is a high-fidelity terminal art engine and asset manager.
@@ -50,9 +52,22 @@ browsing, and advanced filters. It is approximately 25x faster.
 ## Table of contents
 
 - [Features](#features)
+  - [Optional Features](#optional-features)
 - [Installation](#installation)
+  - [From Source](#from-source)
+  - [From crates.io](#from-crates.io)
 - [Quick reference](#quick-reference)
 - [Usage](#usage)
+  - [Convert an Image](#convert-an-image)
+    - [Save ANSI Output to a File](#save-ansi-output-to-a-file)
+    - [Unicode Mode](#unicode-mode)
+    - [Force width and filtering](#force-width-and-filtering)
+    - [ASCII with density control](#ascii-with-density-control)
+    - [Disable Color](#disable-color)
+  - [Create an Index](#create-an-index)
+  - [Show by Name](#show-by-name)
+    - [Quick way with Fuzzy Matching](#quick-way-with-fuzzy-matching)
+    - [Interactive Search](#interactive-search)
 - [Configuration](#configuration)
 - [Shell completions](#shell-completions)
 - [Rendering styles](#rendering-styles)
@@ -162,8 +177,9 @@ Options:
 
 ## Usage
 
-> [!NOTE] `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`,
-> `show`, and `list`.
+> [!NOTE]
+> `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`, `show`,
+> and `list`.
 
 Most subcommands have their own help menus:
 
@@ -251,7 +267,7 @@ Use `--no-color` on any conversion to strip ANSI color escapes:
 px2ansi-rs convert image.png --style braille --no-color
 ```
 
-### 2. Create an index
+### Create an index
 
 You can create a JSON manifest of a directory full of sprites:
 
@@ -262,7 +278,7 @@ px2ansi-rs index ./assets/sprites --output index.json
 If `--output` is omitted, the index path falls back to the configured default
 (or `index.json`).
 
-### 3. Show by name
+### Show by name
 
 Once indexed, you can display an image by its name without needing the full
 path:
@@ -308,7 +324,7 @@ If you want to browse visually, use interactive fuzzy search:
 px2ansi-rs show -i
 ```
 
-### 4. List assets
+### List assets
 
 ```bash
 px2ansi-rs list
@@ -380,8 +396,8 @@ You can point `show` at an index anywhere in your filesystem with `-I`:
 px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json
 ```
 
-> [!NOTE] Any field omitted from the `.toml` file falls back to the built-in
-> defaults.
+> [!NOTE]
+> Any field omitted from the `.toml` file falls back to the built-in defaults.
 
 #### Configuration on NixOS
 
@@ -474,7 +490,8 @@ programs.zsh.initContent = ''
 | Chinese    | `--style chinese`    | Chinese density ramp (double-width)        | Stylized output              |
 | Sixel      | `--style sixel`      | Pixel-accurate Sixel protocol output       | Supported terminals only     |
 
-> [!NOTE] `--style ascii` also supports `--density light|medium|heavy`.
+> [!NOTE]
+> `--style ascii` also supports `--density light|medium|heavy`.
 > `--style dense` is shorthand for `--style ascii --density heavy`.
 > `--style sixel` is basically a 1 to 1 conversion.
 
@@ -656,8 +673,9 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-rasterized.png" width="300" alt="Rasterized output example">
 </p>
 
-> [!NOTE] Some styles look better than others. The default background theme is
-> Tokyo Night.
+> [!NOTE]
+> Some styles look better than others. The default background theme is Tokyo
+> Night.
 
 ### Choosing a theme
 
@@ -683,7 +701,8 @@ You can also set a default theme in your config file:
 raster_theme = "gruvbox-dark"
 ```
 
-> [!NOTE] If the `rasterize` feature is not compiled in, using `--output-image`
+> [!WARNING]
+> If the `rasterize` feature is not compiled in, using `--output-image`
 > will produce an error asking you to rebuild with the feature enabled.
 
 [Back to TOC](#top)

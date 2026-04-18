@@ -44,7 +44,7 @@ output to any `Write` target.
 It is the rendering core behind `px2ansi-rs`, but it can also be used directly
 in other Rust projects.
 
-> [!NOTE]
+> [!IMPORTANT]
 > This is a new project, the public API is subject to change
 
 ## Features
@@ -346,23 +346,27 @@ for entry in &entries {
 All features are **disabled by default**. Enable them individually or together
 for minimal builds.
 
-| Feature     | Dependency | What it does                                                         |
-| ----------- | ---------- | -------------------------------------------------------------------- |
-| `rasterize` | `fontdue`  | Renders ANSI art to a PNG image using an embedded monospace font     |
-| `sixel`     | `viuer`    | Streams pixel-accurate images directly to Sixel-compatible terminals |
-| `parallel`  | `rayon`    | Enables parallel processing for performance                          |
+| Feature     | Dependency | What it does                                                                                   |
+| ----------- | ---------- | ---------------------------------------------------------------------------------------------- |
+| `rasterize` | `fontdue`  | Renders ANSI art to a PNG image using an embedded monospace font                               |
+| `sixel`     | `viuer`    | Streams pixel-accurate images directly to Sixel-compatible terminals                           |
+| `parallel`  | `rayon`    | Enables parallel processing for performance                                                    |
+| `simd`      | `wide`     | Accelerates color matching and pixel processing by using CPU vector instructions (AVX2, NEON). |
 
 ### Controlling Features
 
 ```bash
 # Minimal — pure ANSI text output only
-cargo add px2ansi --no-default-features
+cargo add px2ansi
 
 # Sixel terminal output, no PNG rasterization
-cargo add px2ansi --no-default-features --features sixel
+cargo add px2ansi --features sixel
 
 # PNG rasterization, no Sixel output
-cargo add px2ansi --no-default-features --features rasterize
+cargo add px2ansi --features rasterize
+
+# Enable all optimization features
+cargo add px2ansi --features simd parallel
 
 # Everything (full feature set)
 cargo add px2ansi --features full
@@ -371,14 +375,11 @@ cargo add px2ansi --features full
 In `Cargo.toml`:
 
 ```toml
-# Default (rasterize + sixel + parallel)
-px2ansi = "0.2.1"
-
-# Minimal
-px2ansi = { version = "0.2.1", default-features = false }
+# Default (Minimal, no features enabled)
+px2ansi = "0.2.2"
 
 # Pick what you need
-px2ansi = { version = "0.2.1", default-features = false, features = ["rasterize"] }
+px2ansi = { version = "0.2.2",  features = ["parallel", "simd"] }
 ```
 
 ---
@@ -495,7 +496,7 @@ luma = (2126·R + 7152·G + 722·B) / 10000
 ```
 
 This matches the [ITU-R BT.709](https://www.itu.int/rec/R-REC-BT.709) standard
-used in HDTV and sRGB colour spaces, giving accurate brightness perception
+used in HDTV and sRGB color spaces, giving accurate brightness perception
 across all charset modes.
 
 #### Enabling SIMD
@@ -517,18 +518,23 @@ to a scalar implementation with identical output — no code changes required.
 
 #### Benchmark
 
-| Mode                | Wall time | User CPU | Test Image                    |
-| ------------------- | --------- | -------- | ----------------------------- |
-| `px2ansi` (SIMD)    | ~7.6 ms   | ~2.2 ms  | `nixos.png` (1.2M px, sparse) |
-| `px2ansi` (SIMD)    | ~9.1 ms   | ~4.6 ms  | `scream.png` (0.6M px, dense) |
-| vs `rascii --color` | ~10.0 ms  | ~4.5 ms  | `nixos.png`                   |
-| `rascii --color`    | ~10.2 ms  | ~5.8 ms  | `scream.png`                  |
+The following benchmarks demonstrate the impact of the `simd` feature when
+processing high-resolution images. These tests were conducted using the
+`px2ansi-rs` CLI on an
+
+| Mode             | Wall time | User CPU | Test Image                    |
+| ---------------- | --------- | -------- | ----------------------------- |
+| `px2ansi` (SIMD) | ~7.6 ms   | ~2.2 ms  | `nixos.png` (1.2M px, sparse) |
+| `px2ansi` (SIMD) | ~9.1 ms   | ~4.6 ms  | `scream.png` (0.6M px, dense) |
+| `rascii --color` | ~10.0 ms  | ~4.5 ms  | `nixos.png`                   |
+| `rascii --color` | ~10.2 ms  | ~5.8 ms  | `scream.png`                  |
 
 The SIMD luma scan alone roughly **halves CPU time** for the render pass.
 
 > [!NOTE]
 > `px2ansi` scales better with resolution. Even though the NixOS image has
-> double the pixels of the Scream image, it actually completes the task faster.
+> double the pixels of the Scream image, it actually completes the task
+> faster.
 
 ---
 
@@ -550,34 +556,6 @@ let use_parallel = cfg!(feature = "parallel") && (width * height > 120_000);
 
 This means standard terminal rendering always hits the fast path, while large
 off-screen or file renders automatically scale across all cores.
-
-### SIMD Acceleration
-
-The `simd` feature enables SIMD-accelerated pixel processing using the
-[`wide`](https://crates.io/crates/wide) crate. When enabled, the luma range scan
-(the first pass over every pixel during ASCII, Fade, Kanji, and Chinese
-rendering) processes 8 pixels simultaneously instead of one at a time.
-
-```toml
-[dependencies]
-px2ansi = { version = "0.1", features = ["simd"] }
-```
-
-The `wide` crate provides portable SIMD that automatically targets the best
-available instruction set at compile time — AVX2 on modern x86_64, SSE2 as
-fallback, and NEON on ARM. No unsafe code or architecture-specific feature flags
-required.
-
-**When to enable it:** Large images (>200×200 pixels) with ASCII, Fade, Kanji,
-or Chinese rendering will see the most benefit since those modes do two full
-passes over every pixel. Half-block and Braille modes are less affected as their
-hot path is different.
-
-**Benchmarking:**
-
-```sh
-cargo bench --features simd
-```
 
 ## Re-exports
 
