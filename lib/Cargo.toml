@@ -16,7 +16,7 @@ name = "px2ansi"
 path = "src/lib.rs"
 
 [dependencies]
-image = { workspace = true}
+image = { workspace = true }
 anyhow = { workspace = true }
 terminal_size = { workspace = true }
 serde_json = { workspace = true }

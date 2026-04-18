@@ -343,7 +343,7 @@ for entry in &entries {
 
 ## Optional Features
 
-All features are **enabled by default**. Disable them individually or together
+All features are **disabled by default**. Enable them individually or together
 for minimal builds.
 
 | Feature     | Dependency | What it does                                                         |

@@ -21,7 +21,7 @@ name = "generate-manpage"
 path = "src/bin/generate_manpage.rs"
 
 [dependencies]
-px2ansi = { workspace = true}
+px2ansi = { workspace = true, features = ["full"] }
 anyhow = { workspace = true }
 clap = { workspace = true }
 clap_complete = { workspace = true }
