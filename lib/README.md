@@ -443,39 +443,48 @@ png.save("output.png")?;
 
 ---
 
-## Performance
-
 ## ⚡ Performance
 
 ### SIMD Acceleration (`simd` feature)
 
 The `simd` feature enables hardware-accelerated pixel processing via the
-[`wide`](https://crates.io/crates/wide) crate. It is portable, no `unsafe`, no
-architecture-specific intrinsics, no `nightly` compiler required. LLVM compiles
-the `wide` vector types down to real AVX2/SSE4/NEON instructions automatically
-on supported hardware.
+[wide](https://crates.io/crates/wide) crate. This implementation is portable,
+100% safe Rust, and requires no architecture-specific intrinsics or nightly
+compiler. LLVM automatically lowers the wide vector types to AVX2, SSE4.1, or
+NEON instructions depending on your target hardware.
 
-#### What it accelerates
+### Performance Impact
 
-The most expensive pass in any ANSI art renderer is the **luma range scan**
-reading every pixel, computing its perceptual brightness, and finding the
-minimum and maximum values so the character density ramp can be normalized.
+`px2ansi` uses SIMD to accelerate the two most critical stages of rendering:
 
-With the `simd` feature enabled, this scan processes **8 pixels at a time** in a
-single `u32x8` SIMD lane instead of one at a time:
+1. **Luma Range Scanning (Pass 1)**: Scans the entire image to find the
+   perceptual brightness floor and ceiling (L*min* and L*max*). This allows the
+   library to maximize contrast by stretching the character ramp to fit the
+   image's actual dynamic range.
+
+2. **Character Indexing (Pass 2)**: Maps every pixel to a character in your
+   charset. By processing 8 pixels at a time in a single `u32x8` vector lane, we
+   significantly reduce the CPU cycles required for the normalization math.
+
+**How it works**
+
+With the `simd` feature enabled, the renderer processes chunks of 8 pixels in a
+single instruction rather than one at a time:
 
 ```rust
 // 8 Rec.709 luma values computed simultaneously
-let luma_unscaled = r * w_r + g * w_g + b * w_b;
-//                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//           u32x8 × u32x8 — 8 multiplies in one instruction
+let luma_raw = r * u32x8::splat(2126) + g * u32x8::splat(7152) + b * u32x8::splat(722);
+//                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//             u32x8 × u32x8 — 8 multiplies in one hardware instruction
 ```
 
-Transparent pixels (alpha < 30) are skipped with an early-out mask check before
-any per-pixel branching occurs, keeping the hot loop branchless.
+- **Branchless Transparency**: Transparent pixels (alpha < 30) are handled using
+  bitmasks. This avoids per-pixel branching, keeping the CPU pipeline full and
+  predictable.
 
-Any remaining pixels that don't fill a full 8-pixel chunk are handled by an
-identical scalar fallback, so results are always exact.
+- **Exact Fallback**: Any remaining pixels that don't fill a full 8-pixel chunk
+  are handled by an identical scalar fallback, so output is bit-for-bit
+  identical regardless of hardware support.
 
 #### Rec.709 luma formula
 
@@ -506,15 +515,20 @@ px2ansi = { version = "0.2.2", features = ["full"] }
 If the `simd` feature is **not** enabled, the library automatically falls back
 to a scalar implementation with identical output — no code changes required.
 
-#### Benchmark (nixos.png, 1183×1024, release build)
+#### Benchmark
 
-| Mode                | Wall time | User CPU |
-| ------------------- | --------- | -------- |
-| scalar only         | ~10 ms    | ~4.5 ms  |
-| `simd` enabled      | ~7.6 ms   | ~2.2 ms  |
-| vs `rascii --color` | ~10.0 ms  | ~4.5 ms  |
+| Mode                | Wall time | User CPU | Test Image                    |
+| ------------------- | --------- | -------- | ----------------------------- |
+| `px2ansi` (SIMD)    | ~7.6 ms   | ~2.2 ms  | `nixos.png` (1.2M px, sparse) |
+| `px2ansi` (SIMD)    | ~9.1 ms   | ~4.6 ms  | `scream.png` (0.6M px, dense) |
+| vs `rascii --color` | ~10.0 ms  | ~4.5 ms  | `nixos.png`                   |
+| `rascii --color`    | ~10.2 ms  | ~5.8 ms  | `scream.png`                  |
 
 The SIMD luma scan alone roughly **halves CPU time** for the render pass.
+
+> [!NOTE]
+> `px2ansi` scales better with resolution. Even though the NixOS image has
+> double the pixels of the Scream image, it actually completes the task faster.
 
 ---
 

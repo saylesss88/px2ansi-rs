@@ -39,6 +39,7 @@
             zlib
             openssl
             mold
+            clang
           ];
 
           meta = with pkgs.lib; {

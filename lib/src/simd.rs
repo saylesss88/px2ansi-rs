@@ -199,10 +199,9 @@ pub fn compute_charset_indices(
     let luma_raw: [u32; 8] =
         (r * u32x8::splat(2126) + g * u32x8::splat(7152) + b * u32x8::splat(722)).into();
 
-    // norm = (luma - luma_min) * 255 / luma_range  — all per-lane scalar
-    // idx  = norm * (num_chars - 1) / 255
     let thresh = u32::from(ALPHA_THRESHOLD);
     let mut out = [(0u32, false); 8];
+
     for i in 0..8 {
         let luma = luma_raw[i] / 10000;
         let norm = ((luma.saturating_sub(luma_min)) * 255) / luma_range;

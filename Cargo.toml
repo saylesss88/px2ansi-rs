@@ -22,7 +22,7 @@ anyhow = { version = "1.0", default-features = false }
 terminal_size = "0.4.3"
 serde_json = "1.0.149"
 serde = { version = "1.0.228", features = ["derive"], default-features = false }
-rand = { version = "0.10.1", default-features = false, features = ["thread_rng", "alloc"] }
+rand = "0.10.1"
 # rand = "0.10.0"
 colored = "3.1.1"
 fuzzy-matcher = "0.3.7"
