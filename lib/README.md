@@ -67,13 +67,15 @@ in other Rust projects.
 
 - Optional Sixel output for terminals that support it.
 
+- Optional SIMD (`wide`) and optional parallel execution (`rayon`)
+
 ## Installation
 
 Add `px2ansi` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-px2ansi = "0.2.2"
+px2ansi = "0.2.3"
 image = "0.25"
 ```
 
@@ -381,10 +383,13 @@ In `Cargo.toml`:
 
 ```toml
 # Default (Minimal, no features enabled)
-px2ansi = "0.2.2"
+px2ansi = "0.2.3"
 
 # Pick what you need
-px2ansi = { version = "0.2.2",  features = ["parallel", "simd"] }
+px2ansi = { version = "0.2.3",  features = ["parallel", "simd"] }
+
+# Include all features ("parallel", "simd", "rasterize", "sixel")
+px2ansi = { version = "0.2.3",  features = ["full"] }
 ```
 
 ---
@@ -508,14 +513,14 @@ across all charset modes.
 
 ```toml
 [dependencies]
-px2ansi = { version = "0.2.2", features = ["simd"] }
+px2ansi = { version = "0.2.3", features = ["simd"] }
 ```
 
 Or to enable everything:
 
 ```toml
 [dependencies]
-px2ansi = { version = "0.2.2", features = ["full"] }
+px2ansi = { version = "0.2.3", features = ["full"] }
 ```
 
 If the `simd` feature is **not** enabled, the library automatically falls back

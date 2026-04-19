@@ -276,6 +276,7 @@ pub fn write_ansi_art<W: Write>(
 /// This function will return an error if `viuer` fails to write to the terminal
 /// buffer or if the image cannot be encoded into the Sixel format.
 #[cfg(feature = "sixel")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sixel")))]
 pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> std::io::Result<()> {
     use super::utils::get_terminal_size;
 

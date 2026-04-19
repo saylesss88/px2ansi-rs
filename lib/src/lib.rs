@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 //! # px2ansi
 //!
 //! A high-fidelity terminal art engine for rendering images as ANSI terminal art.
@@ -66,6 +67,7 @@ pub use crate::{
 
 // ── Rasterization re-exports (feature = "rasterize") ───────���────────────────
 #[cfg(feature = "rasterize")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rasterize")))]
 pub use crate::{
     rasterize::{rasterize_ansi, rasterize_ansi_with_theme},
     themes::RasterTheme,

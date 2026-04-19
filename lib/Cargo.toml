@@ -11,6 +11,12 @@ categories = ["command-line-utilities", "multimedia::images", "rendering"]
 description = "High-fidelity terminal art engine — ANSI, Braille, Kanji, and more"
 include = ["src/**/*", "assets/IosevkaCharonMono-Regular.ttf", "Cargo.toml", "README.md", "LICENSE"]
 
+[package.metadata.docs.rs]
+# Document the crate with all features enabled
+all-features = true
+# Enable the 'docsrs' config so we can use #[doc(cfg(...))]
+rustdoc-args = ["--cfg", "docsrs"]
+
 [lib]
 name = "px2ansi"
 path = "src/lib.rs"

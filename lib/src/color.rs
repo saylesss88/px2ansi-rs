@@ -147,16 +147,18 @@ const fn generate_xterm_256() -> [[u8; 3]; 256] {
 pub fn rgb_to_xterm256(r: u8, g: u8, b: u8) -> u8 {
     let target = rgb_to_oklab(r, g, b);
     let palette = get_oklab_palette();
-    let mut best_idx = 0u8;
+    let mut best_idx: usize = 0;
     let mut best_dist = f32::MAX;
+
     for (i, &candidate) in palette.iter().enumerate() {
         let dist = oklab_distance(target, candidate);
         if dist < best_dist {
             best_dist = dist;
-            best_idx = i as u8;
+            best_idx = i;
         }
     }
-    best_idx
+
+    u8::try_from(best_idx).expect("palette index must fit in u8")
 }
 // #[must_use]
 // pub fn rgb_to_xterm256(r: u8, g: u8, b: u8) -> u8 {
