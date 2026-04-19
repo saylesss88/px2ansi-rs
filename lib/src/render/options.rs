@@ -189,33 +189,161 @@ impl RenderOptions {
     pub const fn color_mode(&self) -> ColorMode {
         self.color_mode
     }
-    /// Prepares a `DynamicImage` for the terminal by resizing it to fit the
-    /// calculated constraints.  
+
+    /// Prepares a [`DynamicImage`] for terminal rendering through resizing and optional dithering.
+    ///
+    /// This method handles the core image transformation pipeline:
+    /// 1. Resizes the image to fit calculated terminal dimensions using the configured filter.
+    /// 2. If enabled, applies a Floyd-Steinberg dither to the luminance channel.
+    /// 3. In color modes, performs a luminance-preserving remap to distribute dithered
+    ///    high-frequency detail while maintaining original hue and saturation.
+    ///
+    /// If the `parallel` feature is enabled, the color remapping stage is executed
+    /// across multiple threads using `rayon`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if:
+    /// * The calculated image dimensions exceed the capacity of a `u32` (though
+    ///   `calculate_dimensions` usually prevents this).
+    /// * An internal state inconsistency occurs where a pixel index cannot be mapped
+    ///   back to valid coordinate space during parallel processing.
+    ///
+    /// # Performance
+    ///
+    /// Dither generation is inherently sequential due to the error-diffusion nature
+    /// of the Floyd-Steinberg algorithm. However, the color-scaling pass is
+    /// "embarrassingly parallel" and will scale linearly with available CPU cores
+    /// when the `parallel` feature is active.
     #[must_use]
     pub fn prepare_image(&self, img: &DynamicImage) -> DynamicImage {
+        const LUMA_R: f32 = 0.2126;
+        const LUMA_G: f32 = 0.7152;
+        const LUMA_B: f32 = 0.0722;
         let (width, height) = self.calculate_dimensions(img.width(), img.height());
         let mut resized = img.resize_exact(width, height, self.filter);
 
         if self.style.dither {
-            // If user explicitly chose no color, we dither the grayscale luma
+            // 1. Generate the dithered luma (serial; Floyd–Steinberg)
+            let mut luma_img = resized.to_luma8();
+            image::imageops::dither(&mut luma_img, &image::imageops::BiLevel);
+
             if self.color_mode == ColorMode::None {
-                // 1. Create the mutable buffer
-                let mut luma_img = resized.to_luma8();
-
-                // 2. Perform the in-place Floyd-Steinberg dither
-                image::imageops::dither(&mut luma_img, &image::imageops::BiLevel);
-
-                // 3. Re-assign the resized image
+                // Keep pure B/W luma image when user requested no color
                 resized = DynamicImage::ImageLuma8(luma_img);
+            } else {
+                // Color-preserving remap: scale original RGB so its luminance becomes
+                // the dithered (0 or 255) value while preserving hue where possible.
+                let rgba = resized.to_rgba8();
+
+                // --- Parallel hot path ---
+                #[cfg(feature = "parallel")]
+                {
+                    use rayon::prelude::*;
+                    // Read-only raw bytes
+                    let raw = rgba.as_raw();
+                    let w_usize = width as usize;
+
+                    // Map input pixels -> adjusted [r,g,b,a] in parallel
+                    let pixels: Vec<[u8; 4]> = raw
+                        .par_chunks_exact(4)
+                        .enumerate()
+                        .map(|(i, px)| {
+                            // compute coordinates from linear index
+                            let x = u32::try_from(i % w_usize).unwrap_or(0);
+                            let y = u32::try_from(i / w_usize).unwrap_or(0);
+                            let red = px[0];
+                            let green = px[1];
+                            let blue = px[2];
+                            let alpha = px[3];
+
+                            let luma_red = f32::from(red);
+                            let luma_green = f32::from(green);
+                            let luma_blue = f32::from(blue);
+
+                            // Integer luma formula (same as elsewhere)
+                            let orig_luma = LUMA_R
+                                .mul_add(luma_red, LUMA_G.mul_add(luma_green, LUMA_B * luma_blue));
+
+                            let dither_v = f32::from(luma_img.get_pixel(x, y).0[0]);
+
+                            #[expect(
+                                clippy::cast_possible_truncation,
+                                clippy::cast_sign_loss,
+                                reason = "value is clamped to the 0..255 range prior to conversion"
+                            )]
+                            let (nr, ng, nb) = if orig_luma > 0.0 {
+                                let factor = dither_v / orig_luma;
+                                (
+                                    (f32::from(red) * factor).clamp(0.0, 255.0) as u8,
+                                    (f32::from(green) * factor).clamp(0.0, 255.0) as u8,
+                                    (f32::from(blue) * factor).clamp(0.0, 255.0) as u8,
+                                )
+                            } else if dither_v > 0.0 {
+                                (255u8, 255u8, 255u8)
+                            } else {
+                                (0u8, 0u8, 0u8)
+                            };
+
+                            [nr, ng, nb, alpha]
+                        })
+                        .collect();
+
+                    // Flatten to raw bytes
+                    let mut new_raw = Vec::with_capacity(pixels.len() * 4);
+                    for p in pixels {
+                        new_raw.extend_from_slice(&p);
+                    }
+
+                    // Rebuild image from raw bytes (should succeed)
+                    if let Some(buf) = image::ImageBuffer::from_raw(width, height, new_raw) {
+                        resized = DynamicImage::ImageRgba8(buf);
+                    } else {
+                        // Fallback to original rgba if something unexpected occurs
+                        resized = DynamicImage::ImageRgba8(rgba);
+                    }
+                }
+
+                // --- Serial fallback ---
+                #[cfg(not(feature = "parallel"))]
+                {
+                    let (w, h) = rgba.dimensions();
+                    for y in 0..h {
+                        for x in 0..w {
+                            let p = rgba.get_pixel_mut(x, y);
+                            let [r, g, b, a] = p.0;
+
+                            let orig_luma = (2126u32 * u32::from(r)
+                                + 7152u32 * u32::from(g)
+                                + 722u32 * u32::from(b))
+                                as f32
+                                / 10000.0;
+
+                            let dither_v = f32::from(luma_img.get_pixel(x, y).0[0]);
+
+                            let (nr, ng, nb) = if orig_luma > 0.0 {
+                                let factor = dither_v / orig_luma;
+                                (
+                                    (f32::from(r) * factor).clamp(0.0, 255.0) as u8,
+                                    (f32::from(g) * factor).clamp(0.0, 255.0) as u8,
+                                    (f32::from(b) * factor).clamp(0.0, 255.0) as u8,
+                                )
+                            } else if dither_v > 0.0 {
+                                (255u8, 255u8, 255u8)
+                            } else {
+                                (0u8, 0u8, 0u8)
+                            };
+
+                            *p = image::Rgba([nr, ng, nb, a]);
+                        }
+                    }
+                    resized = DynamicImage::ImageRgba8(rgba);
+                }
             }
         }
 
         resized
     }
-    // pub fn prepare_image(&self, img: &DynamicImage) -> DynamicImage {
-    //     let (width, height) = self.calculate_dimensions(img.width(), img.height());
-    //     img.resize_exact(width, height, self.filter)
-    // }
 
     /// Renders a pre-processed image to the provided writer.
     ///

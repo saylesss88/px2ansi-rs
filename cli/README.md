@@ -112,6 +112,7 @@ browsing, and advanced filters. It is approximately 25x faster.
 - Optional Sixel output for terminals that support it.
 - **High-Performance Backend**: SIMD-accelerated pixel processing (wide) with
   optional multi-core parallelism (rayon).
+- Optional dithering for supported styles and images.
 
 `px2ansi-rs` is built on top of [`px2ansi`](https://crates.io/crates/px2ansi), a
 standalone Rust library that exposes the full rendering engine as a public API.
@@ -267,7 +268,10 @@ px2ansi-rs convert tests/test.png --style ascii --density heavy
 px2ansi-rs convert tests/test.png --style dense
 
 # Monochrome ASCII
-px2ansi-rs convert tests/test.png --style ascii --filter nearest --no-color
+px2ansi-rs convert tests/test.png --style ascii --filter nearest --color-mode none
+
+# Dithering
+px2ansi-rs convert tests/test.png --style ascii --filter nearest --color-mode 256 --dither
 ```
 
 <p align="center">
@@ -686,6 +690,48 @@ overhead from process startup and image preparation before handing off to the
 encoder, putting it marginally behind `viu` in this mode.
 
 ---
+
+### 🎨 Dithering (--dither)
+
+The `--dither` flag enables **Floyd-Steinberg error diffusion**. This technique
+approximates shades and gradients that aren't natively available in your
+current character set or color mode.
+
+**When to use it**
+
+Dithering is most useful when you are reducing the "color depth" of an image.
+It replaces solid blocks of characters with "stippled" patterns that trick the
+eye into seeing smoother transitions.
+
+| Scenario | Without Dithering | With Dithering |
+|---------| ----------|---------------|
+| Grayscale/ASCII| Harsh "banding" in shadows and skin tones| Smooth gradients; looks like a high-detail newspaper print.|
+| Flat Logos | Clean, solid colors. | Can look "noisy" or "grainy" (Usually better off)|
+| Photographs | Details can get lost in solid blocks of characters. | Retains "optical depth" and fine textures. |
+
+
+**Supported Styles & Modes**
+
+- **Grayscale** (`--color-mode none`): Highly Recommended. This is where
+  dithering shines. It uses the density of your characters (e.g., `@%#*+=-:. `)
+  to simulate shades of gray.
+
+- **Color-Preserving**: Even in color modes, `px2ansi-rs` uses a
+  Luminance-Remapped Dither. It calculates the dither map to determine
+  brightness and then scales the original RGB values to match, preserving the
+  "hue" of your image while adding high-frequency detail.
+
+**Usage Example**
+
+```bash
+# Convert a portrait to high-detail grayscale ASCII
+px2ansi-rs convert face.jpg --style ascii --color-mode none --dither
+
+# Enhance a colored landscape with a dithered "sparkle"
+px2ansi-rs convert view.png --style unicode --dither
+```
+
+Braille Style: Works well to create a "halftone" effect using the high-density dots of the Braille character set.
 
 ### Pure compute (`> /dev/null`, `nixos.png`)
 

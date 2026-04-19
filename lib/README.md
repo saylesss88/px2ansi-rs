@@ -29,6 +29,7 @@ If you want the command-line interface, check out [px2ansi-rs](../cli).
 - [Optional Features](#optional-features)
   - [Controlling Features](#controlling-features)
   - [Sixel](#sixel)
+  - [Dithering](#dithering)
   - [Rasterize](#rasterize)
 - [⚡ Performance](#-performance)
   - [SIMD Acceleration](#simd-acceleration-simd-feature)
@@ -416,6 +417,23 @@ opts.render_centered(&img, &mut stdout())?;
 ```
 
 ---
+
+### Dithering
+
+The `px2ansi` library implements a specialized Luminance-Preserving Error
+Diffusion algorithm. This is designed to solve the "banding" problem common in
+terminal art, where a limited character set or color palette creates harsh
+transitions in gradients.
+
+```rust
+let options = RenderOptions::builder()
+    .style(RenderStylePreset::Ascii)
+    .dither(true) // Enables Floyd-Steinberg diffusion
+    .build();
+
+let output = renderer.render(img, &options);
+```
+
 
 ### Rasterize
 
