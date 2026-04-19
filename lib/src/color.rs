@@ -149,15 +149,30 @@ pub fn rgb_to_xterm256(r: u8, g: u8, b: u8) -> u8 {
     let palette = get_oklab_palette();
     let mut best_idx = 0u8;
     let mut best_dist = f32::MAX;
-    for (i, &candidate) in (0u8..).zip(palette.iter()) {
+    for (i, &candidate) in palette.iter().enumerate() {
         let dist = oklab_distance(target, candidate);
         if dist < best_dist {
             best_dist = dist;
-            best_idx = i;
+            best_idx = i as u8;
         }
     }
     best_idx
 }
+// #[must_use]
+// pub fn rgb_to_xterm256(r: u8, g: u8, b: u8) -> u8 {
+//     let target = rgb_to_oklab(r, g, b);
+//     let palette = get_oklab_palette();
+//     let mut best_idx = 0u8;
+//     let mut best_dist = f32::MAX;
+//     for (i, &candidate) in (0u8..).zip(palette.iter()) {
+//         let dist = oklab_distance(target, candidate);
+//         if dist < best_dist {
+//             best_dist = dist;
+//             best_idx = i;
+//         }
+//     }
+//     best_idx
+// }
 
 /// Detects whether the terminal supports 24-bit truecolor.
 ///

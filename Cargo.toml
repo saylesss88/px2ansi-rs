@@ -30,7 +30,7 @@ walkdir = "2.5.0"
 dialoguer = { version = "0.12.0", features = ["fuzzy-select"], default-features = false }
 fontdue = { version = "0.9.3", default-features = false }
 # CLI-only — only px2ansi-cli inherits these
-clap = { version = "4.5", features = ["derive"], default-features = false }
+clap = { version = "4.5", features = ["derive", "help", "usage"], default-features = false }
 clap_complete = "4.5.66"
 clap_mangen = "0.3.0"
 # Path dep: px2ansi-cli depends on the lib
