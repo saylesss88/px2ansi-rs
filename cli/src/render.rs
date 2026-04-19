@@ -40,7 +40,7 @@ pub fn build_render_options(
     density: Option<Density>,
     width: Option<u32>,
     filter: Option<ResizeFilter>,
-    no_color: bool,
+    // no_color: bool,
     color_mode: Option<ColorMode>,
 ) -> RenderOptions {
     let mut builder = RenderOptions::builder();
@@ -56,13 +56,10 @@ pub fn build_render_options(
     }
     if let Some(f) = filter {
         builder = builder.filter(f);
-    }
-    if no_color {
-        builder = builder.color(false);
     } else {
-        color_mode.unwrap_or_else(ColorMode::detect)
-    };
-    builder = builder.with_color_mode(color_mode);
+        let mode = color_mode.unwrap_or_else(ColorMode::detect);
+        builder = builder.with_color_mode(mode);
+    }
 
     builder.build()
 }

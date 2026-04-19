@@ -105,31 +105,52 @@ mod tests {
     #[test]
     fn build_render_options_applies_overrides_and_no_color() {
         let opts = build_render_options(None, None, Some(80), None, true);
+        // let opts = build_render_options(None, None, Some(80), None, true, None);
         assert_eq!(opts.width(), Some(80));
         assert!(!opts.color());
 
-        let opts2 = build_render_options(None, None, None, None, false);
+        let opts2 = build_render_options(None, None, None, None, false, None);
         assert_eq!(opts2.width(), None);
         assert!(opts2.color());
     }
 
     #[test]
     fn build_render_options_braille_preset_sets_charset() {
-        let opts = build_render_options(Some(RenderStylePreset::Braille), None, None, None, false);
+        let opts = build_render_options(
+            Some(RenderStylePreset::Braille),
+            None,
+            None,
+            None,
+            // false,
+            None,
+        );
         assert_eq!(opts.charset(), CharsetMode::Braille);
     }
 
     #[test]
     fn build_render_options_full_block_sets_full_flag() {
-        let opts =
-            build_render_options(Some(RenderStylePreset::FullBlock), None, None, None, false);
+        let opts = build_render_options(
+            Some(RenderStylePreset::FullBlock),
+            None,
+            None,
+            None,
+            false,
+            None,
+        );
         assert_eq!(opts.charset(), CharsetMode::Unicode);
         assert!(opts.style().is_full());
     }
 
     #[test]
     fn build_render_options_dense_sets_heavy_density() {
-        let opts = build_render_options(Some(RenderStylePreset::Dense), None, None, None, false);
+        let opts = build_render_options(
+            Some(RenderStylePreset::Dense),
+            None,
+            None,
+            None,
+            false,
+            None,
+        );
         assert!(matches!(opts.style().density(), Density::Heavy));
     }
 
@@ -142,13 +163,14 @@ mod tests {
             None,
             None,
             false,
+            None,
         );
         assert!(matches!(opts.style().density(), Density::Light));
     }
 
     #[test]
     fn build_render_options_nearest_filter() {
-        let opts = build_render_options(None, None, None, Some(ResizeFilter::Nearest), false);
+        let opts = build_render_options(None, None, None, Some(ResizeFilter::Nearest), false, None);
         assert_eq!(opts.filter(), image::imageops::FilterType::Nearest);
     }
 

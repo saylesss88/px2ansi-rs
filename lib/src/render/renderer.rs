@@ -8,6 +8,7 @@ use super::options::RenderOptions;
 use super::pixel::{ColorParams, LumaParams, RenderCtx, luma_range_pass1};
 use super::serial::render_serial;
 use super::types::{CharsetMode, Density};
+use crate::ColorMode;
 
 #[cfg(feature = "parallel")]
 use super::parallel::render_parallel;
@@ -65,6 +66,8 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
             .as_rgba8()
             .map_or_else(|| Cow::Owned(self.img.to_rgba8()), Cow::Borrowed);
         let (width, height) = rgba.dimensions();
+
+        // Braille dot mapping (standard 2x4 grid)
         let dots: [(u32, u32, u8); 8] = [
             (0, 0, 0x01),
             (0, 1, 0x02),
@@ -75,20 +78,22 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
             (0, 3, 0x40),
             (1, 3, 0x80),
         ];
+
         let mut last_color = ColorState::default();
+        let mode = self.options.color_mode(); // Cache the mode
+
         for y in (0..height).step_by(4) {
             for x in (0..width).step_by(2) {
                 let mut byte = 0u8;
-                let mut r_sum = 0u32;
-                let mut g_sum = 0u32;
-                let mut b_sum = 0u32;
-                let mut lit_count = 0u32;
+                let (mut r_sum, mut g_sum, mut b_sum, mut lit_count) = (0u32, 0u32, 0u32, 0u32);
+
                 for (dx, dy, bit) in dots {
                     let px_x = x + dx;
                     let px_y = y + dy;
                     if px_x < width && px_y < height {
                         let px = rgba.get_pixel(px_x, px_y);
                         let [r, g, b, a] = px.0;
+                        // Only process pixels that are sufficiently opaque
                         if a > 10 {
                             let luma =
                                 (2126 * u32::from(r) + 7152 * u32::from(g) + 722 * u32::from(b))
@@ -104,43 +109,39 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                     }
                 }
 
+                // --- RENDERING LOGIC ---
                 if byte == 0 || lit_count == 0 {
-                    if self.options.color() {
-                        write!(self.writer, "\x1b[0m\u{2800}")?;
+                    // No dots are lit: Reset color if needed and print empty braille
+                    if mode != ColorMode::None && last_color != ColorState::default() {
+                        write!(self.writer, "\x1b[0m")?;
                         last_color = ColorState::default();
-                    } else {
-                        write!(self.writer, "\u{2800}")?;
                     }
+                    write!(self.writer, "\u{2800}")?;
                 } else {
-                    let red = u8::try_from(r_sum / lit_count).unwrap_or(0);
-                    let green = u8::try_from(g_sum / lit_count).unwrap_or(0);
-                    let blue = u8::try_from(b_sum / lit_count).unwrap_or(0);
+                    // let r = (r_sum / lit_count) as u8;
+                    let r = u8::try_from(r_sum / lit_count).unwrap_or(0);
+                    let g = u8::try_from(g_sum / lit_count).unwrap_or(0);
+                    let b = u8::try_from(b_sum / lit_count).unwrap_or(0);
 
                     let ch = char::from_u32(0x2800 + u32::from(byte)).unwrap_or(' ');
-                    let mut buf = [0u8; 4];
-                    let glyph = ch.encode_utf8(&mut buf);
-                    if self.options.color() {
-                        write_colored_glyph(
-                            self.writer,
-                            glyph,
-                            red,
-                            green,
-                            blue,
-                            self.options.color_mode(),
-                            &mut last_color,
-                        )?;
-                    } else {
+
+                    if mode == ColorMode::None {
                         write!(self.writer, "{ch}")?;
+                    } else {
+                        let mut buf = [0u8; 4];
+                        let glyph = ch.encode_utf8(&mut buf);
+                        write_colored_glyph(self.writer, glyph, r, g, b, mode, &mut last_color)?;
                     }
                 }
             }
 
-            if self.options.color() {
-                writeln!(self.writer, "\x1b[0m")?;
+            if mode != ColorMode::None && last_color != ColorState::default() {
+                write!(self.writer, "\x1b[0m")?;
                 last_color = ColorState::default();
-            } else {
-                writeln!(self.writer)?;
             }
+
+            // Everyone gets a newline
+            writeln!(self.writer)?;
         }
 
         Ok(())
@@ -214,7 +215,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
             num_chars_minus_1,
         };
         let cp = ColorParams {
-            enabled: self.options.color(),
+            enabled: self.options.color_mode() != ColorMode::None,
             mode: self.options.color_mode(),
             blank,
         };

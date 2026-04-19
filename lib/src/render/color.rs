@@ -5,7 +5,7 @@ use std::io::Write;
 use super::types::ColorMode;
 
 /// Tracks the last-written color to suppress redundant ANSI escape sequences.
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(super) enum ColorState {
     #[default]
     None,

@@ -14,7 +14,7 @@ pub struct RenderOptions {
     filter: FilterType,
     charset: CharsetMode,
     style: RenderStyle,
-    color: bool,
+    // color: bool,
     color_mode: ColorMode,
 }
 
@@ -25,7 +25,7 @@ impl Default for RenderOptions {
             filter: FilterType::Nearest,
             charset: CharsetMode::Ansi,
             style: RenderStyle::default(),
-            color: true, // color on by default
+            // color: true, // color on by default
             color_mode: ColorMode::detect(),
         }
     }
@@ -65,7 +65,6 @@ pub struct RenderOptionsBuilder {
     density: Option<Density>,
     width: Option<u32>,
     filter: Option<ResizeFilter>,
-    color: bool,
     color_mode: Option<ColorMode>,
 }
 
@@ -105,13 +104,6 @@ impl RenderOptionsBuilder {
         self
     }
 
-    /// Enables or disables color output.
-    #[must_use]
-    pub fn color(mut self, color: bool) -> Self {
-        self.color = color;
-        self
-    }
-
     /// Sets the specific color mode (e.g., `TrueColor`, 256-color) for the output.
     #[must_use]
     pub fn with_color_mode(mut self, color_mode: ColorMode) -> Self {
@@ -139,8 +131,9 @@ impl RenderOptionsBuilder {
         if let Some(f) = self.filter {
             opts.filter = f.into();
         }
-
-        opts.color = self.color;
+        if let Some(cm) = self.color_mode {
+            opts.color_mode = cm;
+        }
         opts
     }
 }
@@ -149,10 +142,7 @@ impl RenderOptions {
     /// Returns a new builder to configure rendering options.
     #[must_use]
     pub fn builder() -> RenderOptionsBuilder {
-        RenderOptionsBuilder {
-            color: true, // default to color on
-            ..Default::default()
-        }
+        RenderOptionsBuilder::default()
     }
 
     /// Creates options based on a predefined visual style.
@@ -185,18 +175,6 @@ impl RenderOptions {
         self.style
     }
 
-    /// Returns true if color output is enabled.
-    #[must_use]
-    pub const fn color(&self) -> bool {
-        self.color
-    }
-
-    /// Disables color output and returns the modified options.
-    #[must_use]
-    pub const fn no_color(mut self) -> Self {
-        self.color = false;
-        self
-    }
     /// Returns the current color mode configuration.
     #[must_use]
     pub const fn color_mode(&self) -> ColorMode {

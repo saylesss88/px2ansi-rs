@@ -57,8 +57,8 @@ pub enum Commands {
         density: Option<Density>,
 
         /// Disable ANSI color output (monochrome). Applies to ascii, fade, braille, kanji, and chinese modes.
-        #[arg(long = "no-color")]
-        no_color: bool,
+        // #[arg(long = "no-color")]
+        // no_color: bool,
 
         #[arg(
             long = "color-mode",
@@ -104,8 +104,8 @@ pub enum Commands {
         style: Option<RenderStylePreset>,
 
         /// Disable ANSI color output (monochrome). Applies to ascii, fade, braille, kanji, and chinese modes.
-        #[arg(long = "no-color")]
-        no_color: bool,
+        // #[arg(long = "no-color")]
+        // no_color: bool,
 
         #[arg(
             long = "color-mode",

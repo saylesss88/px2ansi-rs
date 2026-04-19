@@ -66,7 +66,7 @@ browsing, and advanced filters. It is approximately 25x faster.
     - [Unicode Mode](#unicode-mode)
     - [Force width and filtering](#force-width-and-filtering)
     - [ASCII with density control](#ascii-with-density-control)
-    - [Disable Color](#disable-color)
+    - [Advanced Color Rendering](#advanced-color-rendering)
   - [Create an Index](#create-an-index)
   - [Show by Name](#show-by-name)
     - [Quick way with Fuzzy Matching](#quick-way-with-fuzzy-matching)
@@ -95,7 +95,8 @@ browsing, and advanced filters. It is approximately 25x faster.
 
 - **Fuzzy search** — `show pika` → Pikachu.
 - **Interactive TUI** — `show -i` to browse sprites.
-- **Truecolor + transparency** — Full 24-bit RGB with alpha support.
+- **Truecolor + transparency** — Full 24-bit RGB with alpha support (Oklab
+  color space).
 - **Smart resize** — Auto-fits terminal width.
 - **Custom dimensions** — Use `--width` to adjust output size.
 - **5 filters** — `nearest` for pixel art through `lanczos3` for photos.
@@ -103,13 +104,12 @@ browsing, and advanced filters. It is approximately 25x faster.
   `dense`, `chinese`, `kanji`, and `sixel`.
 - **Embedded font rasterization** — `IosevkaCharonMono-Regular.ttf` is bundled
   for rasterization.
-- **Optional monochrome output** — Use `--no-color` to disable ANSI color
-  escapes (applies to ascii, fade, braille, kanji, and chinese modes).
+- **Optional monochrome output** — Use `--color-mode none` to disable ANSI
+  color escapes (applies to ascii, fade, braille, kanji, and chinese modes).
 - **ASCII density control** — Use `--density light|medium|heavy` to tune
   character ramp complexity.
 - Optionally rasterize ANSI output back into PNG (with selectable themes).
 - Optional Sixel output for terminals that support it.
-
 - **High-Performance Backend**: SIMD-accelerated pixel processing (wide) with
   optional multi-core parallelism (rayon).
 
@@ -276,13 +276,76 @@ px2ansi-rs convert tests/test.png --style ascii --filter nearest --no-color
 
 [Back to TOC](#top)
 
-#### Disable color
+#### Advanced Color Rendering
 
-Use `--no-color` on any conversion to strip ANSI color escapes:
+`px2ansi-rs` goes beyond simple ANSI escapes by prioritizing perceptual
+accuracy and terminal compatibility.
 
-```bash
-px2ansi-rs convert image.png --style braille --no-color
+**Perceptual Quantization with Oklab**
+
+When rendering in 256-color mode, mapping a 24-bit RGB pixel to a limited 8-bit
+palette often results in "muddy" colors or incorrect brightness if using standard Euclidean RGB distance.
+
+This uses the **Oklab color space** for color quantization. Unlike RGB, Oklab is
+perceptually uniform, meaning the numerical distance between two colors matches
+how the human eye perceives difference.
+
+- **Linear sRGB Conversion**: Raw u8 pixels are linearized using a high-
+  performance lookup table (LUT) to account for gamma correction.
+
+- **Perceptual Matching**: Colors are mapped to the xterm-256 palette by
+  minimizing Delta E in the Oklab space, ensuring that teals stay teal and
+  blues don't shift toward purple.
+
+**Color Modes**
+
+You can explicitly control the color depth using the `--color-mode` flag.
+
+| Mode | Description |
+|-------|--------|
+| `truecolor`| (Default) Uses 24-bit ANSI sequences (\x1b[38;2;R;G;Bm). Best for modern terminals (Alacritty, Kitty, iTerm2, etc.).|
+| `ansi256` | Quantizes images to the xterm-256 palette. Ideal for older terminal environments or a specific "retro" aesthetic. |
+| `none` | Disables all ANSI color codes. Useful for piping output to text files or monochrome displays. |
+
+**Intellegent Auto-Detection**
+
+By default, `px2ansi-rs` attempts to detect the best supported mode for your
+environment:
+
+1. Checks the `COLORTERM` environment variable for `truecolor` or `24bit`.
+
+2. Inspects `TERM` for `256color` compatibility.
+
+3. Respects the `NO_COLOR` standard: If the `NO_COLOR` environment variable is
+   set, all color output is automatically disabled.
+
+```rust
+# Force 256-color mode even if TrueColor is supported
+px2ansi-rs convert <image> --color-mode 256
+# Disable color for a monochrome ASCII look
+px2ansi-rs convert <image> --color-mode none
+
+# `color-mode` also works with `px2ansi-rs show`
+px2ansi-rs show <image> --color-mode ...
 ```
+
+> [!NOTE]
+> In standard RGB space, the distance between two colors is calculated using the
+> Pythagorean theorem. However, the human eye is significantly more sensitive
+> to variations in Green than in Blue. If you use raw RGB distance to pick the "closest" 256-color match for a specific
+> NixOS blue, the computer might pick a purple because, mathematically, the RGB
+> numbers are "closer," even though to a human, it looks completely wrong.
+
+**What is Perceptual Matching?**
+
+Perceptual matching is the process of converting colors into a Perceptually
+Uniform Color Space, like Oklab, before calculating which palette color to use.
+
+In a perceptually uniform space, a change of 0.1 in any direction (lightness,
+redness, or blueness) corresponds to the same perceived change in color to a
+human observer.
+
+---
 
 ### Create an index
 
