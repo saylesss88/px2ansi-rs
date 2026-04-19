@@ -56,9 +56,9 @@ pub enum Commands {
         #[arg(long, value_enum)]
         density: Option<Density>,
 
-        /// Disable ANSI color output (monochrome). Applies to ascii, fade, braille, kanji, and chinese modes.
-        // #[arg(long = "no-color")]
-        // no_color: bool,
+        /// Enable Floyd-Steinberg dithering for smoother gradients
+        #[arg(short, long)]
+        dither: bool,
 
         #[arg(
             long = "color-mode",
@@ -103,9 +103,9 @@ pub enum Commands {
         #[arg(long, value_enum)]
         style: Option<RenderStylePreset>,
 
-        /// Disable ANSI color output (monochrome). Applies to ascii, fade, braille, kanji, and chinese modes.
-        // #[arg(long = "no-color")]
-        // no_color: bool,
+        /// Enable Floyd-Steinberg dithering for smoother gradients
+        #[arg(short, long)]
+        dither: bool,
 
         #[arg(
             long = "color-mode",

@@ -87,12 +87,12 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             filter,
             style,
             density,
-            // no_color,
+            dither,
             raster_theme,
             color_mode,
         } => {
             let render_opts =
-                render::build_render_options(style, density, width, filter, color_mode);
+                render::build_render_options(style, density, width, filter, color_mode, dither);
 
             let output_image = output_image.or_else(|| cfg.output_image.as_ref().map(Into::into));
 
@@ -118,11 +118,11 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             interactive,
             style,
             density,
-            // no_color,
+            dither,
             color_mode,
         } => {
             let render_opts =
-                render::build_render_options(style, density, None, filter, color_mode);
+                render::build_render_options(style, density, None, filter, color_mode, dither);
 
             Ok(Command::Show(ShowCmd {
                 name,

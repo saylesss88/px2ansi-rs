@@ -89,14 +89,17 @@ use image::open;
 use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter};
 
 fn main() -> anyhow::Result<()> {
+    // Load an image using the `image` crate
     let img = open("photo.png")?;
 
+    // Build options: use a preset and override specific fields
     let opts = RenderOptions::builder()
         .preset(RenderStylePreset::Braille)
         .width(120)
         .filter(ResizeFilter::Nearest)
         .build();
 
+    // Render directly to stdout
     let mut out = std::io::stdout();
     opts.render(&img, &mut out)?;
 
@@ -195,13 +198,13 @@ filter, charset mode, density, and color output.
 Default configuration:
 
 - Charset: `Ansi`
-- Color: `true`
+- Color_Mode: `truecolor`
 - Width: `None` (auto-detect from terminal)
 
 ```rust
 let opts = RenderOptions::default();
 assert_eq!(opts.charset(), CharsetMode::Ansi);
-assert!(opts.color());
+assert_eq!(opts.color_mode(), ColorMode::TrueColor);
 assert_eq!(opts.width(), None);
 ```
 
@@ -249,14 +252,14 @@ Controls image resampling quality:
 The builder supports chaining:
 
 ```rust
-use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter, Density};
+use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter, Density, ColorMode};
 
 let opts = RenderOptions::builder()
     .preset(RenderStylePreset::Ascii)
     .density(Density::Light)
     .width(120)
     .filter(ResizeFilter::Nearest)
-    .color(false)
+    .color_mode(ColorMode::None)
     .build();
 ```
 
@@ -267,8 +270,8 @@ let mut builder = RenderOptions::builder();
 builder.preset(RenderStylePreset::FullBlock);
 builder.width(80);
 
-if some_condition {
-    builder.color(false);
+if monochrome {
+    builder.color_mode(ColorMode::None);
 }
 
 let opts = builder.build();
@@ -572,21 +575,27 @@ off-screen or file renders automatically scale across all cores.
 The crate root re-exports the most common types so users do not need to dig
 through internal modules:
 
+
 ```rust
 use px2ansi::{
-    // Core rendering
+    // Core rendering & configuration
     RenderOptions, RenderOptionsBuilder, RenderStyle,
-    CharsetMode, Density,
-    write_ansi_art,
+    CharsetMode, ColorMode, Density,
+    write_ansi_art, get_terminal_size,
 
     // Presets and filters
     RenderStylePreset, ResizeFilter,
 
-    // Indexer
-    indexer::{ImageEntry, build_index},
+    // Directory Indexer
+    ImageEntry, build_index,
 
-    // Rasterization (requires "rasterize" feature)
-    // rasterize_ansi, rasterize_ansi_with_theme, RasterTheme,
+    // Rasterization (Requires "rasterize" feature)
+    #[cfg(feature = "rasterize")]
+    rasterize_ansi, 
+    #[cfg(feature = "rasterize")]
+    rasterize_ansi_with_theme, 
+    #[cfg(feature = "rasterize")]
+    RasterTheme,
 };
 ```
 

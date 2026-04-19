@@ -40,8 +40,8 @@ pub fn build_render_options(
     density: Option<Density>,
     width: Option<u32>,
     filter: Option<ResizeFilter>,
-    // no_color: bool,
     color_mode: Option<ColorMode>,
+    dither: bool,
 ) -> RenderOptions {
     let mut builder = RenderOptions::builder();
 
@@ -56,10 +56,13 @@ pub fn build_render_options(
     }
     if let Some(f) = filter {
         builder = builder.filter(f);
-    } else {
-        let mode = color_mode.unwrap_or_else(ColorMode::detect);
-        builder = builder.with_color_mode(mode);
     }
 
-    builder.build()
+    // Move this OUT of the filter else-block so it always runs
+    if let Some(mode) = color_mode {
+        builder = builder.color_mode(mode);
+    }
+
+    // Always apply the dither flag and then build
+    builder.dither(dither).build()
 }

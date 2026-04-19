@@ -14,7 +14,6 @@ pub struct RenderOptions {
     filter: FilterType,
     charset: CharsetMode,
     style: RenderStyle,
-    // color: bool,
     color_mode: ColorMode,
 }
 
@@ -25,7 +24,6 @@ impl Default for RenderOptions {
             filter: FilterType::Nearest,
             charset: CharsetMode::Ansi,
             style: RenderStyle::default(),
-            // color: true, // color on by default
             color_mode: ColorMode::detect(),
         }
     }
@@ -66,6 +64,7 @@ pub struct RenderOptionsBuilder {
     width: Option<u32>,
     filter: Option<ResizeFilter>,
     color_mode: Option<ColorMode>,
+    dither: Option<bool>,
 }
 
 impl RenderOptionsBuilder {
@@ -89,6 +88,13 @@ impl RenderOptionsBuilder {
         self
     }
 
+    /// Whether to enable dithering or not
+    #[must_use]
+    pub fn dither(mut self, enabled: bool) -> Self {
+        self.dither = Some(enabled);
+        self
+    }
+
     /// Sets the target width for the rendered output.
     /// If `None`, the output may scale to the terminal width.
     #[must_use]
@@ -106,7 +112,7 @@ impl RenderOptionsBuilder {
 
     /// Sets the specific color mode (e.g., `TrueColor`, 256-color) for the output.
     #[must_use]
-    pub fn with_color_mode(mut self, color_mode: ColorMode) -> Self {
+    pub fn color_mode(mut self, color_mode: ColorMode) -> Self {
         self.color_mode = Some(color_mode);
         self
     }
@@ -133,6 +139,9 @@ impl RenderOptionsBuilder {
         }
         if let Some(cm) = self.color_mode {
             opts.color_mode = cm;
+        }
+        if let Some(dither_val) = self.dither {
+            opts.style.dither = dither_val;
         }
         opts
     }
@@ -185,8 +194,28 @@ impl RenderOptions {
     #[must_use]
     pub fn prepare_image(&self, img: &DynamicImage) -> DynamicImage {
         let (width, height) = self.calculate_dimensions(img.width(), img.height());
-        img.resize_exact(width, height, self.filter)
+        let mut resized = img.resize_exact(width, height, self.filter);
+
+        if self.style.dither {
+            // If user explicitly chose no color, we dither the grayscale luma
+            if self.color_mode == ColorMode::None {
+                // 1. Create the mutable buffer
+                let mut luma_img = resized.to_luma8();
+
+                // 2. Perform the in-place Floyd-Steinberg dither
+                image::imageops::dither(&mut luma_img, &image::imageops::BiLevel);
+
+                // 3. Re-assign the resized image
+                resized = DynamicImage::ImageLuma8(luma_img);
+            }
+        }
+
+        resized
     }
+    // pub fn prepare_image(&self, img: &DynamicImage) -> DynamicImage {
+    //     let (width, height) = self.calculate_dimensions(img.width(), img.height());
+    //     img.resize_exact(width, height, self.filter)
+    // }
 
     /// Renders a pre-processed image to the provided writer.
     ///

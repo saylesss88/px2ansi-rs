@@ -85,6 +85,7 @@ pub struct RenderStyle {
     /// If true, uses double-width characters (██) to force a 1:1 pixel aspect ratio.
     pub(crate) full: bool,
     pub(crate) density: Density,
+    pub(crate) dither: bool,
 }
 
 impl Default for RenderStyle {
@@ -92,6 +93,7 @@ impl Default for RenderStyle {
         Self {
             full: false,
             density: Density::Medium,
+            dither: false,
         }
     }
 }
@@ -108,6 +110,11 @@ impl RenderStyle {
         self.full
     }
 
+    /// Returns `true` if "dithering" is enabled.
+    #[must_use]
+    pub const fn dither(&self) -> bool {
+        self.dither
+    }
     /// Returns the current [`Density`] level.
     ///
     /// # Note
