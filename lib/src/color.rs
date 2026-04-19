@@ -17,39 +17,32 @@ fn get_oklab_palette() -> &'static [[f32; 3]; 256] {
     })
 }
 
-// static SRGB_LUT: OnceLock<[f32; 256]> = OnceLock::new();
+static SRGB_LUT: OnceLock<[f32; 256]> = OnceLock::new();
 
-// fn srgb_to_linear_fast(c: u8) -> f32 {
-//     *SRGB_LUT.get_or_init(|| {
-//         let mut table = [0.0f32; 256];
-//         for i in 0..256 {
-//             let val = i as f32 / 255.0;
-//             table[i] = if val <= 0.04045 {
-//                 val / 12.92
-//             } else {
-//                 ((val + 0.055) / 1.055).powf(2.4)
-//             };
-//         }
-//         table
-//     })[c as usize]
-// }
-/// Convert sRGB u8 to linear float.
-#[inline]
-fn srgb_to_linear(c: u8) -> f32 {
-    let c = f32::from(c) / 255.0;
-    if c <= 0.04045 {
-        c / 12.92
-    } else {
-        ((c + 0.055) / 1.055).powf(2.4)
-    }
+fn srgb_to_linear_fast(c: u8) -> f32 {
+    SRGB_LUT.get_or_init(|| {
+        let mut table = [0.0f32; 256];
+
+        for (i, slot) in (0u8..=255).zip(table.iter_mut()) {
+            let val = f32::from(i) / 255.0;
+
+            *slot = if val <= 0.04045 {
+                val / 12.92
+            } else {
+                ((val + 0.055) / 1.055).powf(2.4)
+            };
+        }
+
+        table
+    })[usize::from(c)]
 }
 
 /// Convert linear RGB to Oklab [L, a, b].
 #[inline]
 pub fn rgb_to_oklab(red: u8, green: u8, blue: u8) -> [f32; 3] {
-    let red = srgb_to_linear(red);
-    let green = srgb_to_linear(green);
-    let blue = srgb_to_linear(blue);
+    let red = srgb_to_linear_fast(red);
+    let green = srgb_to_linear_fast(green);
+    let blue = srgb_to_linear_fast(blue);
 
     let l = 0.412_221_46_f32.mul_add(red, 0.536_332_55_f32.mul_add(green, 0.051_445_995 * blue));
     let m = 0.211_903_5_f32.mul_add(red, 0.680_699_5_f32.mul_add(green, 0.107_396_96 * blue));
@@ -147,10 +140,10 @@ const fn generate_xterm_256() -> [[u8; 3]; 256] {
 pub fn rgb_to_xterm256(r: u8, g: u8, b: u8) -> u8 {
     let target = rgb_to_oklab(r, g, b);
     let palette = get_oklab_palette();
-    let mut best_idx: usize = 0;
+    let mut best_idx = 0u8;
     let mut best_dist = f32::MAX;
 
-    for (i, &candidate) in palette.iter().enumerate() {
+    for (i, &candidate) in (0u8..=255).zip(palette.iter()) {
         let dist = oklab_distance(target, candidate);
         if dist < best_dist {
             best_dist = dist;
@@ -158,23 +151,8 @@ pub fn rgb_to_xterm256(r: u8, g: u8, b: u8) -> u8 {
         }
     }
 
-    u8::try_from(best_idx).expect("palette index must fit in u8")
+    best_idx
 }
-// #[must_use]
-// pub fn rgb_to_xterm256(r: u8, g: u8, b: u8) -> u8 {
-//     let target = rgb_to_oklab(r, g, b);
-//     let palette = get_oklab_palette();
-//     let mut best_idx = 0u8;
-//     let mut best_dist = f32::MAX;
-//     for (i, &candidate) in (0u8..).zip(palette.iter()) {
-//         let dist = oklab_distance(target, candidate);
-//         if dist < best_dist {
-//             best_dist = dist;
-//             best_idx = i;
-//         }
-//     }
-//     best_idx
-// }
 
 /// Detects whether the terminal supports 24-bit truecolor.
 ///

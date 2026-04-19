@@ -61,7 +61,8 @@ pub use crate::{
     cli_enums::{RenderStylePreset, ResizeFilter},
     indexer::{ImageEntry, build_index},
     render::{
-        CharsetMode, Density, RenderOptions, RenderOptionsBuilder, RenderStyle, write_ansi_art,
+        CharsetMode, ColorMode, Density, RenderOptions, RenderOptionsBuilder, RenderStyle,
+        get_terminal_size, write_ansi_art,
     },
 };
 

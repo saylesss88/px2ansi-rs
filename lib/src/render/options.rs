@@ -1,6 +1,6 @@
 use super::types::{CharsetMode, Density, RenderStyle};
 use crate::cli_enums::{RenderStylePreset, ResizeFilter};
-use crate::render::{ColorMode, get_terminal_size};
+use crate::{ColorMode, get_terminal_size};
 use image::{DynamicImage, imageops::FilterType};
 use std::io::Write;
 

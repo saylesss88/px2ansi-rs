@@ -1,5 +1,5 @@
 use crate::RenderStylePreset;
-use px2ansi::{Density, RenderOptions, ResizeFilter};
+use px2ansi::{ColorMode, Density, RenderOptions, ResizeFilter};
 
 /// Constructs a [`RenderOptions`] instance from a set of optional configuration parameters.
 ///
@@ -41,6 +41,7 @@ pub fn build_render_options(
     width: Option<u32>,
     filter: Option<ResizeFilter>,
     no_color: bool,
+    color_mode: Option<ColorMode>,
 ) -> RenderOptions {
     let mut builder = RenderOptions::builder();
 
@@ -58,7 +59,10 @@ pub fn build_render_options(
     }
     if no_color {
         builder = builder.color(false);
-    }
+    } else {
+        color_mode.unwrap_or_else(ColorMode::detect)
+    };
+    builder = builder.with_color_mode(color_mode);
 
     builder.build()
 }

@@ -165,3 +165,14 @@ impl ColorMode {
         }
     }
 }
+impl std::str::FromStr for ColorMode {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "truecolor" => Ok(Self::TrueColor),
+            "ansi256" | "256" => Ok(Self::Ansi256),
+            "none" => Ok(Self::None),
+            _ => Err(format!("'{s}' is not a valid color mode")),
+        }
+    }
+}

@@ -9,7 +9,7 @@ use clap_complete::aot::Shell;
 
 use std::path::PathBuf;
 
-use px2ansi::{Density, RasterTheme, RenderStylePreset, ResizeFilter};
+use px2ansi::{ColorMode, Density, RasterTheme, RenderStylePreset, ResizeFilter};
 
 #[derive(Parser)]
 #[command(
@@ -60,6 +60,14 @@ pub enum Commands {
         #[arg(long = "no-color")]
         no_color: bool,
 
+        #[arg(
+            long = "color-mode",
+            value_enum,
+            help = "Color output mode: truecolor, ansi256, or none",
+            long_help = "Override automatic terminal color detection. --no-color takes precedence."
+        )]
+        color_mode: Option<ColorMode>,
+
         /// Force a specific width
         #[arg(long)]
         width: Option<u32>,
@@ -98,6 +106,14 @@ pub enum Commands {
         /// Disable ANSI color output (monochrome). Applies to ascii, fade, braille, kanji, and chinese modes.
         #[arg(long = "no-color")]
         no_color: bool,
+
+        #[arg(
+            long = "color-mode",
+            value_enum,
+            help = "Color output mode: truecolor, ansi256, or none",
+            long_help = "Override automatic terminal color detection. --no-color takes precedence."
+        )]
+        color_mode: Option<ColorMode>,
 
         #[arg(long, value_enum)]
         density: Option<Density>,
