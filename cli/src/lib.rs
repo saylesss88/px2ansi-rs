@@ -8,7 +8,7 @@ pub mod rotate;
 // Re-export types
 pub use crate::commands::Command;
 pub use crate::render::build_render_options;
-pub use crate::rotate::RotateMode;
+pub use crate::rotate::{RotateAxis, RotateMode};
 pub use cli::{Cli, Commands};
 pub use commands::convert::ConvertCmd;
 pub use commands::index::IndexCmd;

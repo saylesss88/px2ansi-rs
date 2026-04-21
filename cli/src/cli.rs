@@ -4,6 +4,7 @@
 //! It handles the mapping between user input and the internal data structures
 //! used by the rendering and indexing engines.
 
+use crate::rotate::RotateAxis;
 use clap::{Parser, Subcommand};
 use clap_complete::aot::Shell;
 
@@ -102,6 +103,11 @@ pub enum Commands {
         )]
         rotate: Option<u16>,
 
+        /// Spin axis for --rotate animation.
+        /// z = canvas spin, y = coin-flip (horizontal mirror), x = cartwheel (vertical mirror)
+        #[arg(long, value_enum, default_value = "z")]
+        axis: RotateAxis,
+
         /// Frames per second for the --rotate spin animation (default: 8)
         #[arg(long, default_value = "8", value_name = "FPS")]
         fps: u8,
@@ -159,6 +165,11 @@ pub enum Commands {
             require_equals = false
         )]
         rotate: Option<u16>,
+
+        /// Spin axis for --rotate animation.
+        /// z = canvas spin, y = coin-flip (horizontal mirror), x = cartwheel (vertical mirror)
+        #[arg(long, value_enum, default_value = "z")]
+        axis: RotateAxis,
 
         /// Frames per second for the --rotate spin animation (default: 8)
         #[arg(long, default_value = "8", value_name = "FPS")]

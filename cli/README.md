@@ -67,6 +67,7 @@ browsing, and advanced filters. It is approximately 25x faster.
     - [Force width and filtering](#force-width-and-filtering)
     - [ASCII with density control](#ascii-with-density-control)
     - [Advanced Color Rendering](#advanced-color-rendering)
+    - [Image Rotation](#image-rotation)
   - [Create an Index](#create-an-index)
   - [Show by Name](#show-by-name)
     - [Quick way with Fuzzy Matching](#quick-way-with-fuzzy-matching)
@@ -113,6 +114,8 @@ browsing, and advanced filters. It is approximately 25x faster.
 - **High-Performance Backend**: SIMD-accelerated pixel processing (wide) with
   optional multi-core parallelism (rayon).
 - Optional dithering for supported styles and images.
+- Image rotation: You can spin the image, rotate the image, show a horizontal
+  mirror.
 
 `px2ansi-rs` is built on top of [`px2ansi`](https://crates.io/crates/px2ansi), a
 standalone Rust library that exposes the full rendering engine as a public API.
@@ -350,6 +353,25 @@ redness, or blueness) corresponds to the same perceived change in color to a
 human observer.
 
 ---
+
+### Image Rotation
+
+```rust
+# z-axis canvas spin (unchanged behaviour)
+px2ansi-rs convert skull.png --rotate
+
+# Coin-flip on vertical axis — "sees the back"
+px2ansi-rs convert skull.png --rotate --axis y
+
+# Cartwheel on horizontal axis
+px2ansi-rs convert skull.png --rotate --axis x
+
+# Slower coin-flip
+px2ansi-rs show skull --rotate --axis y --fps 4
+
+# Static one-shot (axis flag ignored)
+px2ansi-rs convert skull.png --rotate 90
+```
 
 ### Create an index
 

@@ -32,8 +32,8 @@ impl ConvertCmd {
         let img = image::ImageReader::open(&self.input)?.decode()?;
 
         // 2. Handle spin mode early — it never returns, so we branch out here.
-        if let Some(RotateMode::Spin { fps }) = self.rotate {
-            return run_spin_loop(&img, &self.render, fps, external_writer);
+        if let Some(RotateMode::Spin { fps, axis }) = self.rotate {
+            return run_spin_loop(&img, &self.render, fps, axis, external_writer);
         }
 
         // 3. Apply static rotation if requested.
