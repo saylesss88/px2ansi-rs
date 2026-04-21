@@ -25,6 +25,15 @@ browsing, and advanced filters. It is approximately 25x faster.
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/output.gif" width="600" alt="px2ansi-rs demo">
 </p>
 
+<details>
+<summary> Original NixOS image used for conversions </summary>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-original.png" width="400" alt="Original NixOS Logo">
+</p>
+
+</details>
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png" width="400" alt="Braille rendering example">
 </p>
@@ -357,7 +366,7 @@ human observer.
 ### Image Rotation
 
 ```rust
-# z-axis canvas spin (unchanged behaviour)
+# z-axis canvas spin
 px2ansi-rs convert skull.png --rotate
 
 # Coin-flip on vertical axis — "sees the back"
@@ -372,16 +381,28 @@ px2ansi-rs show skull --rotate --axis y --fps 4
 # Static one-shot (axis flag ignored)
 px2ansi-rs convert skull.png --rotate 90
 
+# Static one-shot (axis flag ignored)
+px2ansi-rs convert skull.png --rotate 180
+
 # Unidirectional: always flips the same way
 px2ansi-rs convert skull.png --rotate --axis y --unidirectional
 
 # Z axis ignores --unidirectional (it's already one-directional)
-px2ansi-rs convert skull.png --rotate --axis z --unidirectional```
+px2ansi-rs convert skull.png --rotate --axis z --unidirectional
 ```
+<details>
+<summary> Skull Image Used </summary>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/output_1.gif" width="600" alt="px2ansi-rs demo">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/skull1.png" width="400" alt="Skull Before">
 </p>
+
+</details>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/newest-rotate.gif" width="600" alt="px2ansi-rs rotate demo">
+</p>
+
 
 ### Create an index
 
