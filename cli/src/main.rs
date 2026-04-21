@@ -1,4 +1,4 @@
-#![doc = include_str!("../../README.md")]
+#![doc = include_str!("../README.md")]
 //! # px2ansi-rs CLI
 //!
 //! The binary entry point for `px2ansi-rs`. This module handles the command-line
