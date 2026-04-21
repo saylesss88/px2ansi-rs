@@ -12,8 +12,7 @@ authors = ["T. Sawyer <saylesss87@proton.me>", "Nell Fauveau <nellousan@hotmail.
 license = "GPL-3.0"
 repository = "https://github.com/saylesss88/px2ansi-rs"
 readme = "README.md"
-keywords = ["ansi", "pixel-art", "terminal", "rasterize", "cli"]
-categories = ["command-line-utilities", "multimedia::images", "rendering"]
+keywords = ["ansi", "pixel-art", "oklab", "rasterize", "rgb", "colorspace"]
 
 # ── Shared dependencies ─────────────────────────────────────────────────────
 [workspace.dependencies]
@@ -79,7 +78,7 @@ assertions_on_result_states = "warn"
 create_dir = "warn"
 # expect_used = "warn"
 missing_const_for_fn = "allow"
-# multiple_crate_versions = "allow"
+multiple_crate_versions = "allow"
 unwrap_used = "warn"
 todo = "warn"
 dbg_macro = "warn"
