@@ -19,7 +19,7 @@ use px2ansi::{ColorMode, Density, RenderOptions, ResizeFilter};
 ///
 /// ```rust
 /// use px2ansi_rs::build_render_options;
-/// use px2ansi::RenderStylePreset;
+/// use px2ansi::{RenderStylePreset, ColorMode};
 ///
 /// // Width is passed through
 /// let opts = build_render_options(None, None, Some(80), None, None, false);
@@ -28,11 +28,11 @@ use px2ansi::{ColorMode, Density, RenderOptions, ResizeFilter};
 /// // No-op when all None/false
 /// let opts = build_render_options(None, None, None, None, None, false);
 /// assert_eq!(opts.width(), None);
-/// assert!(opts.color_mode(), ColorMode::None); // color is on by default
+/// assert_ne!(opts.color_mode(), ColorMode::None); // color is on by default
 ///
-/// // no_color disables color
-/// let opts = build_render_options(None, None, None, None, None, true);
-/// assert!(!opts.color_mode(), ColorMode::None);
+/// // Explicitly disable color by passing Some(ColorMode::None)
+/// let opts = build_render_options(None, None, None, None, Some(ColorMode::None), false);
+/// assert_eq!(opts.color_mode(), ColorMode::None);
 /// ```
 #[must_use]
 pub fn build_render_options(
