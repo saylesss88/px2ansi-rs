@@ -371,7 +371,16 @@ px2ansi-rs show skull --rotate --axis y --fps 4
 
 # Static one-shot (axis flag ignored)
 px2ansi-rs convert skull.png --rotate 90
-```
+
+# Unidirectional: always flips the same way
+px2ansi-rs convert skull.png --rotate --axis y --unidirectional
+
+# Z axis ignores --unidirectional (it's already one-directional)
+px2ansi-rs convert skull.png --rotate --axis z --unidirectional```
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/output_1.gif" width="600" alt="px2ansi-rs demo">
+</p>
 
 ### Create an index
 

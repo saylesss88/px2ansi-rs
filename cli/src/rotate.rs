@@ -1,9 +1,13 @@
-//! Image rotation helpers for the `--rotate` and `--axis` flags.
+//! Image rotation helpers for the `--rotate`, `--axis`, and `--unidirectional` flags.
 //!
 //! Three axes are supported:
 //! - [`RotateAxis::Z`]: Flat canvas spin (0° → 90° → 180° → 270°). Default.
 //! - [`RotateAxis::Y`]: Coin-flip illusion on the vertical axis (squish + h-flip).
 //! - [`RotateAxis::X`]: Cartwheel illusion on the horizontal axis (squish + v-flip).
+//!
+//! Two spin modes:
+//! - Default (ping-pong): front → back → front, reversing each revolution.
+//! - `--unidirectional`: always spins the same way using all 4 phases.
 
 use anyhow::Result;
 use image::{DynamicImage, imageops};
@@ -26,26 +30,42 @@ pub enum RotateAxis {
 /// How the `--rotate` flag should behave.
 #[derive(Debug, Clone)]
 pub enum RotateMode {
-    /// Animate a continuous 360° spin at the given frames-per-second.
-    Spin { fps: u8, axis: RotateAxis },
+    /// Animate a continuous spin at the given frames-per-second.
+    Spin {
+        fps: u8,
+        axis: RotateAxis,
+        /// If true, always spins the same direction (4-phase unidirectional).
+        /// If false (default), ping-pongs: front → back → front.
+        unidirectional: bool,
+    },
     /// Rotate once by the given angle (90, 180, or 270 degrees).
     Static(u16),
 }
 
-/// Parses `--rotate` + `--fps` + `--axis` into a [`RotateMode`], if rotation was requested.
+/// Parses `--rotate` + `--fps` + `--axis` + `--unidirectional` into a [`RotateMode`].
 ///
-/// * `angle = None`    → no rotation at all
+/// * `angle = None`    → no rotation
 /// * `angle = Some(0)` → spin mode (sentinel set by `default_missing_value`)
 /// * `angle = Some(n)` → static rotation by `n` degrees
 ///
 /// # Errors
 ///
 /// Returns an error if `angle` is not one of `0`, `90`, `180`, or `270`.
-pub fn parse_rotate(angle: Option<u16>, fps: u8, axis: RotateAxis) -> Result<Option<RotateMode>> {
+pub fn parse_rotate(
+    angle: Option<u16>,
+    fps: u8,
+    axis: RotateAxis,
+    unidirectional: bool,
+) -> Result<Option<RotateMode>> {
     match angle {
         None => Ok(None),
-        Some(0) => Ok(Some(RotateMode::Spin { fps, axis })),
-        Some(90) | Some(180) | Some(270) => Ok(Some(RotateMode::Static(angle.unwrap()))),
+        Some(0) => Ok(Some(RotateMode::Spin {
+            fps,
+            axis,
+            unidirectional,
+        })),
+        Some(n @ (90 | 180 | 270)) => Ok(Some(RotateMode::Static(n))),
+
         Some(other) => anyhow::bail!(
             "Invalid --rotate value: {other}. Valid values are 90, 180, or 270. \
              Omit a value entirely to animate a full 360° spin."
@@ -64,22 +84,21 @@ pub fn apply_static(img: DynamicImage, degrees: u16) -> DynamicImage {
     }
 }
 
-// ── Frame generators ─────────────────────────────────────────────────────────
+// ── Frame generators ──────────────────────────────────────────────────────────
 
-/// Number of interpolation steps per quarter-turn for the illusion axes.
+/// Number of interpolation steps per quarter-turn.
 /// 8 steps × 4 quarters = 32 frames per full revolution.
 const STEPS_PER_QUARTER: u32 = 8;
 
-/// Generates 32 frames for a Z-axis canvas spin (four 90° hard steps, each
-/// held for `STEPS_PER_QUARTER` ticks so timing matches the illusion axes).
+/// Generates frames for a Z-axis canvas spin.
+/// Each of the 4 poses is held for `STEPS_PER_QUARTER` ticks so total frame
+/// count matches the illusion axes (32), keeping `--fps` consistent.
 fn generate_zaxis_frames(img: &DynamicImage) -> Vec<DynamicImage> {
     let r0 = img.clone();
     let r90 = DynamicImage::ImageRgba8(imageops::rotate90(&img.to_rgba8()));
     let r180 = DynamicImage::ImageRgba8(imageops::rotate180(&img.to_rgba8()));
     let r270 = DynamicImage::ImageRgba8(imageops::rotate270(&img.to_rgba8()));
 
-    // Repeat each pose for STEPS_PER_QUARTER frames so the total frame count
-    // equals the illusion axes (32), giving consistent --fps behaviour.
     let mut frames = Vec::with_capacity(4 * STEPS_PER_QUARTER as usize);
     for pose in [r0, r90, r180, r270] {
         for _ in 0..STEPS_PER_QUARTER {
@@ -89,114 +108,139 @@ fn generate_zaxis_frames(img: &DynamicImage) -> Vec<DynamicImage> {
     frames
 }
 
-/// Generates 32 frames for a Y-axis coin-flip illusion.
+/// Generates frames for a ping-pong Y or X axis spin.
 ///
-/// The image squishes horizontally to zero (front → edge), then expands as its
-/// horizontal mirror (edge → back), and then reverses back to front.
-fn generate_yaxis_frames(img: &DynamicImage) -> Vec<DynamicImage> {
-    let w = img.width();
-    let h = img.height();
-    let back = DynamicImage::ImageRgba8(imageops::flip_horizontal(&img.to_rgba8()));
+/// Goes front → back → front, reversing each revolution. 2 phases, ~16 frames.
+fn generate_pingpong_frames(img: &DynamicImage, axis: RotateAxis) -> Vec<DynamicImage> {
+    let (w, h) = (img.width(), img.height());
+    let back = match axis {
+        RotateAxis::Y => DynamicImage::ImageRgba8(imageops::flip_horizontal(&img.to_rgba8())),
+        RotateAxis::X => DynamicImage::ImageRgba8(imageops::flip_vertical(&img.to_rgba8())),
+        RotateAxis::Z => return generate_zaxis_frames(img),
+    };
 
-    let mut frames = Vec::with_capacity((4 * STEPS_PER_QUARTER) as usize);
+    let mut frames = Vec::with_capacity((2 * STEPS_PER_QUARTER) as usize);
 
-    // Phase 1 — front squishes away (full → 0)
-    for i in (0..=STEPS_PER_QUARTER).rev() {
-        let new_w = (w as f32 * i as f32 / STEPS_PER_QUARTER as f32) as u32;
-        if new_w == 0 {
-            continue;
-        }
-        let resized = img.resize_exact(new_w, h, imageops::FilterType::Nearest);
-        frames.push(pad_to_width(resized, w));
+    // Phase 1 — front squishes to edge
+    for i in (1..=STEPS_PER_QUARTER).rev() {
+        frames.push(apply_squish(img, i, axis, w, h));
     }
-
-    // Phase 2 — back expands into view (0 → full)
+    // Phase 2 — back expands from edge to full
     for i in 1..=STEPS_PER_QUARTER {
-        let new_w = (w as f32 * i as f32 / STEPS_PER_QUARTER as f32) as u32;
-        if new_w == 0 {
-            continue;
-        }
-        let resized = back.resize_exact(new_w, h, imageops::FilterType::Nearest);
-        frames.push(pad_to_width(resized, w));
+        frames.push(apply_squish(&back, i, axis, w, h));
     }
-
-    // Phase 3 — back squishes away (full → 0)
-    for i in (0..=STEPS_PER_QUARTER).rev() {
-        let new_w = (w as f32 * i as f32 / STEPS_PER_QUARTER as f32) as u32;
-        if new_w == 0 {
-            continue;
-        }
-        let resized = back.resize_exact(new_w, h, imageops::FilterType::Nearest);
-        frames.push(pad_to_width(resized, w));
+    // Reverse: back squishes, front returns (ping-pong return trip)
+    for i in (1..=STEPS_PER_QUARTER).rev() {
+        frames.push(apply_squish(&back, i, axis, w, h));
     }
-
-    // Phase 4 — front expands back into view (0 → full)
     for i in 1..=STEPS_PER_QUARTER {
-        let new_w = (w as f32 * i as f32 / STEPS_PER_QUARTER as f32) as u32;
-        if new_w == 0 {
-            continue;
-        }
-        let resized = img.resize_exact(new_w, h, imageops::FilterType::Nearest);
-        frames.push(pad_to_width(resized, w));
+        frames.push(apply_squish(img, i, axis, w, h));
     }
 
     frames
 }
 
-/// Generates 32 frames for an X-axis cartwheel illusion.
+/// Generates frames for a unidirectional Y or X axis spin.
 ///
-/// Same as Y-axis but squishes vertically and flips the image top-to-bottom.
-fn generate_xaxis_frames(img: &DynamicImage) -> Vec<DynamicImage> {
-    let w = img.width();
-    let h = img.height();
-    let back = DynamicImage::ImageRgba8(imageops::flip_vertical(&img.to_rgba8()));
+/// Always rotates the same way — 4 phases, 32 frames per revolution:
+///
+/// | Phase | Face  | Direction     |
+/// |-------|-------|---------------|
+/// | 1     | Front | full → edge   |
+/// | 2     | Back  | edge → full   |
+/// | 3     | Back  | full → edge   |
+/// | 4     | Front | edge → full   |
+///
+/// The loop from phase 4 back to phase 1 is seamless — front is always
+/// at the same width at the boundary, so there is no visible jump.
+fn generate_unidirectional_frames(img: &DynamicImage, axis: RotateAxis) -> Vec<DynamicImage> {
+    let (w, h) = (img.width(), img.height());
+
+    let front = img.clone();
+    let back = match axis {
+        RotateAxis::Y => DynamicImage::ImageRgba8(imageops::flip_horizontal(&img.to_rgba8())),
+        RotateAxis::X => DynamicImage::ImageRgba8(imageops::flip_vertical(&img.to_rgba8())),
+        RotateAxis::Z => return generate_zaxis_frames(img),
+    };
 
     let mut frames = Vec::with_capacity((4 * STEPS_PER_QUARTER) as usize);
 
-    // Phase 1 — front squishes away (full → 0)
-    for i in (0..=STEPS_PER_QUARTER).rev() {
-        let new_h = (h as f32 * i as f32 / STEPS_PER_QUARTER as f32) as u32;
-        if new_h == 0 {
-            continue;
-        }
-        let resized = img.resize_exact(w, new_h, imageops::FilterType::Nearest);
-        frames.push(pad_to_height(resized, h));
-    }
+    for quarter in 0..4 {
+        let is_front = quarter % 2 == 0;
+        let source = if is_front { &front } else { &back };
 
-    // Phase 2 — back expands into view (0 → full)
-    for i in 1..=STEPS_PER_QUARTER {
-        let new_h = (h as f32 * i as f32 / STEPS_PER_QUARTER as f32) as u32;
-        if new_h == 0 {
-            continue;
+        for step in (1..=STEPS_PER_QUARTER).rev() {
+            frames.push(apply_squish(source, step, axis, w, h));
         }
-        let resized = back.resize_exact(w, new_h, imageops::FilterType::Nearest);
-        frames.push(pad_to_height(resized, h));
-    }
-
-    // Phase 3 — back squishes away (full → 0)
-    for i in (0..=STEPS_PER_QUARTER).rev() {
-        let new_h = (h as f32 * i as f32 / STEPS_PER_QUARTER as f32) as u32;
-        if new_h == 0 {
-            continue;
+        for step in 1..=STEPS_PER_QUARTER {
+            frames.push(apply_squish(source, step, axis, w, h));
         }
-        let resized = back.resize_exact(w, new_h, imageops::FilterType::Nearest);
-        frames.push(pad_to_height(resized, h));
-    }
-
-    // Phase 4 — front expands back (0 → full)
-    for i in 1..=STEPS_PER_QUARTER {
-        let new_h = (h as f32 * i as f32 / STEPS_PER_QUARTER as f32) as u32;
-        if new_h == 0 {
-            continue;
-        }
-        let resized = img.resize_exact(w, new_h, imageops::FilterType::Nearest);
-        frames.push(pad_to_height(resized, h));
     }
 
     frames
 }
+// fn generate_unidirectional_frames(img: &DynamicImage, axis: RotateAxis) -> Vec<DynamicImage> {
+//     let (w, h) = (img.width(), img.height());
+//     let back = match axis {
+//         RotateAxis::Y => DynamicImage::ImageRgba8(imageops::flip_horizontal(&img.to_rgba8())),
+//         RotateAxis::X => DynamicImage::ImageRgba8(imageops::flip_vertical(&img.to_rgba8())),
+//         RotateAxis::Z => return generate_zaxis_frames(img),
+//     };
 
-// ── Padding helpers ───────────────────────────────────────────────────────────
+//     let mut frames = Vec::with_capacity((4 * STEPS_PER_QUARTER) as usize);
+
+//     // Phase 1: Front face squishes to edge (full → 0)
+//     for i in (1..=STEPS_PER_QUARTER).rev() {
+//         frames.push(apply_squish(img, i, axis, w, h));
+//     }
+//     // Phase 2: Back face expands from edge (0 → full)
+//     for i in 1..=STEPS_PER_QUARTER {
+//         frames.push(apply_squish(&back, i, axis, w, h));
+//     }
+//     // Phase 3: Back face squishes to edge (full → 0)
+//     for i in (1..=STEPS_PER_QUARTER).rev() {
+//         frames.push(apply_squish(&back, i, axis, w, h));
+//     }
+//     // Phase 4: Front face expands from edge (0 → full)
+//     for i in 1..=STEPS_PER_QUARTER {
+//         frames.push(apply_squish(img, i, axis, w, h));
+//     }
+
+//     frames
+// }
+
+// ── Squish + padding helpers ──────────────────────────────────────────────────
+
+/// Resizes `img` for one step of a squish animation along `axis`,
+/// then pads it back to the original bounding box so it stays centered.
+///
+/// `step` ranges from `1..=STEPS_PER_QUARTER`:
+/// - `STEPS_PER_QUARTER` → full size
+/// - `1`                 → almost gone (1 px thin)
+#[expect(
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    reason = "fairly safe"
+)]
+fn apply_squish(img: &DynamicImage, step: u32, axis: RotateAxis, w: u32, h: u32) -> DynamicImage {
+    match axis {
+        RotateAxis::Y => {
+            let ratio = f64::from(step) / f64::from(STEPS_PER_QUARTER);
+            let new_w = (f64::from(w) * ratio).round() as u32;
+            let new_w = new_w.max(1);
+
+            pad_to_width(img.resize_exact(new_w, h, imageops::FilterType::Nearest), w)
+        }
+        RotateAxis::X => {
+            let ratio = f64::from(step) / f64::from(STEPS_PER_QUARTER);
+            let new_h = (f64::from(h) * ratio).round() as u32;
+            let new_h = new_h.max(1);
+
+            pad_to_height(img.resize_exact(w, new_h, imageops::FilterType::Nearest), h)
+        }
+        RotateAxis::Z => img.clone(),
+    }
+}
 
 /// Centers `img` horizontally inside a transparent canvas of `target_w` width.
 fn pad_to_width(img: DynamicImage, target_w: u32) -> DynamicImage {
@@ -226,7 +270,7 @@ fn pad_to_height(img: DynamicImage, target_h: u32) -> DynamicImage {
 
 // ── Spin loop ─────────────────────────────────────────────────────────────────
 
-/// Renders a continuous 360° spin loop to `writer`, using the given axis.
+/// Renders a continuous spin loop to `writer`.
 ///
 /// Pre-renders all frames once to ANSI byte buffers, then replays them in a
 /// loop until interrupted (Ctrl-C). Each frame is preceded by an ANSI
@@ -240,15 +284,16 @@ pub fn run_spin_loop<W: Write>(
     render: &RenderOptions,
     fps: u8,
     axis: RotateAxis,
+    unidirectional: bool,
     writer: &mut W,
 ) -> Result<()> {
+    const CLEAR: &[u8] = b"\x1b[2J\x1b[H";
     let delay = Duration::from_millis(1000 / u64::from(fps.max(1)));
 
-    // Build the frame list for the chosen axis.
     let frames = match axis {
         RotateAxis::Z => generate_zaxis_frames(img),
-        RotateAxis::Y => generate_yaxis_frames(img),
-        RotateAxis::X => generate_xaxis_frames(img),
+        axis if unidirectional => generate_unidirectional_frames(img, axis),
+        axis => generate_pingpong_frames(img, axis),
     };
 
     // Pre-render every frame to an ANSI byte buffer once.
@@ -258,8 +303,6 @@ pub fn run_spin_loop<W: Write>(
         render.render_centered(frame, &mut buf)?;
         buffers.push(buf);
     }
-
-    const CLEAR: &[u8] = b"\x1b[2J\x1b[H";
 
     loop {
         for buf in &buffers {

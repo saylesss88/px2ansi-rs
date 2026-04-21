@@ -92,6 +92,7 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             color_mode,
             rotate,
             axis,
+            unidirectional,
             fps,
         } => {
             let render_opts =
@@ -99,7 +100,8 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
 
             let output_image = output_image.or_else(|| cfg.output_image.as_ref().map(Into::into));
 
-            let rotate = px2ansi_rs::rotate::parse_rotate(rotate, fps, axis)?;
+            let rotate = px2ansi_rs::rotate::parse_rotate(rotate, fps, axis, unidirectional)?;
+            // let rotate = px2ansi_rs::rotate::parse_rotate(rotate, fps, axis)?;
 
             Ok(Command::Convert(ConvertCmd {
                 input,
@@ -128,12 +130,13 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             color_mode,
             rotate,
             axis,
+            unidirectional,
             fps,
         } => {
             let render_opts =
                 render::build_render_options(style, density, None, filter, color_mode, dither);
 
-            let rotate = px2ansi_rs::rotate::parse_rotate(rotate, fps, axis)?;
+            let rotate = px2ansi_rs::rotate::parse_rotate(rotate, fps, axis, unidirectional)?;
 
             Ok(Command::Show(ShowCmd {
                 name,

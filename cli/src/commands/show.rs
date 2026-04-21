@@ -53,8 +53,13 @@ impl ShowCmd {
                 let img = image::open(&e.path)?;
 
                 // Spin mode — loops forever until Ctrl-C
-                if let Some(RotateMode::Spin { fps, axis }) = self.rotate {
-                    return run_spin_loop(&img, &self.render, fps, axis, writer);
+                if let Some(RotateMode::Spin {
+                    fps,
+                    axis,
+                    unidirectional,
+                }) = self.rotate
+                {
+                    return run_spin_loop(&img, &self.render, fps, axis, unidirectional, writer);
                 }
 
                 // Static rotation

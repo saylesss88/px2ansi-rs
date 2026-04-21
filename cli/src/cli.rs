@@ -108,6 +108,11 @@ pub enum Commands {
         #[arg(long, value_enum, default_value = "z")]
         axis: RotateAxis,
 
+        /// Always spin in the same direction. Only affects --axis y and --axis x.
+        /// Default behaviour (without this flag) ping-pongs: front → back → front.
+        #[arg(long, default_value = "false")]
+        unidirectional: bool,
+
         /// Frames per second for the --rotate spin animation (default: 8)
         #[arg(long, default_value = "8", value_name = "FPS")]
         fps: u8,
@@ -170,6 +175,11 @@ pub enum Commands {
         /// z = canvas spin, y = coin-flip (horizontal mirror), x = cartwheel (vertical mirror)
         #[arg(long, value_enum, default_value = "z")]
         axis: RotateAxis,
+
+        /// Always spin in the same direction. Only affects --axis y and --axis x.
+        /// Default behaviour (without this flag) ping-pongs: front → back → front.
+        #[arg(long, default_value = "false")]
+        unidirectional: bool,
 
         /// Frames per second for the --rotate spin animation (default: 8)
         #[arg(long, default_value = "8", value_name = "FPS")]
