@@ -6,11 +6,11 @@ edition = "2024"
 authors = ["T. Sawyer <saylesss87@proton.me>"]
 license = "GPL-3.0"
 repository = "https://github.com/saylesss88/px2ansi-rs"
-readme = "../README.md"
+readme = "README.md"
 keywords = ["ansi", "pixel-art", "oklab", "rasterize", "colorspace"]
 categories = ["command-line-utilities", "multimedia::images", "rendering"]
 description = "CLI frontend for the px2ansi terminal art engine"
-include = ["src/**/*", "Cargo.toml", "../README.md", "../LICENSE"]
+include = ["src/**/*", "Cargo.toml", "README.md", "../LICENSE"]
 
 [[bin]]
 name = "px2ansi-rs"

@@ -28,11 +28,11 @@ use px2ansi::{ColorMode, Density, RenderOptions, ResizeFilter};
 /// // No-op when all None/false
 /// let opts = build_render_options(None, None, None, None, None, false);
 /// assert_eq!(opts.width(), None);
-/// assert!(opts.color()); // color is on by default
+/// assert!(opts.color_mode(), ColorMode::None); // color is on by default
 ///
 /// // no_color disables color
 /// let opts = build_render_options(None, None, None, None, None, true);
-/// assert!(!opts.color());
+/// assert!(!opts.color_mode(), ColorMode::None);
 /// ```
 #[must_use]
 pub fn build_render_options(
