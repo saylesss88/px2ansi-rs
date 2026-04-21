@@ -200,8 +200,8 @@ filter, charset mode, density, and color output.
 Default configuration:
 
 - Charset: `Ansi`
-- Color_Mode: `truecolor`
-- Width: `None` (auto-detect from terminal)
+- `Color_Mode`: `truecolor`
+- Width: `Non` (auto-detect from terminal)
 
 ```rust,no_run
 use px2ansi::{CharsetMode, ColorMode, RenderOptions};
@@ -415,7 +415,7 @@ px2ansi = { version = "0.2.3",  features = ["full"] }
 Renders pixel-accurate images inline in the terminal using the
 [Sixel graphics protocol](https://en.wikipedia.org/wiki/Sixel).
 
-**Compatible terminals:** foot, WezTerm, iTerm2, mlterm, xterm (with `-ti 340`)
+**Compatible terminals:** `foot`, `WezTerm`, `iTerm2`, `ghosTTY`, `xterm` (with `-ti 340`)
   
 ```rust,no_run
 use px2ansi::{RenderOptions, RenderStylePreset};
@@ -467,7 +467,7 @@ Converts ANSI art to a PNG image using an embedded
 [Iosevka Charon Mono](https://github.com/nicowillis/iosevka-charon) font. Useful
 for saving previews or sharing output as an image.
 
-**With the default TokyoNight theme:**
+**With the default `TokyoNight` theme:**
 
 ```rust,no_run,ignore
 # #[cfg(feature = "rasterize")]
