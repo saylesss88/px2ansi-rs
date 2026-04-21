@@ -124,11 +124,11 @@ fn generate_pingpong_frames(img: &DynamicImage, axis: RotateAxis) -> Vec<Dynamic
 
     let mut frames = Vec::with_capacity((2 * STEPS_PER_QUARTER) as usize);
 
-    // Phase 1 — front squishes to edge
+    // Phase 1: front squishes to edge
     for i in (1..=STEPS_PER_QUARTER).rev() {
         frames.push(apply_squish(img, i, axis, w, h));
     }
-    // Phase 2 — back expands from edge to full
+    // Phase 2: back expands from edge to full
     for i in 1..=STEPS_PER_QUARTER {
         frames.push(apply_squish(&back, i, axis, w, h));
     }
@@ -182,35 +182,6 @@ fn generate_unidirectional_frames(img: &DynamicImage, axis: RotateAxis) -> Vec<D
 
     frames
 }
-// fn generate_unidirectional_frames(img: &DynamicImage, axis: RotateAxis) -> Vec<DynamicImage> {
-//     let (w, h) = (img.width(), img.height());
-//     let back = match axis {
-//         RotateAxis::Y => DynamicImage::ImageRgba8(imageops::flip_horizontal(&img.to_rgba8())),
-//         RotateAxis::X => DynamicImage::ImageRgba8(imageops::flip_vertical(&img.to_rgba8())),
-//         RotateAxis::Z => return generate_zaxis_frames(img),
-//     };
-
-//     let mut frames = Vec::with_capacity((4 * STEPS_PER_QUARTER) as usize);
-
-//     // Phase 1: Front face squishes to edge (full → 0)
-//     for i in (1..=STEPS_PER_QUARTER).rev() {
-//         frames.push(apply_squish(img, i, axis, w, h));
-//     }
-//     // Phase 2: Back face expands from edge (0 → full)
-//     for i in 1..=STEPS_PER_QUARTER {
-//         frames.push(apply_squish(&back, i, axis, w, h));
-//     }
-//     // Phase 3: Back face squishes to edge (full → 0)
-//     for i in (1..=STEPS_PER_QUARTER).rev() {
-//         frames.push(apply_squish(&back, i, axis, w, h));
-//     }
-//     // Phase 4: Front face expands from edge (0 → full)
-//     for i in 1..=STEPS_PER_QUARTER {
-//         frames.push(apply_squish(img, i, axis, w, h));
-//     }
-
-//     frames
-// }
 
 // ── Squish + padding helpers ──────────────────────────────────────────────────
 
@@ -315,7 +286,7 @@ pub fn run_spin_loop<W: Write>(
                 .map(|frame| {
                     let mut buf =
                         Vec::with_capacity(frame.width() as usize * frame.height() as usize * 2);
-                    // render_centered takes &mut W — we buffer into a Vec per frame
+                    // render_centered takes `&mut W` we buffer into a Vec per frame
                     // then collect in order, so output is deterministic.
                     render.render_centered(frame, &mut buf).map(|()| buf)
                 })

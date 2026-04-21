@@ -46,6 +46,7 @@ mod tests {
     use std::path::PathBuf;
 
     type TestResult = Result<(), Box<dyn std::error::Error>>;
+
     // --- ResolvedOptions ---
 
     #[test]

@@ -85,7 +85,7 @@ depend on `px2ansi` and reuse your existing image setup.
 
 ## Quick Start
 
-```rust
+```rust,no_run
 use image::open;
 use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter};
 
@@ -113,7 +113,7 @@ fn main() -> anyhow::Result<()> {
 The library can automatically detect terminal size, center the output, and
 handle resizing for you:
 
-```rust
+```rust, no_run
 let mut stdout = std::io::stdout();
 opts.render_centered(&img, &mut stdout)?;
 ```
@@ -122,7 +122,7 @@ opts.render_centered(&img, &mut stdout)?;
 
 You can render to any `std::io::Write` target, including an in-memory buffer:
 
-```rust
+```rust, no_run
 use image::open;
 use px2ansi::RenderOptions;
 
@@ -142,7 +142,7 @@ fn main() -> anyhow::Result<()> {
 
 `render` also works with a `std::io::Cursor`:
 
-```rust
+```rust, no_run
 use std::io::Cursor;
 use px2ansi::RenderOptions;
 
@@ -157,7 +157,7 @@ If you need control over the image scaling step, use `prepare_image` separately.
 This is useful for TUI applications or when rendering to non-terminal targets
 like files or network streams:
 
-```rust
+```rust, no_run
 use px2ansi::RenderOptions;
 
 fn custom_pipeline(img: &image::DynamicImage) -> anyhow::Result<()> {
@@ -202,7 +202,7 @@ Default configuration:
 - Color_Mode: `truecolor`
 - Width: `None` (auto-detect from terminal)
 
-```rust
+```rust,no_run
 let opts = RenderOptions::default();
 assert_eq!(opts.charset(), CharsetMode::Ansi);
 assert_eq!(opts.color_mode(), ColorMode::TrueColor);
@@ -252,7 +252,7 @@ Controls image resampling quality:
 
 The builder supports chaining:
 
-```rust
+```rust,no_run
 use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter, Density, ColorMode};
 
 let opts = RenderOptions::builder()
@@ -267,6 +267,7 @@ let opts = RenderOptions::builder()
 Or a mutable style:
 
 ```rust
+use px2ansi::ColorMode
 let mut builder = RenderOptions::builder();
 builder.preset(RenderStylePreset::FullBlock);
 builder.width(80);
@@ -280,7 +281,7 @@ let opts = builder.build();
 
 ### Inspecting Options
 
-```rust
+```rust,no_run
 use px2ansi::{RenderOptions, RenderStylePreset};
 
 let opts = RenderOptions::builder()
@@ -301,7 +302,7 @@ println!("Current density: {:?}", opts.style().density());
 The indexer scans a directory for image files and produces a JSON index. It is
 part of the public `px2ansi` library API:
 
-```rust
+```rust,no_run
 use px2ansi::indexer::{build_index, ImageEntry};
 use std::path::Path;
 
@@ -404,8 +405,8 @@ Renders pixel-accurate images inline in the terminal using the
 [Sixel graphics protocol](https://en.wikipedia.org/wiki/Sixel).
 
 **Compatible terminals:** foot, WezTerm, iTerm2, mlterm, xterm (with `-ti 340`)
-
-```rust
+  
+```rust,no_run
 use px2ansi::{RenderOptions, RenderStylePreset};
 use std::io::stdout;
 
@@ -425,7 +426,7 @@ Diffusion algorithm. This is designed to solve the "banding" problem common in
 terminal art, where a limited character set or color palette creates harsh
 transitions in gradients.
 
-```rust
+```rust,no_run
 let options = RenderOptions::builder()
     .style(RenderStylePreset::Ascii)
     .dither(true) // Enables Floyd-Steinberg diffusion
@@ -443,7 +444,7 @@ for saving previews or sharing output as an image.
 
 **With the default TokyoNight theme:**
 
-```rust
+```rust,no_run
 use px2ansi::{RenderOptions, rasterize_ansi_with_theme, RasterTheme};
 
 let img = image::open("photo.png")?;
@@ -460,7 +461,7 @@ png.save("output.png")?;
 
 **With a different theme:**
 
-```rust
+```rust,no_run
 use px2ansi::{RasterTheme, rasterize_ansi_with_theme};
 
 let png = rasterize_ansi_with_theme(&buf, RasterTheme::Dracula)?;
@@ -503,7 +504,7 @@ NEON instructions depending on your target hardware.
 With the `simd` feature enabled, the renderer processes chunks of 8 pixels in a
 single instruction rather than one at a time:
 
-```rust
+```rust,no_run
 // 8 Rec.709 luma values computed simultaneously
 let luma_raw = r * u32x8::splat(2126) + g * u32x8::splat(7152) + b * u32x8::splat(722);
 //                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -581,7 +582,7 @@ typical terminal-sized output (~200×100 = 20,000 pixels) this overhead
 parallel rendering dynamically when the pixel count exceeds **120,000 pixels**,
 falling back to the fast serial + SIMD path otherwise:
 
-```rust
+```rust,no_run
 let use_parallel = cfg!(feature = "parallel") && (width * height > 120_000);
 ```
 
@@ -594,7 +595,7 @@ The crate root re-exports the most common types so users do not need to dig
 through internal modules:
 
 
-```rust
+```rust,no_run
 use px2ansi::{
     // Core rendering & configuration
     RenderOptions, RenderOptionsBuilder, RenderStyle,
@@ -625,7 +626,7 @@ Unlike the CLI which uses `anyhow` for simplicity, the `px2ansi` library
 provides a structured `RenderError` enum. This allows you to programmatically
 react to specific failure states.
 
-```rust
+```rust,no_run
 use px2ansi::{CharsetMode, RenderError};
 use std::str::FromStr;
 

@@ -7,7 +7,7 @@
 //! ## Quick Start
 //!
 //! ```rust,no_run
-//! use px2ansi::{RenderOptions, RenderStylePreset};
+//! use px2ansi::{RenderOptions, RenderStylePreset, ColorMode};
 //! use image::DynamicImage;
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -16,7 +16,7 @@
 //! let mut builder = RenderOptions::builder();
 //! builder.preset(RenderStylePreset::Braille);
 //! builder.width(120);
-//! builder.color(true);
+//! builder.color_mode(ColorMode::TrueColor);
 //! let opts = builder.build();
 //!
 //! let mut stdout = std::io::stdout();

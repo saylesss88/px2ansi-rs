@@ -251,6 +251,8 @@ fn build_index_creates_json_file() {
 
     let index_path = dir.path().join("index.json");
 
+    px2ansi::indexer::build_index(dir.path(), &index_path).expect("Failed to build index");
+
     let json = std::fs::read_to_string(&index_path).unwrap_or_else(|e| {
         eprintln!("Warning: failed to read index file: {e}");
         String::new()
