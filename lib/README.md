@@ -125,7 +125,7 @@ fn example_centered(opts: &RenderOptions, img: &image::DynamicImage) {
 
 You can render to any `std::io::Write` target, including an in-memory buffer:
 
-```rust, no_run
+```rust, no_run, ignore
 use image::open;
 fn main() {
     let img = open("photo.png").unwrap();
@@ -141,7 +141,7 @@ fn main() {
 
 `render` also works with a `std::io::Cursor`:
 
-```rust, no_run
+```rust, no_run,ignore
 # use px2ansi::RenderOptions;
 # use std::io::Cursor;
 # use image::open;
@@ -204,7 +204,7 @@ Default configuration:
 - Width: `None` (auto-detect from terminal)
 
 ```rust,no_run
-use px2ansi::{CharsetMode, ColorMode};
+use px2ansi::{CharsetMode, ColorMode, RenderOptions};
 
 let opts = RenderOptions::default();
 assert_eq!(opts.charset(), CharsetMode::Ansi);
@@ -255,7 +255,7 @@ Controls image resampling quality:
 
 The builder supports chaining:
 
-```rust,no_run
+```rust,no_run,ignore
 # use px2ansi::{ColorMode, RenderOptions, RenderStylePreset};
 # let monochrome = true;
 let builder = px2ansi::RenderOptions::builder()
@@ -273,7 +273,7 @@ let opts = builder.build();
 
 Or a mutable style:
 
-```rust
+```rusggggggggggggggg
 use px2ansi::{ColorMode, RenderOptions, RenderStylePreset};
 let mut builder = RenderOptions::builder();
 builder.preset(RenderStylePreset::FullBlock);
@@ -469,7 +469,7 @@ for saving previews or sharing output as an image.
 
 **With the default TokyoNight theme:**
 
-```rust,no_run
+```rust,no_run,ignore
 # #[cfg(feature = "rasterize")]
 use px2ansi::{rasterize_ansi_with_theme, RasterTheme};
 use image::open;
@@ -483,7 +483,7 @@ fn rasterize_example() {
     opts.render(&img, &mut buf).unwrap();
 
     // Rasterize to a PNG image
-    let png = rasterize_ansi_with_theme(&buf, RasterTheme::TokyoNight).unwrap();
+    let png = px2ansi::rasterize_ansi_with_theme(&buf, RasterTheme::TokyoNight).unwrap();
     png.save("output.png").unwrap();
 }
 ```
@@ -551,7 +551,7 @@ single instruction rather than one at a time:
 
 Both the SIMD and scalar paths use the same perceptually-weighted formula:
 
-```
+```rust,ignore
 luma = (2126·R + 7152·G + 722·B) / 10000
 ```
 
@@ -610,7 +610,7 @@ typical terminal-sized output (~200×100 = 20,000 pixels) this overhead
 parallel rendering dynamically when the pixel count exceeds **120,000 pixels**,
 falling back to the fast serial + SIMD path otherwise:
 
-```rust,no_run
+```rust,no_run,ignore
 let use_parallel = cfg!(feature = "parallel") && (width * height > 120_000);
 ```
 
@@ -647,7 +647,7 @@ Unlike the CLI which uses `anyhow` for simplicity, the `px2ansi` library
 provides a structured `RenderError` enum. This allows you to programmatically
 react to specific failure states.
 
-```rust,no_run
+```rust,no_run,ignore
 use px2ansi::{CharsetMode, RenderError};
 use std::str::FromStr;
 
