@@ -9,6 +9,9 @@
 //! - Default (ping-pong): front → back → front, reversing each revolution.
 //! - `--unidirectional`: always spins the same way using all 4 phases.
 
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
 use anyhow::Result;
 use image::{DynamicImage, imageops};
 use px2ansi::RenderOptions;
@@ -296,13 +299,36 @@ pub fn run_spin_loop<W: Write>(
         axis => generate_pingpong_frames(img, axis),
     };
 
-    // Pre-render every frame to an ANSI byte buffer once.
-    let mut buffers: Vec<Vec<u8>> = Vec::with_capacity(frames.len());
-    for frame in &frames {
-        let mut buf = Vec::with_capacity(frame.width() as usize * frame.height() as usize * 2);
-        render.render_centered(frame, &mut buf)?;
-        buffers.push(buf);
-    }
+    // Pre-render all frames to ANSI byte buffers.
+    // With the `parallel` feature, all frames are rendered concurrently —
+    // on a typical machine this cuts the startup delay from ~32x single-frame
+    // time down to ~(32 / num_cpus)x.
+    let buffers: Vec<Vec<u8>> = {
+        #[cfg(feature = "parallel")]
+        {
+            frames
+                .par_iter()
+                .map(|frame| {
+                    let mut buf =
+                        Vec::with_capacity(frame.width() as usize * frame.height() as usize * 2);
+                    // render_centered takes &mut W — we buffer into a Vec per frame
+                    // then collect in order, so output is deterministic.
+                    render.render_centered(frame, &mut buf).map(|()| buf)
+                })
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        }
+        #[cfg(not(feature = "parallel"))]
+        {
+            let mut bufs = Vec::with_capacity(frames.len());
+            for frame in &frames {
+                let mut buf =
+                    Vec::with_capacity(frame.width() as usize * frame.height() as usize * 2);
+                render.render_centered(frame, &mut buf)?;
+                bufs.push(buf);
+            }
+            bufs
+        }
+    };
 
     loop {
         for buf in &buffers {
@@ -313,3 +339,37 @@ pub fn run_spin_loop<W: Write>(
         }
     }
 }
+// pub fn run_spin_loop<W: Write>(
+//     img: &DynamicImage,
+//     render: &RenderOptions,
+//     fps: u8,
+//     axis: RotateAxis,
+//     unidirectional: bool,
+//     writer: &mut W,
+// ) -> Result<()> {
+//     const CLEAR: &[u8] = b"\x1b[2J\x1b[H";
+//     let delay = Duration::from_millis(1000 / u64::from(fps.max(1)));
+
+//     let frames = match axis {
+//         RotateAxis::Z => generate_zaxis_frames(img),
+//         axis if unidirectional => generate_unidirectional_frames(img, axis),
+//         axis => generate_pingpong_frames(img, axis),
+//     };
+
+//     // Pre-render every frame to an ANSI byte buffer once.
+//     let mut buffers: Vec<Vec<u8>> = Vec::with_capacity(frames.len());
+//     for frame in &frames {
+//         let mut buf = Vec::with_capacity(frame.width() as usize * frame.height() as usize * 2);
+//         render.render_centered(frame, &mut buf)?;
+//         buffers.push(buf);
+//     }
+
+//     loop {
+//         for buf in &buffers {
+//             writer.write_all(CLEAR)?;
+//             writer.write_all(buf)?;
+//             writer.flush()?;
+//             thread::sleep(delay);
+//         }
+//     }
+// }

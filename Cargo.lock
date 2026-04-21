@@ -659,6 +659,7 @@ dependencies = [
  "predicates",
  "px2ansi",
  "rand",
+ "rayon",
  "serde",
  "serde_json",
 ]

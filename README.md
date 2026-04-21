@@ -4,12 +4,18 @@
 
 # px2ansi-rs
 
+[![Crates.io](https://img.shields.io/crates/v/px2ansi-rs.svg)](https://crates.io/crates/px2ansi-rs)
+[![Documentation](https://docs.rs/px2ansi-rs/badge.svg)](https://docs.rs/px2ansi-rs)
+[![Nix Flake](https://img.shields.io/badge/Nix_Flake-Geared-dddd00?logo=nixos&logoColor=white)](https://nixos.org/manual/nix/stable/command-ref/new-cli/nix3-flake.html)
+[![Nix](https://img.shields.io/badge/Nix-5277C3?style=flat&logo=nixos&logoColor=white)](https://nixos.org)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 `px2ansi-rs` is a high-fidelity terminal art engine and asset manager.
 
 It transforms images into terminal-native art using 10 rendering styles, from
-classic ANSI blocks to high-density Braille and Kanji.
-With built-in indexing and manifest support, it is designed to manage and
-display entire sprite libraries with the same ease as `pokemon-colorscripts`.
+classic ANSI blocks to high-density Braille and Kanji. With built-in indexing
+and manifest support, it is designed to manage and display entire sprite
+libraries with the same ease as `pokemon-colorscripts`.
 
 Inspired by the original [px2ansi](https://github.com/Nellousan/px2ansi)
 project, this is a complete reimplementation with indexing, fuzzy search, TUI
@@ -23,24 +29,66 @@ browsing, and advanced filters. It is approximately 25x faster.
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png" width="400" alt="Braille rendering example">
 </p>
 
+<details>
+<summary> NixOS Kanji </summary>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-kanji.png" width="400" alt="NixOS Kanji">
+</p>
+
+</details>
+
+<details>
+<summary> NixOS Chinese </summary>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-chinese.png" width="400" alt="NixOS Chinese">
+</p>
+
+</details>
+
 <a id="top"></a>
 
 ## Table of contents
 
+<details>
+<summary> Table Of Contents </summary>
 
 - [Features](#features)
+  - [Optional Features](#optional-features)
 - [Installation](#installation)
+  - [From Source](#from-source)
+  - [From crates.io](#from-crates.io)
 - [Quick reference](#quick-reference)
 - [Usage](#usage)
+  - [Convert an Image](#convert-an-image)
+    - [Save ANSI Output to a File](#save-ansi-output-to-a-file)
+    - [Unicode Mode](#unicode-mode)
+    - [Force width and filtering](#force-width-and-filtering)
+    - [ASCII with density control](#ascii-with-density-control)
+    - [Advanced Color Rendering](#advanced-color-rendering)
+    - [Image Rotation](#image-rotation)
+  - [Create an Index](#create-an-index)
+  - [Show by Name](#show-by-name)
+    - [Quick way with Fuzzy Matching](#quick-way-with-fuzzy-matching)
+    - [Interactive Search](#interactive-search)
 - [Configuration](#configuration)
 - [Shell completions](#shell-completions)
 - [Rendering styles](#rendering-styles)
 - [Performance and workflow](#performance--workflow)
+  - [Benchmarks](#-benchmarks)
+    - [Latency Metrics](#latency-metrics)
+  - [Testing with PokéSprite](testing-with-pokésprite)
 - [Rasterize output to PNG](#rasterize-output-to-png)
-- [Using the Library Only](#-using-px2ansi-as-a-library)
+  - [Choosing a Raster theme](#choosing-a-theme)
+  - [Using the Library Only](#-using-px2ansi-as-a-library)
 - [Project builds](#project-builds)
 - [Troubleshooting](#troubleshooting--errors)
+  - [Man Page Generation](#man-page-generation)
+  - [Similar Crates](#similar-crates)
 - [License](#license)
+
+</details>
 
 ---
 
@@ -48,7 +96,8 @@ browsing, and advanced filters. It is approximately 25x faster.
 
 - **Fuzzy search** — `show pika` → Pikachu.
 - **Interactive TUI** — `show -i` to browse sprites.
-- **Truecolor + transparency** — Full 24-bit RGB with alpha support.
+- **Truecolor + transparency** — Full 24-bit RGB with alpha support (Oklab
+  color space).
 - **Smart resize** — Auto-fits terminal width.
 - **Custom dimensions** — Use `--width` to adjust output size.
 - **5 filters** — `nearest` for pixel art through `lanczos3` for photos.
@@ -56,17 +105,20 @@ browsing, and advanced filters. It is approximately 25x faster.
   `dense`, `chinese`, `kanji`, and `sixel`.
 - **Embedded font rasterization** — `IosevkaCharonMono-Regular.ttf` is bundled
   for rasterization.
-- **Optional monochrome output** — Use `--no-color` to disable ANSI color
-  escapes (applies to ascii, fade, braille, kanji, and chinese modes).
+- **Optional monochrome output** — Use `--color-mode none` to disable ANSI
+  color escapes (applies to ascii, fade, braille, kanji, and chinese modes).
 - **ASCII density control** — Use `--density light|medium|heavy` to tune
   character ramp complexity.
 - Optionally rasterize ANSI output back into PNG (with selectable themes).
 - Optional Sixel output for terminals that support it.
-- Optional parallel execution (rayon).
+- **High-Performance Backend**: SIMD-accelerated pixel processing (wide) with
+  optional multi-core parallelism (rayon).
+- Optional dithering for supported styles and images.
+- Image rotation: You can spin the image, rotate the image, show a horizontal
+  mirror.
 
-`px2ansi-rs` is built on top of [`px2ansi`](https://crates.io/crates/px2ansi),
-a standalone Rust library that exposes the full rendering engine as a public
-API.
+`px2ansi-rs` is built on top of [`px2ansi`](https://crates.io/crates/px2ansi), a
+standalone Rust library that exposes the full rendering engine as a public API.
 
 ### Optional Features
 
@@ -80,13 +132,13 @@ cargo install px2ansi-rs --no-default-features
 # Sixel terminal output only
 cargo install px2ansi-rs --no-default-features --features sixel
 
-# Only enable parallel execution with rayon
-cargo install px2ansi-rs --no-default-features --features parallel
+# Only enable rayon and simd
+cargo install px2ansi-rs --no-default-features --features parallel simd
 
 # Only enable rasterization
 cargo install px2ansi-rs --no-default-features --features rasterize
 
-# Everything (full feature set)
+# Everything
 cargo install px2ansi-rs --features full
 ```
 
@@ -151,7 +203,7 @@ px2ansi-rs convert --help
 px2ansi-rs show --help
 ```
 
-### 1. Convert an image
+### Convert an image
 
 Basic conversion to stdout with automatic terminal sizing:
 
@@ -168,6 +220,8 @@ stdout:
 ```bash
 px2ansi-rs convert image.png --style braille --output out.txt
 ```
+
+[Back to TOC](#top)
 
 #### Unicode mode
 
@@ -188,6 +242,8 @@ For larger images, `lanczos3` usually looks better:
 ```bash
 px2ansi-rs convert tests/scream.png --filter lanczos3
 ```
+
+[Back to TOC](#top)
 
 #### Sixel
 
@@ -215,22 +271,119 @@ px2ansi-rs convert tests/test.png --style ascii --density heavy
 px2ansi-rs convert tests/test.png --style dense
 
 # Monochrome ASCII
-px2ansi-rs convert tests/test.png --style ascii --filter nearest --no-color
+px2ansi-rs convert tests/test.png --style ascii --filter nearest --color-mode none
+
+# Dithering
+px2ansi-rs convert tests/test.png --style ascii --filter nearest --color-mode 256 --dither
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii.png" width="400" alt="ASCII Pikachu example">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/pika-ascii2.png" width="400" alt="ASCII Pikachu example">
 </p>
 
-#### Disable color
+[Back to TOC](#top)
 
-Use `--no-color` on any conversion to strip ANSI color escapes:
+#### Advanced Color Rendering
 
-```bash
-px2ansi-rs convert image.png --style braille --no-color
+`px2ansi-rs` goes beyond simple ANSI escapes by prioritizing perceptual
+accuracy and terminal compatibility.
+
+**Perceptual Quantization with Oklab**
+
+When rendering in 256-color mode, mapping a 24-bit RGB pixel to a limited 8-bit
+palette often results in "muddy" colors or incorrect brightness if using standard Euclidean RGB distance.
+
+This uses the **Oklab color space** for color quantization. Unlike RGB, Oklab is
+perceptually uniform, meaning the numerical distance between two colors matches
+how the human eye perceives difference.
+
+- **Linear sRGB Conversion**: Raw u8 pixels are linearized using a high-
+  performance lookup table (LUT) to account for gamma correction.
+
+- **Perceptual Matching**: Colors are mapped to the xterm-256 palette by
+  minimizing Delta E in the Oklab space, ensuring that teals stay teal and
+  blues don't shift toward purple.
+
+**Color Modes**
+
+You can explicitly control the color depth using the `--color-mode` flag.
+
+| Mode | Description |
+|-------|--------|
+| `truecolor`| (Default) Uses 24-bit ANSI sequences (\x1b[38;2;R;G;Bm). Best for modern terminals (Alacritty, Kitty, iTerm2, etc.).|
+| `ansi256` | Quantizes images to the xterm-256 palette. Ideal for older terminal environments or a specific "retro" aesthetic. |
+| `none` | Disables all ANSI color codes. Useful for piping output to text files or monochrome displays. |
+
+**Intellegent Auto-Detection**
+
+By default, `px2ansi-rs` attempts to detect the best supported mode for your
+environment:
+
+1. Checks the `COLORTERM` environment variable for `truecolor` or `24bit`.
+
+2. Inspects `TERM` for `256color` compatibility.
+
+3. Respects the `NO_COLOR` standard: If the `NO_COLOR` environment variable is
+   set, all color output is automatically disabled.
+
+```rust
+# Force 256-color mode even if TrueColor is supported
+px2ansi-rs convert <image> --color-mode 256
+# Disable color for a monochrome ASCII look
+px2ansi-rs convert <image> --color-mode none
+
+# `color-mode` also works with `px2ansi-rs show`
+px2ansi-rs show <image> --color-mode ...
 ```
 
-### 2. Create an index
+> [!NOTE]
+> In standard RGB space, the distance between two colors is calculated using the
+> Pythagorean theorem. However, the human eye is significantly more sensitive
+> to variations in Green than in Blue. If you use raw RGB distance to pick the "closest" 256-color match for a specific
+> NixOS blue, the computer might pick a purple because, mathematically, the RGB
+> numbers are "closer," even though to a human, it looks completely wrong.
+
+**What is Perceptual Matching?**
+
+Perceptual matching is the process of converting colors into a Perceptually
+Uniform Color Space, like Oklab, before calculating which palette color to use.
+
+In a perceptually uniform space, a change of 0.1 in any direction (lightness,
+redness, or blueness) corresponds to the same perceived change in color to a
+human observer.
+
+---
+
+### Image Rotation
+
+```rust
+# z-axis canvas spin (unchanged behaviour)
+px2ansi-rs convert skull.png --rotate
+
+# Coin-flip on vertical axis — "sees the back"
+px2ansi-rs convert skull.png --rotate --axis y
+
+# Cartwheel on horizontal axis
+px2ansi-rs convert skull.png --rotate --axis x
+
+# Slower coin-flip
+px2ansi-rs show skull --rotate --axis y --fps 4
+
+# Static one-shot (axis flag ignored)
+px2ansi-rs convert skull.png --rotate 90
+
+# Unidirectional: always flips the same way
+px2ansi-rs convert skull.png --rotate --axis y --unidirectional
+
+# Z axis ignores --unidirectional (it's already one-directional)
+px2ansi-rs convert skull.png --rotate --axis z --unidirectional```
+```
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/output_1.gif" width="600" alt="px2ansi-rs demo">
+</p>
+
+### Create an index
 
 You can create a JSON manifest of a directory full of sprites:
 
@@ -241,7 +394,9 @@ px2ansi-rs index ./assets/sprites --output index.json
 If `--output` is omitted, the index path falls back to the configured default
 (or `index.json`).
 
-### 3. Show by name
+[Back to TOC](#top)
+
+### Show by name
 
 Once indexed, you can display an image by its name without needing the full
 path:
@@ -279,6 +434,8 @@ px2ansi-rs show bul
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/bul.png" style="max-width: 100%; height: auto;" width="400" alt="Bulbasaur search example">
 </p>
 
+[Back to TOC](#top)
+
 #### Interactive search
 
 If you want to browse visually, use interactive fuzzy search:
@@ -287,7 +444,7 @@ If you want to browse visually, use interactive fuzzy search:
 px2ansi-rs show -i
 ```
 
-### 4. List assets
+### List assets
 
 ```bash
 px2ansi-rs list
@@ -385,7 +542,7 @@ The defaults are:
 | Setting        | Default       |
 | -------------- | ------------- |
 | `style`        | `ansi`        |
-| `filter`       | `nearest`    |
+| `filter`       | `nearest`     |
 | `latency`      | `false`       |
 | `index`        | `index.json`  |
 | `raster_theme` | `tokyo-night` |
@@ -454,8 +611,8 @@ programs.zsh.initContent = ''
 | Sixel      | `--style sixel`      | Pixel-accurate Sixel protocol output       | Supported terminals only     |
 
 > [!NOTE]
-> `--style ascii` also supports `--density light|medium|heavy`. `--style dense`
-> is shorthand for `--style ascii --density heavy`.
+> `--style ascii` also supports `--density light|medium|heavy`.
+> `--style dense` is shorthand for `--style ascii --density heavy`.
 > `--style sixel` is basically a 1 to 1 conversion.
 
 By default, ANSI and Unicode modes use vertical packing to maximize resolution.
@@ -468,6 +625,172 @@ By default, ANSI and Unicode modes use vertical packing to maximize resolution.
 
 `px2ansi-rs` is designed for high-performance terminal environments and works
 best in a "build once, show many" workflow.
+
+### SIMD (`--features simd`)
+
+Enables SIMD-accelerated pixel processing for faster rendering of large images.
+
+```sh
+# Build with SIMD support
+cargo install px2ansi-rs --features simd
+
+# Or build locally
+cargo build --release --features simd
+```
+
+Most noticeable on large images with `--style ascii`, `--style fade`,
+`--style kanji`, or `--style chinese`. Half-block and Braille modes see less
+benefit.
+
+Requires a CPU with SSE2 (all x86_64) or NEON (ARM). The `wide` crate handles
+dispatch automatically. No manual configuration needed.
+
+### Sixel (`--features sixel`)
+
+Renders true pixel images in Sixel-compatible terminals (foot, WezTerm, iTerm2).
+
+```sh
+cargo install px2ansi-rs --features sixel
+px2ansi-rs convert image.png --style sixel
+```
+
+Falls back gracefully if the terminal does not support Sixel.
+
+### Combining Features
+
+```sh
+cargo build --release --features simd,sixel
+```
+
+<details>
+<summary> Testing against rascii_art and viu </summary>
+
+| File         | Pixels    | File size | Size/pixel        |
+| ------------ | --------- | --------- | ----------------- |
+| `nixos.png`  | 1,210,592 | 90KB      | 0.076 bytes/pixel |
+| `scream.png` | 636,300   | 588KB     | 0.924 bytes/pixel |
+
+`nixos.png` is 6.5x larger in pixels but 6.5x smaller on disk 
+
+`rascii` is a well-established and fast terminal art tool. These benchmarks are
+a genuine comparison against a solid baseline, not a strawman.
+
+| Image        | Dimensions | Tool                       | User(CPU) | Total(Mean | Improvement           | Runs |
+| ------------ | ---------- | -------------------------- | --------- | ---------- | --------------------- | ---- |
+| `scream.png` | 700x909    | `rascii --color`           | 6.1 ms    | 10.1 ms    | -                     | 198  |
+| `scream.png` | 700x909    | `px2ansi-rs --style ascii` | 4.6 ms    | 8.8 ms     | 1.3x faster CPU logic | 207  |
+| `nixos.png`  | 1183x1024  | `rascii --color`           | 4.6 ms    | 10.5 ms    | -                     | 193  |
+| `nixos.png`  | 1183x1024  | `px2ansi-rs --style ascii` | 2.2 ms    | 7.7 ms     | 2x faster CPU logic   | 215  |
+
+The actuall commands compared were `rascii <image> --color`, and
+`px2ansi-rs convert <image> --style ascii`
+
+## ⚡ Benchmarks
+
+Benchmarked against [`viu`](https://github.com/atanunq/viu): a fast,
+well-established terminal image viewer built on the same `viuer` backend that
+`px2ansi-rs` uses for Sixel output.
+
+All benchmarks run with `hyperfine --warmup 3` on the same machine. Images used:
+`nixos.png` (1183×1024) and `scream.png` (700×909).
+
+---
+
+### Half-block rendering (`--style ansi` vs `viu --blocks`)
+
+| Image        | `px2ansi-rs`        | `viu`            | Improvement (Total) | Winner          |
+| ------------ | ------------------- | ---------------- | ------------------- | --------------- |
+| `nixos.png`  | **8.5 ms** ± 0.7 ms | 18.6 ms ± 0.7 ms | 2.29x faster        | `px2ansi-rs` 🏆 |
+| `scream.png` | **9.3 ms** ± 0.4 ms | 15.4 ms ± 0.6 ms | 1.64x faster        | `px2ansi-rs` 🏆 |
+
+`px2ansi-rs` renders ANSI half-blocks **2.2× faster** than `viu` on large
+images. User CPU time is 2.2 ms vs 10.6 ms — a 4.8× reduction in actual compute,
+with the remainder being process startup and I/O.
+
+---
+
+### Sixel rendering (`--style sixel` vs `viu --static`)
+
+| Image        | `px2ansi-rs`     | `viu`                | Gap/Delta   | Winner           |
+| ------------ | ---------------- | -------------------- | ----------- | ---------------- |
+| `nixos.png`  | 17.7 ms ± 0.4 ms | **17.9 ms** ± 0.6 ms | +0.2 ms(🚀) | Tie/`px2ansi-rs` |
+| `scream.png` | 16.5 ms ± 0.8 ms | **15.4 ms** ± 0.6 ms | -0.7 ms     | `viu`            |
+
+Sixel encoding is CPU-bound inside the shared `viuer` encoder, both tools use
+the same underlying library. `px2ansi-rs` carries ~0.6–1.1 ms of additional
+overhead from process startup and image preparation before handing off to the
+encoder, putting it marginally behind `viu` in this mode.
+
+---
+
+### 🎨 Dithering (--dither)
+
+The `--dither` flag enables **Floyd-Steinberg error diffusion**. This technique
+approximates shades and gradients that aren't natively available in your
+current character set or color mode.
+
+**When to use it**
+
+Dithering is most useful when you are reducing the "color depth" of an image.
+It replaces solid blocks of characters with "stippled" patterns that trick the
+eye into seeing smoother transitions.
+
+| Scenario | Without Dithering | With Dithering |
+|---------| ----------|---------------|
+| Grayscale/ASCII| Harsh "banding" in shadows and skin tones| Smooth gradients; looks like a high-detail newspaper print.|
+| Flat Logos | Clean, solid colors. | Can look "noisy" or "grainy" (Usually better off)|
+| Photographs | Details can get lost in solid blocks of characters. | Retains "optical depth" and fine textures. |
+
+
+**Supported Styles & Modes**
+
+- **Grayscale** (`--color-mode none`): Highly Recommended. This is where
+  dithering shines. It uses the density of your characters (e.g., `@%#*+=-:. `)
+  to simulate shades of gray.
+
+- **Color-Preserving**: Even in color modes, `px2ansi-rs` uses a
+  Luminance-Remapped Dither. It calculates the dither map to determine
+  brightness and then scales the original RGB values to match, preserving the
+  "hue" of your image while adding high-frequency detail.
+
+**Usage Example**
+
+```bash
+# Convert a portrait to high-detail grayscale ASCII
+px2ansi-rs convert face.jpg --style ascii --color-mode none --dither
+
+# Enhance a colored landscape with a dithered "sparkle"
+px2ansi-rs convert view.png --style unicode --dither
+```
+
+Braille Style: Works well to create a "halftone" effect using the high-density dots of the Braille character set.
+
+### Pure compute (`> /dev/null`, `nixos.png`)
+
+Redirecting output to `/dev/null` removes terminal rendering latency and
+isolates raw encode time:
+
+| Mode        | `px2ansi-rs`             | `viu`                 | Speedup       |
+| ----------- | ------------------------ | --------------------- | ------------- |
+| Half-blocks | **10.4 ms** (2.5 ms CPU) | 20.4 ms (10.8 ms CPU) | **2× faster** |
+| Sixel       | 21.5 ms (8.7 ms CPU)     | 20.7 ms (10.8 ms CPU) | ~equal        |
+
+---
+
+### Summary
+
+```
+px2ansi-rs --style ansi is the fastest benchmark overall:
+  2.18× faster than viu --blocks  (nixos.png)
+  1.80× faster than viu --blocks  (scream.png)
+  ~equal to viu --static          (both images, Sixel)
+```
+
+> Sixel parity with `viu` is expected, both delegate encoding to the same
+> `viuer` library. The ANSI/half-block gap reflects `px2ansi-rs`'s
+> SIMD-accelerated luma scan and color deduplication reducing CPU work by ~4×.
+
+</details>
 
 ### The indexing advantage
 
@@ -501,15 +824,15 @@ px2ansi-rs show random -l
 
 ## Rasterize output to PNG
 
-Use `--output-image` (`-O`) to convert terminal escape codes into a `.png`
-file. This requires the `rasterize` feature (enabled by default).
+Use `--output-image` (`-O`) to convert terminal escape codes into a `.png` file.
+This requires the `rasterize` feature (enabled by default).
 
 ```bash
 px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image nixos-rasterized.png
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/px-rasterize.png" width="300" alt="Rasterized output example">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-rasterized.png" width="300" alt="Rasterized output example">
 </p>
 
 > [!NOTE]
@@ -531,8 +854,8 @@ px2ansi-rs convert input.png -O output.png --raster-theme dracula
 px2ansi-rs convert input.png -O output.png --raster-theme nord
 ```
 
-**Available themes:** `tokyo-night` (default), `dracula`, `nord`, `gruvbox-dark`,
-`one-dark`, `solarized-dark`, `black`, `white`
+**Available themes:** `tokyo-night` (default), `dracula`, `nord`,
+`gruvbox-dark`, `one-dark`, `solarized-dark`, `black`, `white`
 
 You can also set a default theme in your config file:
 
@@ -540,9 +863,9 @@ You can also set a default theme in your config file:
 raster_theme = "gruvbox-dark"
 ```
 
-> [!NOTE]
-> If the `rasterize` feature is not compiled in, using `--output-image` will
-> produce an error asking you to rebuild with the feature enabled.
+> [!WARNING]
+> If the `rasterize` feature is not compiled in, using `--output-image`
+> will produce an error asking you to rebuild with the feature enabled.
 
 [Back to TOC](#top)
 
@@ -555,10 +878,9 @@ If you want to check out the `px2ansi` library, see [px2ansi](../lib)
 > **Note on Project Structure**: This project is organized as a Cargo Workspace:
 >
 > - `px2ansi` (the library): Contains the pure rendering logic, math, and
-> character sets.
->
+>   character sets.
 > - `px2ansi-rs` (the CLI): A frontend wrapper that handles terminal flags,
-> config files, and user interaction.
+>   config files, and user interaction.
 
 This separation ensures the library remains fast, minimal, and easy to embed in
 other projects without pulling in unnecessary CLI dependencies.
@@ -598,41 +920,46 @@ other projects without pulling in unnecessary CLI dependencies.
 
 ### 📖 Man Page Generation
 
-The project includes a utility to generate manual pages for the primary CLI and all subcommands (like build-index) using clap_mangen.
+The project includes a utility to generate manual pages for the primary CLI and
+all subcommands using `clap_mangen`.
 
 **Generating the files**
-To generate the `.1` roff files, run the included `generate-manpage` binary:
 
 ```bash
 cargo run --bin generate-manpage
-# Or once px2ansi-rs is installed simply:
-generate-manpage
 ```
 
-This will create a `man/` directory in your project root containing:
+This will create a `man/` directory containing:
 
 - `px2ansi-rs.1` (Main interface)
-
 - `px2ansi-rs-build-index.1` (Subcommand specific)
 
 **Viewing and Installation**
-You can preview the generated pages without installing them:
 
 ```bash
+# Preview without installing
 man ./man/px2ansi-rs.1
-```
 
-To make them available system-wide (on most Linux distributions):
-
-```bash
-# Copy to your local manpath
+# Install system-wide (Linux)
 sudo cp man/*.1 /usr/local/share/man/man1/
-
-# Update the man database
 sudo mandb
 ```
 
 ---
+
+## Similar crates
+
+- [rascii_art](https://crates.io/crates/rascii_art): A well-structured, readable
+  implementation. Comparing px2ansi-rs with rascii_art was especially helpful
+  for spotting and fixing aspect-ratio issues in my own rendering logic, and it
+  also gave me ideas for additional charsets.
+
+- [ansimage](https://crates.io/crates/ansimage): Haven't had a chance to test
+  this yet.
+
+- [ansizalizer](https://github.com/Zebbeni/ansizalizer): A feature-rich TUI
+  built with Ansipx and Bubble Tea (Go). It looks polished and could point
+  toward a compelling future direction for this project.
 
 ## License
 
