@@ -290,7 +290,11 @@ pub fn run_spin_loop<W: Write>(
     unidirectional: bool,
     writer: &mut W,
 ) -> Result<()> {
-    const CLEAR: &[u8] = b"\x1b[2J\x1b[H";
+    const HIDE_CURSOR: &[u8] = b"\x1b[?25l";
+    // const SHOW_CURSOR: &[u8] = b"\x1b[?25h";
+    const GOTO_HOME: &[u8] = b"\x1b[H";
+    const CLEAR_SCREEN: &[u8] = b"\x1b[2J";
+    // const CLEAR: &[u8] = b"\x1b[2J\x1b[H";
     let delay = Duration::from_millis(1000 / u64::from(fps.max(1)));
 
     let frames = match axis {
@@ -300,7 +304,7 @@ pub fn run_spin_loop<W: Write>(
     };
 
     // Pre-render all frames to ANSI byte buffers.
-    // With the `parallel` feature, all frames are rendered concurrently —
+    // With the `parallel` feature, all frames are rendered concurrently
     // on a typical machine this cuts the startup delay from ~32x single-frame
     // time down to ~(32 / num_cpus)x.
     let buffers: Vec<Vec<u8>> = {
@@ -330,46 +334,20 @@ pub fn run_spin_loop<W: Write>(
         }
     };
 
+    // 2. Initial Clear
+    writer.write_all(CLEAR_SCREEN)?;
+    writer.write_all(HIDE_CURSOR)?;
+
     loop {
         for buf in &buffers {
-            writer.write_all(CLEAR)?;
+            // 3. Move cursor to top
+            writer.write_all(GOTO_HOME)?;
             writer.write_all(buf)?;
+
+            // 4. Force everything to the terminal
             writer.flush()?;
             thread::sleep(delay);
         }
     }
+    // writer.write_all(SHOW_CURSOR)?;
 }
-// pub fn run_spin_loop<W: Write>(
-//     img: &DynamicImage,
-//     render: &RenderOptions,
-//     fps: u8,
-//     axis: RotateAxis,
-//     unidirectional: bool,
-//     writer: &mut W,
-// ) -> Result<()> {
-//     const CLEAR: &[u8] = b"\x1b[2J\x1b[H";
-//     let delay = Duration::from_millis(1000 / u64::from(fps.max(1)));
-
-//     let frames = match axis {
-//         RotateAxis::Z => generate_zaxis_frames(img),
-//         axis if unidirectional => generate_unidirectional_frames(img, axis),
-//         axis => generate_pingpong_frames(img, axis),
-//     };
-
-//     // Pre-render every frame to an ANSI byte buffer once.
-//     let mut buffers: Vec<Vec<u8>> = Vec::with_capacity(frames.len());
-//     for frame in &frames {
-//         let mut buf = Vec::with_capacity(frame.width() as usize * frame.height() as usize * 2);
-//         render.render_centered(frame, &mut buf)?;
-//         buffers.push(buf);
-//     }
-
-//     loop {
-//         for buf in &buffers {
-//             writer.write_all(CLEAR)?;
-//             writer.write_all(buf)?;
-//             writer.flush()?;
-//             thread::sleep(delay);
-//         }
-//     }
-// }
