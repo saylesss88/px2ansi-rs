@@ -335,7 +335,7 @@ environment:
 3. Respects the `NO_COLOR` standard: If the `NO_COLOR` environment variable is
    set, all color output is automatically disabled.
 
-```rust
+```bash
 # Force 256-color mode even if TrueColor is supported
 px2ansi-rs convert <image> --color-mode 256
 # Disable color for a monochrome ASCII look
@@ -365,7 +365,7 @@ human observer.
 
 ### Image Rotation
 
-```rust
+```bash
 # z-axis canvas spin
 px2ansi-rs convert skull.png --rotate
 
@@ -576,7 +576,7 @@ The defaults are:
 ## Shell completions
 
 `px2ansi-rs` can generate completion scripts for Bash, Zsh, Fish, and
-PowerShell.
+`PowerShell`.
 
 ### Quick setup
 
@@ -663,12 +663,12 @@ Most noticeable on large images with `--style ascii`, `--style fade`,
 `--style kanji`, or `--style chinese`. Half-block and Braille modes see less
 benefit.
 
-Requires a CPU with SSE2 (all x86_64) or NEON (ARM). The `wide` crate handles
+Requires a CPU with SSE2 (all `x86_64`) or NEON (ARM). The `wide` crate handles
 dispatch automatically. No manual configuration needed.
 
 ### Sixel (`--features sixel`)
 
-Renders true pixel images in Sixel-compatible terminals (foot, WezTerm, iTerm2).
+Renders true pixel images in Sixel-compatible terminals (`foot`, `WezTerm`, `iTerm2`, `GhosTTY`).
 
 ```sh
 cargo install px2ansi-rs --features sixel
@@ -684,7 +684,7 @@ cargo build --release --features simd,sixel
 ```
 
 <details>
-<summary> Testing against rascii_art and viu </summary>
+<summary> Testing with `rascii_art` and viu </summary>
 
 | File         | Pixels    | File size | Size/pixel        |
 | ------------ | --------- | --------- | ----------------- |
@@ -800,7 +800,7 @@ isolates raw encode time:
 
 ### Summary
 
-```
+```text
 px2ansi-rs --style ansi is the fastest benchmark overall:
   2.18× faster than viu --blocks  (nixos.png)
   1.80× faster than viu --blocks  (scream.png)
@@ -971,9 +971,9 @@ sudo mandb
 ## Similar crates
 
 - [rascii_art](https://crates.io/crates/rascii_art): A well-structured, readable
-  implementation. Comparing px2ansi-rs with rascii_art was especially helpful
-  for spotting and fixing aspect-ratio issues in my own rendering logic, and it
-  also gave me ideas for additional charsets.
+  implementation. Comparing `px2ansi-rs` with `rascii_art` was especially
+  helpful for spotting and fixing aspect-ratio issues in my own rendering logic,
+  and it also gave me ideas for additional charsets.
 
 - [ansimage](https://crates.io/crates/ansimage): Haven't had a chance to test
   this yet.

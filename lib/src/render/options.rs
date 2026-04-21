@@ -57,7 +57,7 @@ impl From<RenderStylePreset> for RenderOptions {
 /// A builder for constructing [`RenderOptions`] with a fluent interface.
 ///
 /// This allows for optional overrides on top of a [`RenderStylePreset`].
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct RenderOptionsBuilder {
     preset: Option<RenderStylePreset>,
     density: Option<Density>,

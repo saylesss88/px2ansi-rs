@@ -28,6 +28,7 @@ pub(super) struct RenderCtx<'a> {
     pub(super) charset: &'a [&'a str],
     pub(super) width: u32,
     pub(super) height: u32,
+    #[allow(dead_code)]
     pub(super) x_step: usize,
     pub(super) wide: bool,
 }

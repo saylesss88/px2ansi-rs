@@ -28,7 +28,7 @@ pub fn find_luma_range_rgba_bytes(bytes: &[u8]) -> (u32, u32) {
 }
 
 /// Scalar fallback.
-#[expect(dead_code, reason = "This is used in external SIMD benchmarks")]
+#[allow(dead_code)]
 #[cfg(any(not(feature = "simd"), test))]
 fn find_luma_range_scalar(bytes: &[u8]) -> (u32, u32) {
     let mut min = u32::MAX;

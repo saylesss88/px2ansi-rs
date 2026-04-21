@@ -1,4 +1,4 @@
-#![doc = include_str!("../README.md")]
+#![doc = include_str!("../../README.md")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 //! # px2ansi
 //!
@@ -67,7 +67,7 @@ pub use crate::{
     },
 };
 
-// ── Rasterization re-exports (feature = "rasterize") ───────���────────────────
+// ── Rasterization re-exports (feature = "rasterize") ───────────────────────
 #[cfg(feature = "rasterize")]
 #[cfg_attr(docsrs, doc(cfg(feature = "rasterize")))]
 pub use crate::{

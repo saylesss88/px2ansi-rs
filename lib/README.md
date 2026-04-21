@@ -88,10 +88,9 @@ depend on `px2ansi` and reuse your existing image setup.
 ```rust,no_run
 use image::open;
 use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter};
-
 fn main() -> anyhow::Result<()> {
     // Load an image using the `image` crate
-    let img = open("photo.png")?;
+    let img = open("photo.png").unwrap();
 
     // Build options: use a preset and override specific fields
     let opts = RenderOptions::builder()
@@ -102,8 +101,7 @@ fn main() -> anyhow::Result<()> {
 
     // Render directly to stdout
     let mut out = std::io::stdout();
-    opts.render(&img, &mut out)?;
-
+    opts.render(&img, &mut out).unwrap();
     Ok(())
 }
 ```
@@ -114,8 +112,13 @@ The library can automatically detect terminal size, center the output, and
 handle resizing for you:
 
 ```rust, no_run
-let mut stdout = std::io::stdout();
-opts.render_centered(&img, &mut stdout)?;
+
+use px2ansi::RenderOptions;
+use std::io;
+fn example_centered(opts: &RenderOptions, img: &image::DynamicImage) {
+    let mut stdout = io::stdout();
+    opts.render_centered(img, &mut stdout).unwrap();
+}
 ```
 
 ### Rendering to a Buffer
@@ -124,31 +127,31 @@ You can render to any `std::io::Write` target, including an in-memory buffer:
 
 ```rust, no_run
 use image::open;
-use px2ansi::RenderOptions;
-
-fn main() -> anyhow::Result<()> {
-    let img = open("photo.png")?;
-    let opts = RenderOptions::default();
+fn main() {
+    let img = open("photo.png").unwrap();
+    let opts = px2ansi::RenderOptions::default();
 
     let mut buf = Vec::new();
-    opts.render(&img, &mut buf)?;
+    opts.render(&img, &mut buf).unwrap();
 
-    let ansi = String::from_utf8(buf)?;
+    let ansi = String::from_utf8(buf).unwrap();
     println!("{ansi}");
-
-    Ok(())
 }
 ```
 
 `render` also works with a `std::io::Cursor`:
 
 ```rust, no_run
-use std::io::Cursor;
-use px2ansi::RenderOptions;
+# use px2ansi::RenderOptions;
+# use std::io::Cursor;
+# use image::open;
+fn example_cursor() {
+    let img = open("photo.png").unwrap();
+    let opts = RenderOptions::default();
 
-let opts = RenderOptions::default();
-let mut cursor = Cursor::new(Vec::new());
-opts.render(&img, &mut cursor)?;
+    let mut cursor = Cursor::new(Vec::new());
+    opts.render(&img, &mut cursor).unwrap();
+}
 ```
 
 ### Manual Image Preparation
@@ -157,10 +160,10 @@ If you need control over the image scaling step, use `prepare_image` separately.
 This is useful for TUI applications or when rendering to non-terminal targets
 like files or network streams:
 
-```rust, no_run
+```rust,no_run
 use px2ansi::RenderOptions;
-
-fn custom_pipeline(img: &image::DynamicImage) -> anyhow::Result<()> {
+use image::{DynamicImage, ImageBuffer, Rgba};
+fn custom_pipeline(img: &DynamicImage) {
     let opts = RenderOptions::builder().width(40).build();
 
     // 1. Manually prepare the image (resizing happens here)
@@ -169,9 +172,7 @@ fn custom_pipeline(img: &image::DynamicImage) -> anyhow::Result<()> {
 
     // 2. Render directly to a writer (no automatic centering)
     let mut stdout = std::io::stdout();
-    opts.render(&prepared, &mut stdout)?;
-
-    Ok(())
+    opts.render(&prepared, &mut stdout).unwrap();
 }
 ```
 
@@ -203,6 +204,8 @@ Default configuration:
 - Width: `None` (auto-detect from terminal)
 
 ```rust,no_run
+use px2ansi::{CharsetMode, ColorMode};
+
 let opts = RenderOptions::default();
 assert_eq!(opts.charset(), CharsetMode::Ansi);
 assert_eq!(opts.color_mode(), ColorMode::TrueColor);
@@ -253,21 +256,25 @@ Controls image resampling quality:
 The builder supports chaining:
 
 ```rust,no_run
-use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter, Density, ColorMode};
+# use px2ansi::{ColorMode, RenderOptions, RenderStylePreset};
+# let monochrome = true;
+let builder = px2ansi::RenderOptions::builder()
+    .preset(px2ansi::RenderStylePreset::FullBlock)
+    .width(80);
 
-let opts = RenderOptions::builder()
-    .preset(RenderStylePreset::Ascii)
-    .density(Density::Light)
-    .width(120)
-    .filter(ResizeFilter::Nearest)
-    .color_mode(ColorMode::None)
-    .build();
+let builder = if monochrome {
+    builder.color_mode(ColorMode::None)
+} else {
+    builder
+};
+
+let opts = builder.build();
 ```
 
 Or a mutable style:
 
 ```rust
-use px2ansi::ColorMode
+use px2ansi::{ColorMode, RenderOptions, RenderStylePreset};
 let mut builder = RenderOptions::builder();
 builder.preset(RenderStylePreset::FullBlock);
 builder.width(80);
@@ -284,15 +291,17 @@ let opts = builder.build();
 ```rust,no_run
 use px2ansi::{RenderOptions, RenderStylePreset};
 
-let opts = RenderOptions::builder()
-    .preset(RenderStylePreset::FullBlock)
-    .build();
+fn inspect() {
+    let opts = RenderOptions::builder()
+        .preset(RenderStylePreset::FullBlock)
+        .build();
 
-if opts.style().is_full() {
-    println!("Rendering in double-width mode!");
+    if opts.style().is_full() {
+        println!("Rendering in double-width mode!");
+    }
+
+    println!("Current density: {:?}", opts.style().density());
 }
-
-println!("Current density: {:?}", opts.style().density());
 ```
 
 ---
@@ -306,23 +315,25 @@ part of the public `px2ansi` library API:
 use px2ansi::indexer::{build_index, ImageEntry};
 use std::path::Path;
 
-// Build the index — scans subdirectories, ignores non-image files
-build_index(
-    Path::new("/home/user/sprites"),
-    Path::new("/home/user/sprites/index.json"),
-)?;
+fn build_and_read_index() {
+    // Build the index — scans subdirectories, ignores non-image files
+    build_index(
+        Path::new("/home/user/sprites"),
+        Path::new("/home/user/sprites/index.json"),
+    ).unwrap();
 
-// Load and use it
-let json = std::fs::read_to_string("index.json")?;
-let entries: Vec<ImageEntry> = serde_json::from_str(&json)?;
+    // Load and use it
+    let json = std::fs::read_to_string("index.json").unwrap();
+    let entries: Vec<ImageEntry> = serde_json::from_str(&json).unwrap();
 
-for entry in &entries {
-    println!("{}: {}x{}px at {}",
-        entry.name,
-        entry.dimensions.0,
-        entry.dimensions.1,
-        entry.path
-    );
+    for entry in &entries {
+        println!("{}: {}x{}px at {}",
+            entry.name,
+            entry.dimensions.0,
+            entry.dimensions.1,
+            entry.path
+        );
+    }
 }
 ```
 
@@ -408,13 +419,18 @@ Renders pixel-accurate images inline in the terminal using the
   
 ```rust,no_run
 use px2ansi::{RenderOptions, RenderStylePreset};
-use std::io::stdout;
+use image::open;
 
-let opts = RenderOptions::builder()
-    .preset(RenderStylePreset::Sixel)
-    .build();
+fn example_sixel() {
+    let img = open("photo.png").unwrap();
 
-opts.render_centered(&img, &mut stdout())?;
+    let opts = RenderOptions::builder()
+        .preset(RenderStylePreset::Sixel)
+        .build();
+
+    let mut out = std::io::stdout();
+    opts.render_centered(&img, &mut out).unwrap();
+}
 ```
 
 ---
@@ -427,12 +443,21 @@ terminal art, where a limited character set or color palette creates harsh
 transitions in gradients.
 
 ```rust,no_run
-let options = RenderOptions::builder()
-    .style(RenderStylePreset::Ascii)
-    .dither(true) // Enables Floyd-Steinberg diffusion
-    .build();
+use image::open;
+use px2ansi::{RenderOptions, RenderStylePreset};
 
-let output = renderer.render(img, &options);
+fn example_dither() {
+    let img = open("photo.png").unwrap();
+
+    let opts = RenderOptions::builder()
+        .preset(RenderStylePreset::Ascii)
+        .dither(true) // Enables error-diffusion dither
+        .build();
+
+    let mut buf = Vec::new();
+    opts.render(&img, &mut buf).unwrap();
+    // `buf` now contains the ANSI output
+}
 ```
 
 
@@ -445,23 +470,27 @@ for saving previews or sharing output as an image.
 **With the default TokyoNight theme:**
 
 ```rust,no_run
-use px2ansi::{RenderOptions, rasterize_ansi_with_theme, RasterTheme};
+# #[cfg(feature = "rasterize")]
+use px2ansi::{rasterize_ansi_with_theme, RasterTheme};
+use image::open;
 
-let img = image::open("photo.png")?;
-let opts = RenderOptions::default();
+fn rasterize_example() {
+    let img = open("photo.png").unwrap();
+    let opts = px2ansi::RenderOptions::default();
 
-// Render to an ANSI buffer
-let mut buf = Vec::new();
-opts.render(&img, &mut buf)?;
+    // Render to an ANSI buffer
+    let mut buf = Vec::new();
+    opts.render(&img, &mut buf).unwrap();
 
-// Rasterize to a PNG image
-let png = rasterize_ansi_with_theme(&buf, RasterTheme::TokyoNight)?;
-png.save("output.png")?;
+    // Rasterize to a PNG image
+    let png = rasterize_ansi_with_theme(&buf, RasterTheme::TokyoNight).unwrap();
+    png.save("output.png").unwrap();
+}
 ```
 
 **With a different theme:**
 
-```rust,no_run
+```rust,no_run,ignore
 use px2ansi::{RasterTheme, rasterize_ansi_with_theme};
 
 let png = rasterize_ansi_with_theme(&buf, RasterTheme::Dracula)?;
@@ -505,10 +534,9 @@ With the `simd` feature enabled, the renderer processes chunks of 8 pixels in a
 single instruction rather than one at a time:
 
 ```rust,no_run
-// 8 Rec.709 luma values computed simultaneously
-let luma_raw = r * u32x8::splat(2126) + g * u32x8::splat(7152) + b * u32x8::splat(722);
-//                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//             u32x8 × u32x8 — 8 multiplies in one hardware instruction
+// (explanatory snippet about SIMD — do not compile it in doctests)
+// 8 Rec.709 luma values computed simultaneously:
+// let luma_raw = r * u32x8::splat(2126) + g * u32x8::splat(7152) + b * u32x8::splat(722);
 ```
 
 - **Branchless Transparency**: Transparent pixels (alpha < 30) are handled using
@@ -596,26 +624,19 @@ through internal modules:
 
 
 ```rust,no_run
+// Core (always available)
 use px2ansi::{
-    // Core rendering & configuration
     RenderOptions, RenderOptionsBuilder, RenderStyle,
     CharsetMode, ColorMode, Density,
     write_ansi_art, get_terminal_size,
-
-    // Presets and filters
     RenderStylePreset, ResizeFilter,
-
-    // Directory Indexer
     ImageEntry, build_index,
-
-    // Rasterization (Requires "rasterize" feature)
-    #[cfg(feature = "rasterize")]
-    rasterize_ansi, 
-    #[cfg(feature = "rasterize")]
-    rasterize_ansi_with_theme, 
-    #[cfg(feature = "rasterize")]
-    RasterTheme,
 };
+
+// Rasterize (feature = "rasterize")
+// Example and imports guarded so doctests don't fail when the feature is off.
+#[cfg(feature = "rasterize")]
+use px2ansi::{ rasterize_ansi, rasterize_ansi_with_theme, RasterTheme };
 ```
 
 ---

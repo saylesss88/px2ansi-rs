@@ -22,16 +22,16 @@ use px2ansi::{ColorMode, Density, RenderOptions, ResizeFilter};
 /// use px2ansi::RenderStylePreset;
 ///
 /// // Width is passed through
-/// let opts = build_render_options(None, None, Some(80), None, false);
+/// let opts = build_render_options(None, None, Some(80), None, None, false);
 /// assert_eq!(opts.width(), Some(80));
 ///
 /// // No-op when all None/false
-/// let opts = build_render_options(None, None, None, None, false);
+/// let opts = build_render_options(None, None, None, None, None, false);
 /// assert_eq!(opts.width(), None);
 /// assert!(opts.color()); // color is on by default
 ///
 /// // no_color disables color
-/// let opts = build_render_options(None, None, None, None, true);
+/// let opts = build_render_options(None, None, None, None, None, true);
 /// assert!(!opts.color());
 /// ```
 #[must_use]

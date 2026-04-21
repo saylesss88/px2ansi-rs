@@ -109,7 +109,6 @@ mod tests {
     #[test]
     fn build_render_options_applies_overrides_and_no_color() {
         let opts = build_render_options(None, None, Some(80), None, None, false);
-        // let opts = build_render_options(None, None, Some(80), None, true, None);
         assert_eq!(opts.width(), Some(80));
         assert_eq!(opts.color_mode(), ColorMode::None);
 

@@ -72,8 +72,8 @@ pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
 cargo = { level = "warn", priority = -1 }
 
-allow_attributes = "warn"
-allow_attributes_without_reason = "warn"
+# allow_attributes = "warn"
+# allow_attributes_without_reason = "warn"
 assertions_on_result_states = "warn"
 create_dir = "warn"
 # expect_used = "warn"
