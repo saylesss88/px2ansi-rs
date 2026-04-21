@@ -1,3 +1,5 @@
+use crate::RotateMode;
+use crate::rotate::{apply_static, run_spin_loop};
 use anyhow::Result;
 use colored::Colorize;
 use fuzzy_matcher::FuzzyMatcher;
@@ -14,6 +16,7 @@ pub struct ShowCmd {
     pub index_path: PathBuf,
     pub render: RenderOptions,
     pub interactive: bool,
+    pub rotate: Option<RotateMode>,
 }
 
 impl ShowCmd {
@@ -48,6 +51,18 @@ impl ShowCmd {
                     println!("Showing: {}", e.name.cyan().bold());
                 }
                 let img = image::open(&e.path)?;
+
+                // Spin mode — loops forever until Ctrl-C
+                if let Some(RotateMode::Spin { fps }) = self.rotate {
+                    return run_spin_loop(&img, &self.render, fps, writer);
+                }
+
+                // Static rotation
+                let img = match self.rotate {
+                    Some(RotateMode::Static(deg)) => apply_static(img, deg),
+                    _ => img,
+                };
+
                 self.render.render_centered(&img, writer)?;
             }
             None => {

@@ -90,11 +90,15 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             dither,
             raster_theme,
             color_mode,
+            rotate,
+            fps,
         } => {
             let render_opts =
                 render::build_render_options(style, density, width, filter, color_mode, dither);
 
             let output_image = output_image.or_else(|| cfg.output_image.as_ref().map(Into::into));
+
+            let rotate = px2ansi_rs::rotate::parse_rotate(rotate, fps)?;
 
             Ok(Command::Convert(ConvertCmd {
                 input,
@@ -102,6 +106,7 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
                 output_image,
                 render: render_opts,
                 raster_theme: raster_theme.unwrap_or(cfg.raster_theme),
+                rotate,
             }))
         }
         Commands::Index { dir, output } => {
@@ -120,15 +125,20 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             density,
             dither,
             color_mode,
+            rotate,
+            fps,
         } => {
             let render_opts =
                 render::build_render_options(style, density, None, filter, color_mode, dither);
+
+            let rotate = px2ansi_rs::rotate::parse_rotate(rotate, fps)?;
 
             Ok(Command::Show(ShowCmd {
                 name,
                 index_path: opts.index_path.clone(),
                 render: render_opts,
                 interactive,
+                rotate,
             }))
         }
         Commands::Completions { .. } => unreachable!(),

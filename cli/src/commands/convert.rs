@@ -1,3 +1,4 @@
+use crate::rotate::{RotateMode, apply_static, run_spin_loop};
 use anyhow::Result;
 use px2ansi::{RasterTheme, RenderOptions};
 use std::io::Write;
@@ -15,6 +16,8 @@ pub struct ConvertCmd {
     /// Visual settings (width, filter, style).
     pub render: RenderOptions,
     pub raster_theme: RasterTheme,
+    /// Optional rotation mode derived from `--rotate` / `--fps`.
+    pub rotate: Option<RotateMode>,
 }
 
 impl ConvertCmd {
@@ -28,14 +31,25 @@ impl ConvertCmd {
         // 1. Load and decode
         let img = image::ImageReader::open(&self.input)?.decode()?;
 
-        // 2. Setup the file writer if needed
+        // 2. Handle spin mode early — it never returns, so we branch out here.
+        if let Some(RotateMode::Spin { fps }) = self.rotate {
+            return run_spin_loop(&img, &self.render, fps, external_writer);
+        }
+
+        // 3. Apply static rotation if requested.
+        let img = match self.rotate {
+            Some(RotateMode::Static(deg)) => apply_static(img, deg),
+            _ => img,
+        };
+
+        // 3. Setup the file writer if needed
         let mut file_writer = self
             .output
             .as_ref()
             .map(|path| std::fs::File::create(path).map(std::io::BufWriter::new))
             .transpose()?;
 
-        // 3. Render and Rasterize logic
+        // 4. Render and Rasterize logic
         #[cfg(feature = "rasterize")]
         if let Some(png_path) = self.output_image.as_ref() {
             // Buffer is required for PNG rasterization

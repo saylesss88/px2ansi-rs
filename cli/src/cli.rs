@@ -85,6 +85,26 @@ pub enum Commands {
         /// Background theme for rasterized PNG output
         #[arg(long, value_enum, default_value = "tokyo-night")]
         raster_theme: Option<RasterTheme>,
+
+        /// Rotate the image. Omit a value to animate a continuous 360° spin;
+        /// provide 90, 180, or 270 for a one-shot static rotation.
+        ///
+        /// Examples:
+        ///   --rotate          (spin forever)
+        ///   --rotate 90       (rotate 90° and render once)
+        ///   --rotate 270      (rotate 270° and render once)
+        #[arg(
+            long,
+            num_args = 0..=1,
+            default_missing_value = "0",
+            value_name = "DEGREES",
+            require_equals = false
+        )]
+        rotate: Option<u16>,
+
+        /// Frames per second for the --rotate spin animation (default: 8)
+        #[arg(long, default_value = "8", value_name = "FPS")]
+        fps: u8,
     },
     /// Create a JSON index of a directory
     Index {
@@ -123,6 +143,26 @@ pub enum Commands {
 
         #[arg(short = 'i', long)]
         interactive: bool,
+
+        /// Rotate the image. Omit a value to animate a continuous 360° spin;
+        /// provide 90, 180, or 270 for a one-shot static rotation.
+        ///
+        /// Examples:
+        ///   --rotate          (spin forever)
+        ///   --rotate 90       (rotate 90° and render once)
+        ///   --rotate 270      (rotate 270° and render once)
+        #[arg(
+            long,
+            num_args = 0..=1,
+            default_missing_value = "0",
+            value_name = "DEGREES",
+            require_equals = false
+        )]
+        rotate: Option<u16>,
+
+        /// Frames per second for the --rotate spin animation (default: 8)
+        #[arg(long, default_value = "8", value_name = "FPS")]
+        fps: u8,
     },
     /// List entries in the index
     List {
