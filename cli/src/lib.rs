@@ -40,9 +40,10 @@ mod tests {
     use super::*;
     use crate::config::Config;
     use clap::Parser;
-    use px2ansi::{CharsetMode, Density, RenderStylePreset, ResizeFilter};
+    use px2ansi::{CharsetMode, ColorMode, Density, RenderStylePreset, ResizeFilter};
     use std::path::PathBuf;
 
+    type TestResult = Result<(), Box<dyn std::error::Error>>;
     // --- ResolvedOptions ---
 
     #[test]
@@ -104,14 +105,14 @@ mod tests {
 
     #[test]
     fn build_render_options_applies_overrides_and_no_color() {
-        let opts = build_render_options(None, None, Some(80), None, true);
+        let opts = build_render_options(None, None, Some(80), None, None, false);
         // let opts = build_render_options(None, None, Some(80), None, true, None);
         assert_eq!(opts.width(), Some(80));
-        assert!(!opts.color());
+        assert_eq!(opts.color_mode(), ColorMode::None);
 
-        let opts2 = build_render_options(None, None, None, None, false, None);
+        let opts2 = build_render_options(None, None, None, None, None, false);
         assert_eq!(opts2.width(), None);
-        assert!(opts2.color());
+        assert_eq!(opts2.color_mode(), ColorMode::None);
     }
 
     #[test]
@@ -121,8 +122,8 @@ mod tests {
             None,
             None,
             None,
-            // false,
             None,
+            false,
         );
         assert_eq!(opts.charset(), CharsetMode::Braille);
     }
@@ -134,8 +135,8 @@ mod tests {
             None,
             None,
             None,
-            false,
             None,
+            false,
         );
         assert_eq!(opts.charset(), CharsetMode::Unicode);
         assert!(opts.style().is_full());
@@ -148,8 +149,8 @@ mod tests {
             None,
             None,
             None,
-            false,
             None,
+            false,
         );
         assert!(matches!(opts.style().density(), Density::Heavy));
     }
@@ -162,15 +163,15 @@ mod tests {
             Some(Density::Light),
             None,
             None,
-            false,
             None,
+            false,
         );
         assert!(matches!(opts.style().density(), Density::Light));
     }
 
     #[test]
     fn build_render_options_nearest_filter() {
-        let opts = build_render_options(None, None, None, Some(ResizeFilter::Nearest), false, None);
+        let opts = build_render_options(None, None, None, Some(ResizeFilter::Nearest), None, false);
         assert_eq!(opts.filter(), image::imageops::FilterType::Nearest);
     }
 
@@ -188,69 +189,78 @@ mod tests {
             "120",
             "--filter",
             "nearest",
-            "--no-color",
+            "--color-mode",
+            "none",
             "--output",
             "out.txt",
         ]);
-        match cli.command {
-            Commands::Convert {
-                input,
-                style,
-                width,
-                filter,
-                no_color,
-                output,
-                ..
-            } => {
-                assert_eq!(input, PathBuf::from("input.png"));
-                assert_eq!(style, Some(RenderStylePreset::Braille));
-                assert_eq!(width, Some(120));
-                assert_eq!(filter, Some(ResizeFilter::Nearest));
-                assert!(no_color);
-                assert_eq!(output, Some(PathBuf::from("out.txt")));
-            }
-            _ => panic!("expected Convert command"),
-        }
+
+        let Commands::Convert {
+            input,
+            style,
+            width,
+            filter,
+            color_mode,
+            output,
+            ..
+        } = cli.command
+        else {
+            unreachable!("Cli::parse_from should have produced Commands::Convert");
+        };
+
+        assert_eq!(input, PathBuf::from("input.png"));
+        assert_eq!(style, Some(RenderStylePreset::Braille));
+        assert_eq!(width, Some(120));
+        assert_eq!(filter, Some(ResizeFilter::Nearest));
+        assert_eq!(color_mode, Some(ColorMode::TrueColor));
+        assert_eq!(output, Some(PathBuf::from("out.txt")));
     }
 
     #[test]
     fn cli_parses_show_with_style_and_interactive() {
         let cli = Cli::parse_from(["px2ansi-rs", "show", "pikachu", "--style", "ascii", "-i"]);
-        match cli.command {
-            Commands::Show {
-                name,
-                style,
-                interactive,
-                ..
-            } => {
-                assert_eq!(name, "pikachu");
-                assert_eq!(style, Some(RenderStylePreset::Ascii));
-                assert!(interactive);
-            }
-            _ => panic!("expected Show command"),
-        }
+
+        let Commands::Show {
+            name,
+            style,
+            interactive,
+            ..
+        } = cli.command
+        else {
+            unreachable!("Cli::parse_from should have produced Commands::Show");
+        };
+
+        assert_eq!(name, "pikachu");
+        assert_eq!(style, Some(RenderStylePreset::Ascii));
+        assert!(interactive);
     }
 
     #[test]
     fn cli_show_defaults_to_random() {
         let cli = Cli::parse_from(["px2ansi-rs", "show"]);
-        match cli.command {
-            Commands::Show { name, .. } => assert_eq!(name, "random"),
-            _ => panic!("expected Show command"),
-        }
+
+        // This is much more concise and avoids the explicit panic
+        assert!(
+            matches!(cli.command, Commands::Show { ref name, .. } if name == "random"),
+            "Expected Show command with name 'random', got {:?}",
+            cli.command
+        );
     }
 
     #[test]
-    fn cli_parses_list_with_count() {
+    fn cli_parses_list_with_count() -> TestResult {
         let cli = Cli::parse_from(["px2ansi-rs", "list", "--count", "10"]);
-        match cli.command {
-            Commands::List { count } => assert_eq!(count, Some(10)),
-            _ => panic!("expected List command"),
-        }
+
+        let Commands::List { count } = cli.command else {
+            return Err("Expected List command variant".into());
+        };
+
+        assert_eq!(count, Some(10));
+        Ok(())
     }
 
     #[test]
-    fn cli_parses_index_with_output() {
+    fn cli_parses_index_with_output() -> TestResult {
         let cli = Cli::parse_from([
             "px2ansi-rs",
             "index",
@@ -258,13 +268,16 @@ mod tests {
             "--output",
             "sprites.json",
         ]);
-        match cli.command {
-            Commands::Index { dir, output } => {
-                assert_eq!(dir, PathBuf::from("./sprites"));
-                assert_eq!(output, Some(PathBuf::from("sprites.json")));
-            }
-            _ => panic!("expected Index command"),
-        }
+
+        // If it's NOT Commands::Index, it returns the error immediately
+        let Commands::Index { dir, output } = cli.command else {
+            return Err("Expected Index command variant".into());
+        };
+
+        assert_eq!(dir, PathBuf::from("./sprites"));
+        assert_eq!(output, Some(PathBuf::from("sprites.json")));
+
+        Ok(())
     }
 
     #[test]
@@ -306,7 +319,14 @@ mod tests {
     #[test]
     fn style_preset_rejects_invalid() {
         use std::str::FromStr;
-        assert!(RenderStylePreset::from_str("invalid").is_err());
-        assert!(RenderStylePreset::from_str("").is_err());
+
+        assert!(
+            RenderStylePreset::from_str("invalid").is_err(),
+            "\"invalid\" should not parse as a RenderStylePreset"
+        );
+        assert!(
+            RenderStylePreset::from_str("").is_err(),
+            "empty string should not parse as a RenderStylePreset"
+        );
     }
 }

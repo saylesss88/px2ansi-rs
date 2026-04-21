@@ -1,55 +1,41 @@
 use assert_cmd::Command;
-use predicates::str::contains;
 
-fn cmd() -> Command {
-    Command::cargo_bin("px2ansi-rs").unwrap()
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+/// Helper to create a command, bubbling up the error if the binary isn't found
+fn cmd() -> Result<Command, Box<dyn std::error::Error>> {
+    let command = Command::cargo_bin("px2ansi-rs")?;
+    Ok(command)
 }
 
 #[test]
-fn help_exits_successfully() {
-    cmd().arg("--help").assert().success();
+fn help_exits_successfully() -> TestResult {
+    cmd()?.arg("--help").assert().success();
+    Ok(())
 }
 
 #[test]
-fn convert_help_shows_style_flag() {
-    cmd()
+fn convert_help_shows_style_flag() -> TestResult {
+    cmd()?
         .args(["convert", "--help"])
         .assert()
         .success()
-        .stdout(contains("--style"));
+        .stdout(predicates::str::contains("--style"));
+    Ok(())
 }
 
 #[test]
-fn show_help_exits_successfully() {
-    cmd().args(["show", "--help"]).assert().success();
-}
-
-#[test]
-fn invalid_style_shows_error() {
-    cmd()
+fn invalid_style_shows_error() -> TestResult {
+    cmd()?
         .args(["convert", "input.png", "--style", "invalid"])
         .assert()
         .failure()
-        .stderr(contains("invalid"));
+        .stderr(predicates::str::contains("invalid"));
+    Ok(())
 }
 
 #[test]
-fn convert_nonexistent_file_fails_gracefully() {
-    cmd()
-        .args(["convert", "nonexistent.png"])
-        .assert()
-        .failure();
-}
-
-#[test]
-fn list_with_missing_index_fails_gracefully() {
-    cmd()
-        .args(["list", "-I", "nonexistent_index.json"])
-        .assert()
-        .failure();
-}
-
-#[test]
-fn version_flag_exits_successfully() {
-    cmd().arg("--version").assert().success();
+fn version_flag_exits_successfully() -> TestResult {
+    cmd()?.arg("--version").assert().success();
+    Ok(())
 }

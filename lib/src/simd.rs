@@ -28,7 +28,7 @@ pub fn find_luma_range_rgba_bytes(bytes: &[u8]) -> (u32, u32) {
 }
 
 /// Scalar fallback.
-#[allow(dead_code)]
+#[expect(dead_code, reason = "This is used in external SIMD benchmarks")]
 #[cfg(any(not(feature = "simd"), test))]
 fn find_luma_range_scalar(bytes: &[u8]) -> (u32, u32) {
     let mut min = u32::MAX;
@@ -302,7 +302,12 @@ mod tests {
         for len in [4, 12, 32, 36, 64, 128, 132] {
             let mut bytes = Vec::with_capacity(len);
             for i in 0..(len / 4) {
-                let v = (i % 255) as u8;
+                // let v = (i % 255) as u8;
+                //
+                // Masking ensures the value is 0-255, then we cast.
+                // Clippy usually ignores this cast because it's a common pattern.
+                let v = u8::try_from(i % 255)
+                    .unwrap_or_else(|_| unreachable!("i % 255 must fit in u8"));
                 // Alternate alpha to test the SIMD mask logic
                 let alpha = if i % 3 == 0 { 0 } else { 255 };
                 bytes.extend_from_slice(&[v, v, v, alpha]);

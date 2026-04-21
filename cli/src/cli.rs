@@ -33,7 +33,7 @@ pub struct Cli {
     #[arg(short = 'I', long = "index", global = true)]
     pub index: Option<String>,
 }
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Convert a single image to ANSI/Unicode/Fade/Braille/Kanji/Full-block/Ascii
     Convert {

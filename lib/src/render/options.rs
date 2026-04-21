@@ -76,21 +76,21 @@ impl RenderOptionsBuilder {
     /// Sets a high-level preset, such as ANSI or Braille.
     /// Presets provide baseline charset and style defaults.
     #[must_use]
-    pub fn preset(mut self, preset: RenderStylePreset) -> Self {
+    pub const fn preset(mut self, preset: RenderStylePreset) -> Self {
         self.preset = Some(preset);
         self
     }
 
     /// Sets the character density for the rendering output.
     #[must_use]
-    pub fn density(mut self, density: Density) -> Self {
+    pub const fn density(mut self, density: Density) -> Self {
         self.density = Some(density);
         self
     }
 
     /// Whether to enable dithering or not
     #[must_use]
-    pub fn dither(mut self, enabled: bool) -> Self {
+    pub const fn dither(mut self, enabled: bool) -> Self {
         self.dither = Some(enabled);
         self
     }
@@ -98,21 +98,21 @@ impl RenderOptionsBuilder {
     /// Sets the target width for the rendered output.
     /// If `None`, the output may scale to the terminal width.
     #[must_use]
-    pub fn width(mut self, width: u32) -> Self {
+    pub const fn width(mut self, width: u32) -> Self {
         self.width = Some(width);
         self
     }
 
     /// Sets the resampling filter used when resizing the input image.
     #[must_use]
-    pub fn filter(mut self, filter: ResizeFilter) -> Self {
+    pub const fn filter(mut self, filter: ResizeFilter) -> Self {
         self.filter = Some(filter);
         self
     }
 
     /// Sets the specific color mode (e.g., `TrueColor`, 256-color) for the output.
     #[must_use]
-    pub fn color_mode(mut self, color_mode: ColorMode) -> Self {
+    pub const fn color_mode(mut self, color_mode: ColorMode) -> Self {
         self.color_mode = Some(color_mode);
         self
     }
