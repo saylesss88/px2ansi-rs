@@ -958,12 +958,25 @@ This will create a `man/` directory containing:
 **Viewing and Installation**
 
 ```bash
-# Preview without installing
+
+# 1. Preview without installing (works for local files)
 man ./man/px2ansi-rs.1
 
-# Install system-wide (Linux)
+# 2. Install for just your user (No `sudo` needed!)
+mkdir -p ~/.local/share/man/man1/
+cp man/*.1 ~/.local/share/man/man1/
+
+# 3. Install system-wide (requires `sudo`)
+sudo mkdir -p /usr/local/share/man/man1/
 sudo cp man/*.1 /usr/local/share/man/man1/
 sudo mandb
+```
+
+Now you can access the manual pages with:
+
+```bash
+man px2ansi-rs
+man 1 px2ansi-rs-show
 ```
 
 ---
@@ -979,6 +992,7 @@ sudo mandb
 >  rustflags = ["-C", "link-arg=-fuse-ld=mold"]
 >```
 > This requires `mold` to be installed
+
 
 ## Similar crates
 
@@ -997,3 +1011,4 @@ sudo mandb
 ## License
 
 [GNU General Public License 3.0](https://github.com/saylesss88/px2ansi-rs/blob/main/LICENSE)
+
