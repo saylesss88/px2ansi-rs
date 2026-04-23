@@ -387,7 +387,7 @@ px2ansi-rs convert skull.png --rotate 180
 # Unidirectional: always flips the same way
 px2ansi-rs convert skull.png --rotate --axis y --unidirectional
 
-# Z axis ignores --unidirectional (it's already one-directional)
+# Z axis ignores --unidirectional
 px2ansi-rs convert skull.png --rotate --axis z --unidirectional
 ```
 <details>

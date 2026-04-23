@@ -1,16 +1,17 @@
+use std::io;
 use std::io::Write;
 
 use rayon::prelude::*;
 
 use super::color::write_colored_glyph_to_str;
-use super::pixel::{ALPHA_THRESHOLD, ColorParams, LumaParams, RenderCtx};
+use super::pixel::{ColorParams, LumaParams, RenderCtx, ALPHA_THRESHOLD};
 
 pub(super) fn render_parallel<W: Write>(
     writer: &mut W,
     ctx: &RenderCtx<'_>,
     lp: LumaParams,
     cp: ColorParams<'_>,
-) -> std::io::Result<()> {
+) -> io::Result<()> {
     let rows: Vec<String> = (0..ctx.height)
         .into_par_iter()
         .map(|y| {

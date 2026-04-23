@@ -1,11 +1,11 @@
 use std::borrow::Cow;
-use std::io::Write;
+use std::io::{self, Write};
 
 use image::{DynamicImage, GenericImageView, Rgba, RgbaImage};
 
-use super::color::{ColorState, write_colored_glyph, write_full_block, write_half_block};
+use super::color::{write_colored_glyph, write_full_block, write_half_block, ColorState};
 use super::options::RenderOptions;
-use super::pixel::{ColorParams, LumaParams, RenderCtx, luma_range_pass1};
+use super::pixel::{luma_range_pass1, ColorParams, LumaParams, RenderCtx};
 use super::serial::render_serial;
 use super::types::{CharsetMode, Density};
 use crate::ColorMode;
@@ -28,7 +28,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         }
     }
 
-    fn ansi_blocks(&mut self) -> std::io::Result<()> {
+    fn ansi_blocks(&mut self) -> io::Result<()> {
         let (width, height) = self.img.dimensions();
         for y in (0..height).step_by(2) {
             for x in 0..width {
@@ -45,7 +45,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         Ok(())
     }
 
-    fn unicode_blocks(&mut self, full: bool) -> std::io::Result<()> {
+    fn unicode_blocks(&mut self, full: bool) -> io::Result<()> {
         if full {
             let (width, height) = self.img.dimensions();
             for y in 0..height {
@@ -60,7 +60,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         Ok(())
     }
 
-    fn braille(&mut self) -> std::io::Result<()> {
+    fn braille(&mut self) -> io::Result<()> {
         let rgba: Cow<'_, RgbaImage> = self
             .img
             .as_rgba8()
@@ -147,11 +147,11 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         Ok(())
     }
 
-    fn fade(&mut self) -> std::io::Result<()> {
+    fn fade(&mut self) -> io::Result<()> {
         self.charset_colored(&[" ", "░", "▒", "▓", "█"], false)
     }
 
-    fn ascii(&mut self, density: Density) -> std::io::Result<()> {
+    fn ascii(&mut self, density: Density) -> io::Result<()> {
         let charset: &[&str] = match density {
             Density::Light => &[
                 " ", ".", "`", "\"", "\\", ":", "I", "!", ">", "~", "_", "?", "[", "{", "|", ")",
@@ -169,7 +169,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         self.charset_colored(charset, false)
     }
 
-    fn kanji(&mut self) -> std::io::Result<()> {
+    fn kanji(&mut self) -> io::Result<()> {
         self.charset_colored(
             &[
                 "\u{3000}", "一", "二", "十", "口", "日", "田", "目", "国", "風", "龍", "龘",
@@ -178,7 +178,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         )
     }
 
-    fn chinese(&mut self) -> std::io::Result<()> {
+    fn chinese(&mut self) -> io::Result<()> {
         self.charset_colored(
             &[
                 "\u{3000}", "一", "二", "十", "人", "丁", "口", "日", "目", "田", "国", "木", "金",
@@ -188,7 +188,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         )
     }
 
-    fn charset_colored(&mut self, charset: &[&str], wide: bool) -> std::io::Result<()> {
+    fn charset_colored(&mut self, charset: &[&str], wide: bool) -> io::Result<()> {
         let rgba = self.img.to_rgba8();
         let (width, height) = rgba.dimensions();
         let x_step: usize = if wide { 2 } else { 1 };
@@ -246,7 +246,7 @@ pub fn write_ansi_art<W: Write>(
     img: &DynamicImage,
     writer: &mut W,
     options: RenderOptions,
-) -> std::io::Result<()> {
+) -> io::Result<()> {
     let mut renderer = Renderer::new(writer, img, options);
     match options.charset() {
         CharsetMode::Ansi => renderer.ansi_blocks(),
@@ -278,7 +278,7 @@ pub fn write_ansi_art<W: Write>(
 /// buffer or if the image cannot be encoded into the Sixel format.
 #[cfg(feature = "sixel")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sixel")))]
-pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> std::io::Result<()> {
+pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> io::Result<()> {
     use super::utils::get_terminal_size;
 
     let (term_w, term_h) = get_terminal_size();
@@ -300,5 +300,5 @@ pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> std::i
     let rgb = image::DynamicImage::ImageRgb8(img.to_rgb8());
     viuer::print(&rgb, &cfg)
         .map(|_| ())
-        .map_err(|e| std::io::Error::other(e.to_string()))
+        .map_err(|e| io::Error::other(e.to_string()))
 }

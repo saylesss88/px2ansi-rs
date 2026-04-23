@@ -1,7 +1,8 @@
+use std::io;
 use std::io::Write;
 
 use super::color::ColorState;
-use super::pixel::{ColorParams, LumaParams, PixelRgba, RenderCtx, write_pixel_scalar};
+use super::pixel::{write_pixel_scalar, ColorParams, LumaParams, PixelRgba, RenderCtx};
 
 #[cfg(feature = "simd")]
 use super::pixel::write_pixel;
@@ -11,7 +12,7 @@ pub(super) fn render_serial<W: Write>(
     ctx: &RenderCtx<'_>,
     lp: LumaParams,
     cp: ColorParams<'_>,
-) -> std::io::Result<()> {
+) -> io::Result<()> {
     let raw = ctx.rgba.as_raw();
     let mut last_color = ColorState::default();
 

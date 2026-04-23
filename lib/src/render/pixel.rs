@@ -1,5 +1,6 @@
 use image::RgbaImage;
 use std::io::Write;
+use std::io;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -137,7 +138,7 @@ pub(super) fn write_pixel<W: Write>(
     opaque: bool,
     cp: ColorParams<'_>,
     last: &mut ColorState,
-) -> std::io::Result<()> {
+) -> io::Result<()> {
     if !opaque || px.a < ALPHA_THRESHOLD {
         write_blank(writer, cp, last)
     } else {
@@ -155,7 +156,7 @@ pub(super) fn write_pixel_scalar<W: Write>(
     lp: LumaParams,
     cp: ColorParams<'_>,
     last: &mut ColorState,
-) -> std::io::Result<()> {
+) -> io::Result<()> {
     if px.a < ALPHA_THRESHOLD {
         return write_blank(writer, cp, last);
     }
@@ -171,7 +172,7 @@ pub(super) fn write_blank<W: Write>(
     writer: &mut W,
     cp: ColorParams<'_>,
     last: &mut ColorState,
-) -> std::io::Result<()> {
+) -> io::Result<()> {
     if cp.enabled {
         write!(writer, "\x1b[0m{}", cp.blank)?;
         *last = ColorState::default();
@@ -191,7 +192,7 @@ pub(super) fn write_glyph<W: Write>(
     b: u8,
     cp: ColorParams<'_>,
     last: &mut ColorState,
-) -> std::io::Result<()> {
+) -> io::Result<()> {
     if cp.enabled {
         write_colored_glyph(writer, glyph, r, g, b, cp.mode, last)
     } else {
