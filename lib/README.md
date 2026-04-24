@@ -85,25 +85,21 @@ depend on `px2ansi` and reuse your existing image setup.
 
 ## Quick Start
 
-```rust,no_run
-use image::open;
+
+```rust
 use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter};
-fn main() -> anyhow::Result<()> {
-    // Load an image using the `image` crate
-    let img = open("photo.png").unwrap();
-
-    // Build options: use a preset and override specific fields
-    let opts = RenderOptions::builder()
-        .preset(RenderStylePreset::Braille)
-        .width(120)
-        .filter(ResizeFilter::Nearest)
-        .build();
-
-    // Render directly to stdout
-    let mut out = std::io::stdout();
-    opts.render(&img, &mut out).unwrap();
-    Ok(())
-}
+# use image::{DynamicImage, Rgba};
+# let img = DynamicImage::ImageRgba8(image::ImageBuffer::new(1, 1));
+#
+// Build options: use a preset and override specific fields
+let opts = RenderOptions::builder()
+    .preset(RenderStylePreset::Braille)
+    .width(120)
+    .filter(ResizeFilter::Nearest)
+    .build();
+// Render directly to stdout
+let mut out = std::io::sink(); 
+opts.render(&img, &mut out).unwrap();
 ```
 
 ### Automatic Centering
@@ -111,48 +107,47 @@ fn main() -> anyhow::Result<()> {
 The library can automatically detect terminal size, center the output, and
 handle resizing for you:
 
-```rust, no_run
-
+```rust
 use px2ansi::RenderOptions;
 use std::io;
-fn example_centered(opts: &RenderOptions, img: &image::DynamicImage) {
-    let mut stdout = io::stdout();
-    opts.render_centered(img, &mut stdout).unwrap();
-}
+# use image::{DynamicImage, ImageBuffer};
+# let opts = RenderOptions::default();
+# let img = DynamicImage::ImageRgba8(ImageBuffer::new(1, 1));
+let mut stdout = io::sink(); // Using sink prevents flooding test output
+opts.render_centered(&img, &mut stdout).unwrap();
 ```
 
 ### Rendering to a Buffer
 
 You can render to any `std::io::Write` target, including an in-memory buffer:
 
-```rust, no_run, ignore
-use image::open;
-fn main() {
-    let img = open("photo.png").unwrap();
-    let opts = px2ansi::RenderOptions::default();
-
-    let mut buf = Vec::new();
-    opts.render(&img, &mut buf).unwrap();
-
-    let ansi = String::from_utf8(buf).unwrap();
-    println!("{ansi}");
-}
+```rust
+# use image::{DynamicImage, ImageBuffer};
+# let img = DynamicImage::ImageRgba8(ImageBuffer::new(1, 1));
+let opts = px2ansi::RenderOptions::default();
+let mut buf = Vec::new();
+opts.render(&img, &mut buf).unwrap();
+let ansi = String::from_utf8(buf).unwrap();
+// In a real app, you'd println!("{ansi}");
 ```
 
 `render` also works with a `std::io::Cursor`:
 
-```rust, no_run,ignore
-# use px2ansi::RenderOptions;
-# use std::io::Cursor;
-# use image::open;
-fn example_cursor() {
-    let img = open("photo.png").unwrap();
-    let opts = RenderOptions::default();
+```rust
+use px2ansi::RenderOptions;
+use std::io::Cursor;
+# use image::{DynamicImage, ImageBuffer};
+# let img = DynamicImage::ImageRgba8(ImageBuffer::new(1, 1));
 
-    let mut cursor = Cursor::new(Vec::new());
-    opts.render(&img, &mut cursor).unwrap();
-}
+let opts = RenderOptions::default();
+let mut cursor = Cursor::new(Vec::new());
+
+opts.render(&img, &mut cursor).unwrap();
+
+// Access the data from the cursor
+let _result = cursor.into_inner();
 ```
+
 
 ### Manual Image Preparation
 
@@ -160,21 +155,23 @@ If you need control over the image scaling step, use `prepare_image` separately.
 This is useful for TUI applications or when rendering to non-terminal targets
 like files or network streams:
 
-```rust,no_run
+```rust
 use px2ansi::RenderOptions;
-use image::{DynamicImage, ImageBuffer, Rgba};
-fn custom_pipeline(img: &DynamicImage) {
-    let opts = RenderOptions::builder().width(40).build();
+# use image::{DynamicImage, ImageBuffer, Rgba};
+# // Create a 100x100 dummy image to test resizing logic
+# let img = DynamicImage::ImageRgba8(ImageBuffer::new(100, 100));
 
-    // 1. Manually prepare the image (resizing happens here)
-    let prepared = opts.prepare_image(img);
-    assert_eq!(prepared.width(), 40);
+let opts = RenderOptions::builder().width(40).build();
 
-    // 2. Render directly to a writer (no automatic centering)
-    let mut stdout = std::io::stdout();
-    opts.render(&prepared, &mut stdout).unwrap();
-}
+// 1. Manually prepare the image (resizing happens here)
+let prepared = opts.prepare_image(&img);
+assert_eq!(prepared.width(), 40);
+
+// 2. Render directly to a writer
+let mut sink = std::io::sink(); 
+opts.render(&prepared, &mut sink).unwrap();
 ```
+
 
 ---
 
@@ -203,10 +200,11 @@ Default configuration:
 - `Color_Mode`: `truecolor`
 - Width: `Non` (auto-detect from terminal)
 
-```rust,no_run
+```rust
 use px2ansi::{CharsetMode, ColorMode, RenderOptions};
 
 let opts = RenderOptions::default();
+
 assert_eq!(opts.charset(), CharsetMode::Ansi);
 assert_eq!(opts.color_mode(), ColorMode::TrueColor);
 assert_eq!(opts.width(), None);
@@ -255,14 +253,16 @@ Controls image resampling quality:
 
 The builder supports chaining:
 
-```rust,no_run,ignore
-# use px2ansi::{ColorMode, RenderOptions, RenderStylePreset};
+```rust
+use px2ansi::{ColorMode, RenderOptions, RenderStylePreset};
 # let monochrome = true;
-let builder = px2ansi::RenderOptions::builder()
-    .preset(px2ansi::RenderStylePreset::FullBlock)
+
+let mut builder = RenderOptions::builder()
+    .preset(RenderStylePreset::FullBlock)
     .width(80);
 
-let builder = if monochrome {
+// Since methods take 'self', we must capture the returned 'Self'
+builder = if monochrome {
     builder.color_mode(ColorMode::None)
 } else {
     builder
@@ -271,37 +271,22 @@ let builder = if monochrome {
 let opts = builder.build();
 ```
 
-Or a mutable style:
-
-```rusggggggggggggggg
-use px2ansi::{ColorMode, RenderOptions, RenderStylePreset};
-let mut builder = RenderOptions::builder();
-builder.preset(RenderStylePreset::FullBlock);
-builder.width(80);
-
-if monochrome {
-    builder.color_mode(ColorMode::None);
-}
-
-let opts = builder.build();
-```
-
 ### Inspecting Options
 
-```rust,no_run
+```rust
 use px2ansi::{RenderOptions, RenderStylePreset};
 
-fn inspect() {
-    let opts = RenderOptions::builder()
-        .preset(RenderStylePreset::FullBlock)
-        .build();
+let opts = RenderOptions::builder()
+    .preset(RenderStylePreset::FullBlock)
+    .build();
 
-    if opts.style().is_full() {
-        println!("Rendering in double-width mode!");
-    }
-
-    println!("Current density: {:?}", opts.style().density());
+if opts.style().is_full() {
+    println!("Rendering in double-width mode!");
 }
+
+// These assertions prove the 'inspecting' logic is correct
+assert!(opts.style().is_full());
+println!("Current density: {:?}", opts.style().density());
 ```
 
 ---
@@ -419,18 +404,15 @@ Renders pixel-accurate images inline in the terminal using the
   
 ```rust,no_run
 use px2ansi::{RenderOptions, RenderStylePreset};
-use image::open;
+# use image::{DynamicImage, ImageBuffer};
+# let img = DynamicImage::ImageRgba8(ImageBuffer::new(1, 1));
 
-fn example_sixel() {
-    let img = open("photo.png").unwrap();
+let opts = RenderOptions::builder()
+    .preset(RenderStylePreset::Sixel)
+    .build();
 
-    let opts = RenderOptions::builder()
-        .preset(RenderStylePreset::Sixel)
-        .build();
-
-    let mut out = std::io::stdout();
-    opts.render_centered(&img, &mut out).unwrap();
-}
+let mut out = std::io::stdout();
+opts.render_centered(&img, &mut out).unwrap();
 ```
 
 ---
@@ -443,21 +425,17 @@ terminal art, where a limited character set or color palette creates harsh
 transitions in gradients.
 
 ```rust,no_run
-use image::open;
 use px2ansi::{RenderOptions, RenderStylePreset};
+# use image::{DynamicImage, ImageBuffer};
+# let img = DynamicImage::ImageRgba8(ImageBuffer::new(10, 10));
 
-fn example_dither() {
-    let img = open("photo.png").unwrap();
+let opts = RenderOptions::builder()
+    .preset(RenderStylePreset::Ascii)
+    .dither(true) // Enables error-diffusion dither
+    .build();
 
-    let opts = RenderOptions::builder()
-        .preset(RenderStylePreset::Ascii)
-        .dither(true) // Enables error-diffusion dither
-        .build();
-
-    let mut buf = Vec::new();
-    opts.render(&img, &mut buf).unwrap();
-    // `buf` now contains the ANSI output
-}
+let mut buf = Vec::new();
+opts.render(&img, &mut buf).unwrap();
 ```
 
 
@@ -469,32 +447,48 @@ for saving previews or sharing output as an image.
 
 **With the default `TokyoNight` theme:**
 
-```rust,no_run,ignore
+It’s a very common instinct to wrap examples in functions to "protect" them from the global scope, but in Rust doc tests, that actually creates a "dead code" zone where the logic is never verified.
+
+For the Rasterize feature, we have a new hurdle: it's likely gated behind a cargo feature. If a user tries to run your docs without that feature enabled, the test will fail. We can handle this gracefully using the # trick combined with cfg attributes.
+
+1. The Default Rasterize Example
+We'll strip the function, mock the image, and handle the feature gate so the test only runs if the rasterize feature is active.
+
+Markdown
+
+```rust
 # #[cfg(feature = "rasterize")]
-use px2ansi::{rasterize_ansi_with_theme, RasterTheme};
-use image::open;
+# {
+use px2ansi::{RenderOptions, RasterTheme, rasterize_ansi_with_theme};
+# use image::{DynamicImage, ImageBuffer};
+# let img = DynamicImage::ImageRgba8(ImageBuffer::new(10, 10));
 
-fn rasterize_example() {
-    let img = open("photo.png").unwrap();
-    let opts = px2ansi::RenderOptions::default();
+let opts = RenderOptions::default();
 
-    // Render to an ANSI buffer
-    let mut buf = Vec::new();
-    opts.render(&img, &mut buf).unwrap();
+// Render to an ANSI buffer
+let mut buf = Vec::new();
+opts.render(&img, &mut buf).unwrap();
 
-    // Rasterize to a PNG image
-    let png = px2ansi::rasterize_ansi_with_theme(&buf, RasterTheme::TokyoNight).unwrap();
-    png.save("output.png").unwrap();
-}
+// Rasterize to a PNG image
+let png = rasterize_ansi_with_theme(&buf, RasterTheme::TokyoNight).unwrap();
+# // We use a sink/memory in tests instead of writing to disk
+# let mut output_buf = std::io::Cursor::new(Vec::new());
+# png.write_to(&mut output_buf, image::ImageFormat::Png).unwrap();
+# }
 ```
 
 **With a different theme:**
 
-```rust,no_run,ignore
+```rust
+# #[cfg(feature = "rasterize")]
+# {
 use px2ansi::{RasterTheme, rasterize_ansi_with_theme};
+# let buf = b"\x1b[31mHello\x1b[0m".to_vec(); // Mock ANSI data
 
-let png = rasterize_ansi_with_theme(&buf, RasterTheme::Dracula)?;
-png.save("output.png")?;
+let png = rasterize_ansi_with_theme(&buf, RasterTheme::Dracula).unwrap();
+// Save to disk
+// png.save("output.png").unwrap();
+# }
 ```
 
 **Available themes:** `TokyoNight` (default), `Dracula`, `Nord`, `GruvboxDark`,
@@ -551,9 +545,9 @@ single instruction rather than one at a time:
 
 Both the SIMD and scalar paths use the same perceptually-weighted formula:
 
-```rust,ignore
-luma = (2126·R + 7152·G + 722·B) / 10000
-```
+```latex
+$$Y = \frac{2126 \cdot R + 7152 \cdot G + 722 \cdot B}{10000}$$```
+
 
 This matches the [ITU-R BT.709](https://www.itu.int/rec/R-REC-BT.709) standard
 used in HDTV and sRGB color spaces, giving accurate brightness perception
@@ -610,7 +604,8 @@ typical terminal-sized output (~200×100 = 20,000 pixels) this overhead
 parallel rendering dynamically when the pixel count exceeds **120,000 pixels**,
 falling back to the fast serial + SIMD path otherwise:
 
-```rust,no_run,ignore
+```rust
+# let (width, height) = (100, 100);
 let use_parallel = cfg!(feature = "parallel") && (width * height > 120_000);
 ```
 
@@ -647,22 +642,22 @@ Unlike the CLI which uses `anyhow` for simplicity, the `px2ansi` library
 provides a structured `RenderError` enum. This allows you to programmatically
 react to specific failure states.
 
-```rust,no_run,ignore
+```rust
 use px2ansi::{CharsetMode, RenderError};
 use std::str::FromStr;
 
-fn main() {
-    let result = CharsetMode::from_str("invalid_mode");
+let result = CharsetMode::from_str("invalid_mode");
 
-    match result {
-        Err(RenderError::InvalidCharset(name)) => {
-            eprintln!("Unsupported charset: {name}");
-        }
-        Err(RenderError::Io(e)) => {
-            eprintln!("A writing error occurred: {e}");
-        }
-        _ => { /* ... */ }
+match result {
+    Err(RenderError::InvalidCharset(name)) => {
+        eprintln!("Unsupported charset: {name}");
+        assert_eq!(name, "invalid_mode");
     }
+    # // The following are hidden but keep the test exhaustive if needed
+    # Err(RenderError::Io(e)) => {
+    #     eprintln!("A writing error occurred: {e}");
+    # }
+    _ => { /* handle success or other errors */ }
 }
 ```
 

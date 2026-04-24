@@ -60,10 +60,10 @@ pub(crate) mod themes;
 // ── Core re-exports (always available) ──────────────────────────────────────
 pub use crate::{
     cli_enums::{RenderStylePreset, ResizeFilter},
-    indexer::{ImageEntry, build_index},
+    indexer::{build_index, ImageEntry},
     render::{
-        CharsetMode, ColorMode, Density, RenderOptions, RenderOptionsBuilder, RenderStyle,
-        get_terminal_size, write_ansi_art,
+        get_terminal_size, write_ansi_art, CharsetMode, ColorMode, Density, RenderError,
+        RenderOptions, RenderOptionsBuilder, RenderStyle,
     },
 };
 
