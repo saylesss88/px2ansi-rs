@@ -1,10 +1,10 @@
 [package]
 name = "px2ansi"
-version = "0.2.4"
-edition = "2024"
-authors = ["T. Sawyer <saylesss87@proton.me>"]
-license = "GPL-3.0"
-repository = "https://github.com/saylesss88/px2ansi-rs/tree/main/lib"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 readme = "README.md"
 keywords = ["ansi", "pixel-art", "oklab", "rasterize", "colorspace"]
 categories = ["command-line-utilities", "multimedia::images", "rendering"]
