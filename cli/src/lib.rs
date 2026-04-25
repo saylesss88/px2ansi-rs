@@ -5,6 +5,7 @@ pub mod fetch;
 pub mod output;
 pub mod render;
 pub mod rotate;
+pub mod terminal;
 
 // Re-export types
 pub use crate::commands::Command;

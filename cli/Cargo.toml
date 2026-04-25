@@ -1,10 +1,10 @@
 [package]
 name = "px2ansi-rs"
 default-run = "px2ansi-rs"
-version.workspace = true   
-edition.workspace = true   
-authors.workspace = true   
-license.workspace = true   
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
 repository.workspace = true
 readme = "README.md"
 keywords = ["ansi", "pixel-art", "oklab", "rasterize", "colorspace"]
@@ -21,26 +21,28 @@ name = "generate-manpage"
 path = "src/bin/generate_manpage.rs"
 
 [dependencies]
-px2ansi = { workspace = true }
-anyhow = { workspace = true }
-clap = { workspace = true }
-clap_complete = { workspace = true }
-clap_mangen = { workspace = true }
-serde_json = { workspace = true }
-serde = { workspace = true }
-rand = { workspace = true }
-rayon = { workspace = true, optional = true }
-colored = { workspace = true }
-fuzzy-matcher = { workspace = true }
-dialoguer = { workspace = true }
-image = { workspace = true }
+px2ansi = {workspace = true}
+anyhow = {workspace = true}
+clap = {workspace = true}
+clap_complete = {workspace = true}
+clap_mangen = {workspace = true}
+serde_json = {workspace = true}
+serde = {workspace = true}
+rand = {workspace = true}
+rayon = {workspace = true, optional = true}
+colored = {workspace = true}
+fuzzy-matcher = {workspace = true}
+dialoguer = {workspace = true}
+image = {workspace = true}
 ansi-width = "0.1.0"
 confy = "2.0.0"
+crossterm = {version = "0.28", default-features = false}
 sysinfo = "0.38.4"
+libc = "0.2.186"
 
 [dev-dependencies]
 assert_cmd = "2.0"
-predicates = { version = "3.0", default-features = false }
+predicates = {version = "3.0", default-features = false}
 
 
 [features]

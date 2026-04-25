@@ -105,8 +105,8 @@ browsing, and advanced filters. It is approximately 25x faster.
 
 - **Fuzzy search** — `show pika` → Pikachu.
 - **Interactive TUI** — `show -i` to browse sprites.
-- **Truecolor + transparency** — Full 24-bit RGB with alpha support (Oklab
-  color space).
+- **Truecolor + transparency** — Full 24-bit RGB with alpha support (Oklab color
+  space).
 - **Smart resize** — Auto-fits terminal width.
 - **Custom dimensions** — Use `--width` to adjust output size.
 - **5 filters** — `nearest` for pixel art through `lanczos3` for photos.
@@ -114,8 +114,8 @@ browsing, and advanced filters. It is approximately 25x faster.
   `dense`, `chinese`, `kanji`, and `sixel`.
 - **Embedded font rasterization** — `IosevkaCharonMono-Regular.ttf` is bundled
   for rasterization.
-- **Optional monochrome output** — Use `--color-mode none` to disable ANSI
-  color escapes (applies to ascii, fade, braille, kanji, and chinese modes).
+- **Optional monochrome output** — Use `--color-mode none` to disable ANSI color
+  escapes (applies to ascii, fade, braille, kanji, and chinese modes).
 - **ASCII density control** — Use `--density light|medium|heavy` to tune
   character ramp complexity.
 - Optionally rasterize ANSI output back into PNG (with selectable themes).
@@ -125,6 +125,9 @@ browsing, and advanced filters. It is approximately 25x faster.
 - Optional dithering for supported styles and images.
 - Image rotation: You can spin the image, rotate the image, show a horizontal
   mirror.
+- **Smart background detection** — Sixel mode queries the terminal's actual
+  background color via OSC 11, so transparent image regions blend correctly
+  instead of defaulting to black.
 
 `px2ansi-rs` is built on top of [`px2ansi`](https://crates.io/crates/px2ansi), a
 standalone Rust library that exposes the full rendering engine as a public API.
@@ -201,9 +204,8 @@ Options:
 
 ## Usage
 
-> [!NOTE]
-> `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`, `show`,
-> and `list`.
+> [!NOTE] `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`,
+> `show`, and `list`.
 
 Most subcommands have their own help menus:
 
@@ -254,11 +256,27 @@ px2ansi-rs convert tests/scream.png --filter lanczos3
 
 [Back to TOC](#top)
 
-#### Sixel
+#### Sixel mode
+
+Sixel renders pixel-accurate images in supported terminals (foot, kitty,
+WezTerm, xterm). Transparent regions are composited against your terminal's
+actual background color, queried automatically at render time via OSC 11.
 
 ```bash
-px2ansi-rs convert tests/nixos.png --style sixel
+px2ansi-rs convert image.png --style sixel
+px2ansi-rs show pikachu --style sixel
 ```
+
+If your terminal does not support OSC 11 (e.g. Windows Terminal), sixel mode
+falls back to a black background. You can override this explicitly:
+
+```bash
+# Not yet a flag — set via RenderOptionsBuilder::bg_color in the library API
+```
+
+> [!NOTE] Sixel requires a supporting terminal. Tested on foot and kitty.
+> Ghostty works best with `background-opacity = 1.0` — semi-transparent
+> backgrounds interact poorly with sixel compositing in all terminals.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-sixel.png" width="400" alt="Braille rendering example">
@@ -294,13 +312,14 @@ px2ansi-rs convert tests/test.png --style ascii --filter nearest --color-mode 25
 
 #### Advanced Color Rendering
 
-`px2ansi-rs` goes beyond simple ANSI escapes by prioritizing perceptual
-accuracy and terminal compatibility.
+`px2ansi-rs` goes beyond simple ANSI escapes by prioritizing perceptual accuracy
+and terminal compatibility.
 
 **Perceptual Quantization with Oklab**
 
 When rendering in 256-color mode, mapping a 24-bit RGB pixel to a limited 8-bit
-palette often results in "muddy" colors or incorrect brightness if using standard Euclidean RGB distance.
+palette often results in "muddy" colors or incorrect brightness if using
+standard Euclidean RGB distance.
 
 This uses the **Oklab color space** for color quantization. Unlike RGB, Oklab is
 perceptually uniform, meaning the numerical distance between two colors matches
@@ -310,18 +329,18 @@ how the human eye perceives difference.
   performance lookup table (LUT) to account for gamma correction.
 
 - **Perceptual Matching**: Colors are mapped to the xterm-256 palette by
-  minimizing Delta E in the Oklab space, ensuring that teals stay teal and
-  blues don't shift toward purple.
+  minimizing Delta E in the Oklab space, ensuring that teals stay teal and blues
+  don't shift toward purple.
 
 **Color Modes**
 
 You can explicitly control the color depth using the `--color-mode` flag.
 
-| Mode | Description |
-|-------|--------|
-| `truecolor`| (Default) Uses 24-bit ANSI sequences (\x1b[38;2;R;G;Bm). Best for modern terminals (Alacritty, Kitty, iTerm2, etc.).|
-| `ansi256` | Quantizes images to the xterm-256 palette. Ideal for older terminal environments or a specific "retro" aesthetic. |
-| `none` | Disables all ANSI color codes. Useful for piping output to text files or monochrome displays. |
+| Mode        | Description                                                                                                          |
+| ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| `truecolor` | (Default) Uses 24-bit ANSI sequences (\x1b[38;2;R;G;Bm). Best for modern terminals (Alacritty, Kitty, iTerm2, etc.). |
+| `ansi256`   | Quantizes images to the xterm-256 palette. Ideal for older terminal environments or a specific "retro" aesthetic.    |
+| `none`      | Disables all ANSI color codes. Useful for piping output to text files or monochrome displays.                        |
 
 **Intellegent Auto-Detection**
 
@@ -345,12 +364,12 @@ px2ansi-rs convert <image> --color-mode none
 px2ansi-rs show <image> --color-mode ...
 ```
 
-> [!NOTE]
-> In standard RGB space, the distance between two colors is calculated using the
-> Pythagorean theorem. However, the human eye is significantly more sensitive
-> to variations in Green than in Blue. If you use raw RGB distance to pick the "closest" 256-color match for a specific
-> NixOS blue, the computer might pick a purple because, mathematically, the RGB
-> numbers are "closer," even though to a human, it looks completely wrong.
+> [!NOTE] In standard RGB space, the distance between two colors is calculated
+> using the Pythagorean theorem. However, the human eye is significantly more
+> sensitive to variations in Green than in Blue. If you use raw RGB distance to
+> pick the "closest" 256-color match for a specific NixOS blue, the computer
+> might pick a purple because, mathematically, the RGB numbers are "closer,"
+> even though to a human, it looks completely wrong.
 
 **What is Perceptual Matching?**
 
@@ -390,6 +409,7 @@ px2ansi-rs convert skull.png --rotate --axis y --unidirectional
 # Z axis ignores --unidirectional
 px2ansi-rs convert skull.png --rotate --axis z --unidirectional
 ```
+
 <details>
 <summary> Skull Image Used </summary>
 
@@ -402,7 +422,6 @@ px2ansi-rs convert skull.png --rotate --axis z --unidirectional
 <p align="center">
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/newest-rotate.gif" width="600" alt="px2ansi-rs rotate demo">
 </p>
-
 
 ### Create an index
 
@@ -537,8 +556,8 @@ You can point `show` at an index anywhere in your filesystem with `-I`:
 px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json
 ```
 
-> [!NOTE]
-> Any field omitted from the `.toml` file falls back to the built-in defaults.
+> [!NOTE] Any field omitted from the `.toml` file falls back to the built-in
+> defaults.
 
 #### Configuration on NixOS
 
@@ -631,8 +650,7 @@ programs.zsh.initContent = ''
 | Chinese    | `--style chinese`    | Chinese density ramp (double-width)        | Stylized output              |
 | Sixel      | `--style sixel`      | Pixel-accurate Sixel protocol output       | Supported terminals only     |
 
-> [!NOTE]
-> `--style ascii` also supports `--density light|medium|heavy`.
+> [!NOTE] `--style ascii` also supports `--density light|medium|heavy`.
 > `--style dense` is shorthand for `--style ascii --density heavy`.
 > `--style sixel` is basically a 1 to 1 conversion.
 
@@ -668,7 +686,8 @@ dispatch automatically. No manual configuration needed.
 
 ### Sixel (`--features sixel`)
 
-Renders true pixel images in Sixel-compatible terminals (`foot`, `WezTerm`, `iTerm2`, `GhosTTY`).
+Renders true pixel images in Sixel-compatible terminals (`foot`, `WezTerm`,
+`iTerm2`, `GhosTTY`).
 
 ```sh
 cargo install px2ansi-rs --features sixel
@@ -691,7 +710,7 @@ cargo build --release --features simd,sixel
 | `nixos.png`  | 1,210,592 | 90KB      | 0.076 bytes/pixel |
 | `scream.png` | 636,300   | 588KB     | 0.924 bytes/pixel |
 
-`nixos.png` is 6.5x larger in pixels but 6.5x smaller on disk 
+`nixos.png` is 6.5x larger in pixels but 6.5x smaller on disk
 
 `rascii` is a well-established and fast terminal art tool. These benchmarks are
 a genuine comparison against a solid baseline, not a strawman.
@@ -747,21 +766,20 @@ encoder, putting it marginally behind `viu` in this mode.
 ### 🎨 Dithering (--dither)
 
 The `--dither` flag enables **Floyd-Steinberg error diffusion**. This technique
-approximates shades and gradients that aren't natively available in your
-current character set or color mode.
+approximates shades and gradients that aren't natively available in your current
+character set or color mode.
 
 **When to use it**
 
-Dithering is most useful when you are reducing the "color depth" of an image.
-It replaces solid blocks of characters with "stippled" patterns that trick the
-eye into seeing smoother transitions.
+Dithering is most useful when you are reducing the "color depth" of an image. It
+replaces solid blocks of characters with "stippled" patterns that trick the eye
+into seeing smoother transitions.
 
-| Scenario | Without Dithering | With Dithering |
-|---------| ----------|---------------|
-| Grayscale/ASCII| Harsh "banding" in shadows and skin tones| Smooth gradients; looks like a high-detail newspaper print.|
-| Flat Logos | Clean, solid colors. | Can look "noisy" or "grainy" (Usually better off)|
-| Photographs | Details can get lost in solid blocks of characters. | Retains "optical depth" and fine textures. |
-
+| Scenario        | Without Dithering                                   | With Dithering                                              |
+| --------------- | --------------------------------------------------- | ----------------------------------------------------------- |
+| Grayscale/ASCII | Harsh "banding" in shadows and skin tones           | Smooth gradients; looks like a high-detail newspaper print. |
+| Flat Logos      | Clean, solid colors.                                | Can look "noisy" or "grainy" (Usually better off)           |
+| Photographs     | Details can get lost in solid blocks of characters. | Retains "optical depth" and fine textures.                  |
 
 **Supported Styles & Modes**
 
@@ -784,7 +802,8 @@ px2ansi-rs convert face.jpg --style ascii --color-mode none --dither
 px2ansi-rs convert view.png --style unicode --dither
 ```
 
-Braille Style: Works well to create a "halftone" effect using the high-density dots of the Braille character set.
+Braille Style: Works well to create a "halftone" effect using the high-density
+dots of the Braille character set.
 
 ### Pure compute (`> /dev/null`, `nixos.png`)
 
@@ -856,9 +875,8 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-rasterized.png" width="300" alt="Rasterized output example">
 </p>
 
-> [!NOTE]
-> Some styles look better than others. The default background theme is Tokyo
-> Night.
+> [!NOTE] Some styles look better than others. The default background theme is
+> Tokyo Night.
 
 ### Choosing a theme
 
@@ -884,9 +902,9 @@ You can also set a default theme in your config file:
 raster_theme = "gruvbox-dark"
 ```
 
-> [!WARNING]
-> If the `rasterize` feature is not compiled in, using `--output-image`
-> will produce an error asking you to rebuild with the feature enabled.
+> [!WARNING] If the `rasterize` feature is not compiled in, using
+> `--output-image` will produce an error asking you to rebuild with the feature
+> enabled.
 
 [Back to TOC](#top)
 
@@ -983,16 +1001,15 @@ man 1 px2ansi-rs-show
 
 ### Dev Tips
 
-> [!TIP]
-> For faster compile times during development, you can use the `mold` linker by
-> adding this to your local `~/.cargo/config.toml`: 
+> [!TIP] For faster compile times during development, you can use the `mold`
+> linker by adding this to your local `~/.cargo/config.toml`:
 >
 > ```toml
 >  [target.x86_64-unknown-linux-gnu]
 >  rustflags = ["-C", "link-arg=-fuse-ld=mold"]
->```
+> ```
+>
 > This requires `mold` to be installed
-
 
 ## Similar crates
 
@@ -1011,4 +1028,3 @@ man 1 px2ansi-rs-show
 ## License
 
 [GNU General Public License 3.0](https://github.com/saylesss88/px2ansi-rs/blob/main/LICENSE)
-

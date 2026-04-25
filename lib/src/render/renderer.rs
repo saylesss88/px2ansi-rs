@@ -275,13 +275,12 @@ pub fn write_ansi_art<W: Write>(
 ///
 /// This function will return an error if `viuer` fails to write to the terminal
 /// buffer or if the image cannot be encoded into the Sixel format.
+// #[cfg(feature = "sixel")]
+// #[cfg_attr(docsrs, doc(cfg(feature = "sixel")))]
 #[cfg(feature = "sixel")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sixel")))]
 pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> io::Result<()> {
-    // The image arrives at its original dimensions (calculate_dimensions returns
-    // orig for sixel). Let viuer do a single, correct resize using its internal
-    // 6×12 px/cell model. Passing height: None preserves the aspect ratio.
-    let cfg = viuer::Config {
+    let base_cfg = viuer::Config {
         use_kitty: false,
         use_iterm: false,
         absolute_offset: false,
@@ -291,11 +290,34 @@ pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> io::Re
         height: None,
         restore_cursor: false,
         truecolor: true,
-        transparent: true,
         ..viuer::Config::default()
     };
 
-    viuer::print(img, &cfg)
-        .map(|_| ())
-        .map_err(|e| io::Error::other(e.to_string()))
+    match options.bg_color() {
+        Some(bg) => {
+            let base = image::Rgba([bg[0], bg[1], bg[2], 255u8]);
+            let mut composited = image::RgbaImage::from_pixel(img.width(), img.height(), base);
+            image::imageops::overlay(&mut composited, &img.to_rgba8(), 0, 0);
+            let composited = image::DynamicImage::ImageRgba8(composited);
+            viuer::print(
+                &composited,
+                &viuer::Config {
+                    transparent: false,
+                    ..base_cfg
+                },
+            )
+        }
+        None => {
+            // Terminal didn't respond to OSC 11: let it handle transparency natively
+            viuer::print(
+                img,
+                &viuer::Config {
+                    transparent: true,
+                    ..base_cfg
+                },
+            )
+        }
+    }
+    .map(|_| ())
+    .map_err(|e| io::Error::other(e.to_string()))
 }

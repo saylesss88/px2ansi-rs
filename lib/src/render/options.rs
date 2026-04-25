@@ -16,6 +16,7 @@ pub struct RenderOptions {
     charset: CharsetMode,
     style: RenderStyle,
     color_mode: ColorMode,
+    bg_color: Option<[u8; 3]>,
 }
 
 impl Default for RenderOptions {
@@ -26,6 +27,7 @@ impl Default for RenderOptions {
             charset: CharsetMode::Ansi,
             style: RenderStyle::default(),
             color_mode: ColorMode::detect(),
+            bg_color: None,
         }
     }
 }
@@ -66,6 +68,7 @@ pub struct RenderOptionsBuilder {
     filter: Option<ResizeFilter>,
     color_mode: Option<ColorMode>,
     dither: Option<bool>,
+    bg_color: Option<[u8; 3]>,
 }
 
 impl RenderOptionsBuilder {
@@ -118,6 +121,13 @@ impl RenderOptionsBuilder {
         self
     }
 
+    /// Sets bg color for sixel mode
+    #[must_use]
+    pub const fn bg_color(mut self, color: [u8; 3]) -> Self {
+        self.bg_color = Some(color);
+        self
+    }
+
     /// Finalizes the builder and returns a configured [`RenderOptions`].
     ///
     /// This follows a specific priority:
@@ -143,6 +153,9 @@ impl RenderOptionsBuilder {
         }
         if let Some(dither_val) = self.dither {
             opts.style.dither = dither_val;
+        }
+        if let Some(bg) = self.bg_color {
+            opts.bg_color = Some(bg);
         }
         opts
     }
@@ -189,6 +202,12 @@ impl RenderOptions {
     #[must_use]
     pub const fn color_mode(&self) -> ColorMode {
         self.color_mode
+    }
+
+    /// Returns the background color for sixel compositing, if set.
+    #[must_use]
+    pub const fn bg_color(&self) -> Option<[u8; 3]> {
+        self.bg_color
     }
 
     /// Prepares a [`DynamicImage`] for terminal rendering through resizing and optional dithering.
