@@ -116,6 +116,11 @@ pub enum Commands {
         /// Frames per second for the --rotate spin animation (default: 8)
         #[arg(long, default_value = "8", value_name = "FPS")]
         fps: u8,
+
+        /// Display system fetch info (OS, kernel, RAM, CPU…) alongside the image.
+        /// Pairs with --rotate to spin the image while info stays pinned to the right.
+        #[arg(long, default_value = "false")]
+        fetch: bool,
     },
     /// Create a JSON index of a directory
     Index {
@@ -184,6 +189,11 @@ pub enum Commands {
         /// Frames per second for the --rotate spin animation (default: 8)
         #[arg(long, default_value = "8", value_name = "FPS")]
         fps: u8,
+
+        /// Display system fetch info (OS, kernel, RAM, CPU…) alongside the image.
+        /// Pairs with --rotate to spin the image while info stays pinned to the right.
+        #[arg(long, default_value = "false")]
+        fetch: bool,
     },
     /// List entries in the index
     List {

@@ -34,7 +34,9 @@ colored = { workspace = true }
 fuzzy-matcher = { workspace = true }
 dialoguer = { workspace = true }
 image = { workspace = true }
+ansi-width = "0.1.0"
 confy = "2.0.0"
+sysinfo = "0.38.4"
 
 [dev-dependencies]
 assert_cmd = "2.0"

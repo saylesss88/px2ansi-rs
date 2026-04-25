@@ -23,8 +23,8 @@
 #![deny(missing_docs)]
 
 use px2ansi_rs::{
-    Cli, Command, Commands, Config, ConvertCmd, IndexCmd, ListCmd, ResolvedOptions, ShowCmd,
-    commands, output, render,
+    commands, output, render, Cli, Command, Commands, Config, ConvertCmd, IndexCmd, ListCmd,
+    ResolvedOptions, ShowCmd,
 };
 
 use clap::{CommandFactory, Parser};
@@ -95,6 +95,7 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             axis,
             unidirectional,
             fps,
+            fetch,
         } => {
             let render_opts =
                 render::build_render_options(style, density, width, filter, color_mode, dither);
@@ -110,6 +111,7 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
                 render: render_opts,
                 raster_theme: raster_theme.unwrap_or(cfg.raster_theme),
                 rotate,
+                fetch,
             }))
         }
         Commands::Index { dir, output } => {
@@ -132,6 +134,7 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             axis,
             unidirectional,
             fps,
+            fetch,
         } => {
             let render_opts =
                 render::build_render_options(style, density, None, filter, color_mode, dither);
@@ -144,6 +147,7 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
                 render: render_opts,
                 interactive,
                 rotate,
+                fetch,
             }))
         }
         Commands::Completions { .. } => unreachable!(),

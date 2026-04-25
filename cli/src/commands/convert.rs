@@ -1,4 +1,5 @@
-use crate::rotate::{RotateMode, apply_static, run_spin_loop};
+use crate::fetch::print_fetch_with_image;
+use crate::rotate::{apply_static, run_spin_fetch_loop, run_spin_loop, RotateMode};
 use anyhow::Result;
 use px2ansi::{RasterTheme, RenderOptions};
 use std::io::Write;
@@ -18,6 +19,8 @@ pub struct ConvertCmd {
     pub raster_theme: RasterTheme,
     /// Optional rotation mode derived from `--rotate` / `--fps`.
     pub rotate: Option<RotateMode>,
+    /// Optional system info fetch
+    pub fetch: bool,
 }
 
 impl ConvertCmd {
@@ -32,21 +35,71 @@ impl ConvertCmd {
         let img = image::ImageReader::open(&self.input)?.decode()?;
 
         // 2. Handle spin mode early: it never returns, so we branch out here.
-        if let Some(RotateMode::Spin {
-            fps,
-            axis,
-            unidirectional,
-        }) = self.rotate
-        {
-            return run_spin_loop(
-                &img,
-                &self.render,
-                fps,
-                axis,
-                unidirectional,
-                external_writer,
-            );
+
+        match (&self.rotate, self.fetch) {
+            (
+                Some(RotateMode::Spin {
+                    fps,
+                    axis,
+                    unidirectional,
+                }),
+                true,
+            ) => {
+                return run_spin_fetch_loop(
+                    &img,
+                    &self.render,
+                    *fps,
+                    *axis,
+                    *unidirectional,
+                    external_writer,
+                );
+            }
+            (
+                Some(RotateMode::Spin {
+                    fps,
+                    axis,
+                    unidirectional,
+                }),
+                false,
+            ) => {
+                return run_spin_loop(
+                    &img,
+                    &self.render,
+                    *fps,
+                    *axis,
+                    *unidirectional,
+                    external_writer,
+                );
+            }
+            _ => {}
         }
+
+        // Static rotation
+        let img = match &self.rotate {
+            Some(RotateMode::Static(deg)) => apply_static(img, *deg),
+            _ => img,
+        };
+
+        // Fetch layout (static or no rotation)
+        if self.fetch {
+            print_fetch_with_image(&img, &self.render, external_writer)?;
+            external_writer.flush()?;
+            return Ok(());
+        } // if let Some(RotateMode::Spin {
+          //     fps,
+          //     axis,
+          //     unidirectional,
+          // }) = self.rotate
+          // {
+          //     return run_spin_loop(
+          //         &img,
+          //         &self.render,
+          //         fps,
+          //         axis,
+          //         unidirectional,
+          //         external_writer,
+          //     );
+          // }
 
         // 3. Apply static rotation if requested.
         let img = match self.rotate {

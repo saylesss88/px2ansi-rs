@@ -13,7 +13,7 @@
 use rayon::prelude::*;
 
 use anyhow::Result;
-use image::{DynamicImage, imageops};
+use image::{imageops, DynamicImage};
 use px2ansi::RenderOptions;
 use std::{io::Write, thread, time::Duration};
 
@@ -321,4 +321,93 @@ pub fn run_spin_loop<W: Write>(
         }
     }
     // writer.write_all(SHOW_CURSOR)?;
+}
+/// Like `run_spin_loop` but renders each frame side-by-side with fetch info.
+///
+/// The fetch info is captured once before the loop — system stats won't
+/// flicker or re-query on every frame.
+pub fn run_spin_fetch_loop<W: Write>(
+    img: &DynamicImage,
+    render: &RenderOptions,
+    fps: u8,
+    axis: RotateAxis,
+    unidirectional: bool,
+    writer: &mut W,
+) -> Result<()> {
+    const HIDE_CURSOR: &[u8] = b"\x1b[?25l";
+    const GOTO_HOME: &[u8] = b"\x1b[H";
+    const CLEAR_SCREEN: &[u8] = b"\x1b[2J";
+
+    let delay = Duration::from_millis(1000 / u64::from(fps.max(1)));
+
+    let frames = match axis {
+        RotateAxis::Z => generate_zaxis_frames(img),
+        axis if unidirectional => generate_unidirectional_frames(img, axis),
+        axis => generate_pingpong_frames(img, axis),
+    };
+
+    // Snapshot info once — no per-frame sysinfo churn
+    let info_lines = crate::fetch::fetch_lines();
+
+    // Pre-render: each frame becomes a fully composed side-by-side Vec<u8>
+    let buffers: Vec<Vec<u8>> = {
+        #[cfg(feature = "parallel")]
+        {
+            use rayon::prelude::*;
+            frames
+                .par_iter()
+                .map(|frame| compose_fetch_frame(frame, render, &info_lines))
+                .collect::<Result<Vec<_>>>()?
+        }
+        #[cfg(not(feature = "parallel"))]
+        {
+            frames
+                .iter()
+                .map(|frame| compose_fetch_frame(frame, render, &info_lines))
+                .collect::<Result<Vec<_>>>()?
+        }
+    };
+
+    writer.write_all(CLEAR_SCREEN)?;
+    writer.write_all(HIDE_CURSOR)?;
+
+    loop {
+        for buf in &buffers {
+            writer.write_all(GOTO_HOME)?;
+            writer.write_all(buf)?;
+            writer.flush()?;
+            thread::sleep(delay);
+        }
+    }
+}
+
+/// Renders one frame and stitches it with `info_lines` into a byte buffer.
+fn compose_fetch_frame(
+    frame: &DynamicImage,
+    render: &RenderOptions,
+    info_lines: &[String],
+) -> Result<Vec<u8>> {
+    use ansi_width::ansi_width;
+
+    let mut img_buf = Vec::with_capacity(frame.width() as usize * frame.height() as usize * 2);
+    render.render(frame, &mut img_buf)?;
+    let img_str = String::from_utf8_lossy(&img_buf);
+
+    let left_lines: Vec<&str> = img_str.lines().collect();
+    let left_width = left_lines.iter().map(|l| ansi_width(l)).max().unwrap_or(0);
+    let pad = left_width + 3;
+    let max_lines = left_lines.len().max(info_lines.len());
+
+    let mut out = Vec::new();
+    writeln!(out)?;
+    for i in 0..max_lines {
+        let l = *left_lines.get(i).unwrap_or(&"");
+        let r = info_lines.get(i).map_or("", String::as_str);
+        let spaces = pad.saturating_sub(ansi_width(l));
+        write!(out, "{l}")?;
+        write!(out, "{:width$}", "", width = spaces)?;
+        writeln!(out, "{r}")?;
+    }
+    writeln!(out)?;
+    Ok(out)
 }

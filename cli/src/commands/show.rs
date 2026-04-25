@@ -1,9 +1,10 @@
+use crate::fetch::print_fetch_with_image;
+use crate::rotate::{apply_static, run_spin_fetch_loop, run_spin_loop};
 use crate::RotateMode;
-use crate::rotate::{apply_static, run_spin_loop};
 use anyhow::Result;
 use colored::Colorize;
-use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::FuzzyMatcher;
 use px2ansi::indexer::ImageEntry;
 use px2ansi::render::RenderOptions;
 use rand::prelude::IndexedRandom;
@@ -17,6 +18,7 @@ pub struct ShowCmd {
     pub render: RenderOptions,
     pub interactive: bool,
     pub rotate: Option<RotateMode>,
+    pub fetch: bool,
 }
 
 impl ShowCmd {
@@ -53,21 +55,55 @@ impl ShowCmd {
                 let img = image::open(&e.path)?;
 
                 // Spin mode — loops forever until Ctrl-C
-                if let Some(RotateMode::Spin {
-                    fps,
-                    axis,
-                    unidirectional,
-                }) = self.rotate
-                {
-                    return run_spin_loop(&img, &self.render, fps, axis, unidirectional, writer);
+
+                match (&self.rotate, self.fetch) {
+                    (
+                        Some(RotateMode::Spin {
+                            fps,
+                            axis,
+                            unidirectional,
+                        }),
+                        true,
+                    ) => {
+                        return run_spin_fetch_loop(
+                            &img,
+                            &self.render,
+                            *fps,
+                            *axis,
+                            *unidirectional,
+                            writer,
+                        );
+                    }
+                    (
+                        Some(RotateMode::Spin {
+                            fps,
+                            axis,
+                            unidirectional,
+                        }),
+                        false,
+                    ) => {
+                        return run_spin_loop(
+                            &img,
+                            &self.render,
+                            *fps,
+                            *axis,
+                            *unidirectional,
+                            writer,
+                        );
+                    }
+                    _ => {}
                 }
 
-                // Static rotation
-                let img = match self.rotate {
-                    Some(RotateMode::Static(deg)) => apply_static(img, deg),
+                let img = match &self.rotate {
+                    Some(RotateMode::Static(deg)) => apply_static(img, *deg),
                     _ => img,
                 };
 
+                if self.fetch {
+                    print_fetch_with_image(&img, &self.render, writer)?;
+                    return Ok(());
+                }
+                // Static rotation
                 self.render.render_centered(&img, writer)?;
             }
             None => {
