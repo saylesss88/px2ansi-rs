@@ -1,7 +1,8 @@
 use super::types::{CharsetMode, Density, RenderStyle};
 use crate::cli_enums::{RenderStylePreset, ResizeFilter};
-use crate::{ColorMode, get_terminal_size};
-use image::{DynamicImage, imageops::FilterType};
+use crate::RenderError;
+use crate::{get_terminal_size, ColorMode};
+use image::{imageops::FilterType, DynamicImage};
 use std::io::Write;
 
 /// The master configuration for the rendering pipeline.
@@ -332,11 +333,11 @@ impl RenderOptions {
 
         resized
     } // pub fn prepare_image(&self, img: &DynamicImage) -> DynamicImage {
-    //     const LUMA_R: f32 = 0.2126;
-    //     const LUMA_G: f32 = 0.7152;
-    //     const LUMA_B: f32 = 0.0722;
-    //     let (width, height) = self.calculate_dimensions(img.width(), img.height());
-    //     let mut resized = img.resize_exact(width, height, self.filter);
+      //     const LUMA_R: f32 = 0.2126;
+      //     const LUMA_G: f32 = 0.7152;
+      //     const LUMA_B: f32 = 0.0722;
+      //     let (width, height) = self.calculate_dimensions(img.width(), img.height());
+      //     let mut resized = img.resize_exact(width, height, self.filter);
 
     //     if self.style.dither {
     //         // 1. Generate the dithered luma (serial; Floyd–Steinberg)
@@ -499,7 +500,7 @@ impl RenderOptions {
         &self,
         prepared_img: &DynamicImage,
         writer: &mut W,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), RenderError> {
         crate::render::write_ansi_art(prepared_img, writer, *self)?;
         Ok(())
     }
@@ -518,7 +519,7 @@ impl RenderOptions {
         &self,
         img: &DynamicImage,
         writer: &mut W,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), RenderError> {
         const BYTES_PER_PIXEL_ESTIMATE: usize = 25;
         let prepared = self.prepare_image(img);
 

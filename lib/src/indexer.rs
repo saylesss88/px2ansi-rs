@@ -1,5 +1,7 @@
 use std::{fs, path::Path};
 
+use crate::RenderError;
+
 use image::GenericImageView;
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
@@ -63,7 +65,7 @@ pub struct ImageEntry {
 ///   via `serde_json`.
 /// * **I/O Failure:** The final JSON index cannot be written to the `output_path` (e.g.,
 ///   the directory doesn't exist, is read-only, or the disk is full).
-pub fn build_index(dir: &Path, output_path: &Path) -> anyhow::Result<String> {
+pub fn build_index(dir: &Path, output_path: &Path) -> Result<String, RenderError> {
     // Collect valid paths first — WalkDir is not Send so can't be parallelized directly
     let paths: Vec<_> = WalkDir::new(dir)
         .into_iter()

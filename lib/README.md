@@ -40,8 +40,7 @@ If you want the command-line interface, check out [px2ansi-rs](../cli).
 - [Library vs CLI](#library-vs-cli)
 - [License](#license)
 
-</details>
----
+## </details>
 
 `px2ansi` converts images into terminal art by resizing them to terminal cell
 proportions, mapping pixels to several character sets, and writing ANSI-colored
@@ -50,8 +49,7 @@ output to any `Write` target.
 It is the rendering core behind `px2ansi-rs`, but it can also be used directly
 in other Rust projects.
 
-> [!IMPORTANT]
-> This is a new project, the public API is subject to change
+> [!IMPORTANT] This is a new project, the public API is subject to change
 
 ## Features
 
@@ -85,7 +83,6 @@ depend on `px2ansi` and reuse your existing image setup.
 
 ## Quick Start
 
-
 ```rust
 use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter};
 # use image::{DynamicImage, Rgba};
@@ -98,7 +95,7 @@ let opts = RenderOptions::builder()
     .filter(ResizeFilter::Nearest)
     .build();
 // Render directly to stdout
-let mut out = std::io::sink(); 
+let mut out = std::io::sink();
 opts.render(&img, &mut out).unwrap();
 ```
 
@@ -148,7 +145,6 @@ opts.render(&img, &mut cursor).unwrap();
 let _result = cursor.into_inner();
 ```
 
-
 ### Manual Image Preparation
 
 If you need control over the image scaling step, use `prepare_image` separately.
@@ -168,10 +164,9 @@ let prepared = opts.prepare_image(&img);
 assert_eq!(prepared.width(), 40);
 
 // 2. Render directly to a writer
-let mut sink = std::io::sink(); 
+let mut sink = std::io::sink();
 opts.render(&prepared, &mut sink).unwrap();
 ```
-
 
 ---
 
@@ -400,8 +395,9 @@ px2ansi = { version = "0.2.3",  features = ["full"] }
 Renders pixel-accurate images inline in the terminal using the
 [Sixel graphics protocol](https://en.wikipedia.org/wiki/Sixel).
 
-**Compatible terminals:** `foot`, `WezTerm`, `iTerm2`, `ghosTTY`, `xterm` (with `-ti 340`)
-  
+**Compatible terminals:** `foot`, `WezTerm`, `iTerm2`, `ghosTTY`, `xterm` (with
+`-ti 340`)
+
 ```rust,no_run
 use px2ansi::{RenderOptions, RenderStylePreset};
 # use image::{DynamicImage, ImageBuffer};
@@ -438,7 +434,6 @@ let mut buf = Vec::new();
 opts.render(&img, &mut buf).unwrap();
 ```
 
-
 ### Rasterize
 
 Converts ANSI art to a PNG image using an embedded
@@ -447,12 +442,18 @@ for saving previews or sharing output as an image.
 
 **With the default `TokyoNight` theme:**
 
-It’s a very common instinct to wrap examples in functions to "protect" them from the global scope, but in Rust doc tests, that actually creates a "dead code" zone where the logic is never verified.
+It’s a very common instinct to wrap examples in functions to "protect" them from
+the global scope, but in Rust doc tests, that actually creates a "dead code"
+zone where the logic is never verified.
 
-For the Rasterize feature, we have a new hurdle: it's likely gated behind a cargo feature. If a user tries to run your docs without that feature enabled, the test will fail. We can handle this gracefully using the # trick combined with cfg attributes.
+For the Rasterize feature, we have a new hurdle: it's likely gated behind a
+cargo feature. If a user tries to run your docs without that feature enabled,
+the test will fail. We can handle this gracefully using the # trick combined
+with cfg attributes.
 
-1. The Default Rasterize Example
-We'll strip the function, mock the image, and handle the feature gate so the test only runs if the rasterize feature is active.
+1. The Default Rasterize Example We'll strip the function, mock the image, and
+   handle the feature gate so the test only runs if the rasterize feature is
+   active.
 
 Markdown
 
@@ -527,7 +528,7 @@ NEON instructions depending on your target hardware.
 With the `simd` feature enabled, the renderer processes chunks of 8 pixels in a
 single instruction rather than one at a time:
 
-```rust,no_run
+```text
 // (explanatory snippet about SIMD — do not compile it in doctests)
 // 8 Rec.709 luma values computed simultaneously:
 // let luma_raw = r * u32x8::splat(2126) + g * u32x8::splat(7152) + b * u32x8::splat(722);
@@ -546,12 +547,12 @@ single instruction rather than one at a time:
 Both the SIMD and scalar paths use the same perceptually-weighted formula:
 
 ```latex
-$$Y = \frac{2126 \cdot R + 7152 \cdot G + 722 \cdot B}{10000}$$```
-
+$$Y = \frac{2126 \cdot R + 7152 \cdot G + 722 \cdot B}{10000}$$
+```
 
 This matches the [ITU-R BT.709](https://www.itu.int/rec/R-REC-BT.709) standard
-used in HDTV and sRGB color spaces, giving accurate brightness perception
-across all charset modes.
+used in HDTV and sRGB color spaces, giving accurate brightness perception across
+all charset modes.
 
 #### Enabling SIMD
 
@@ -585,9 +586,8 @@ processing high-resolution images. These tests were conducted using the
 
 The SIMD luma scan alone roughly **halves CPU time** for the render pass.
 
-> [!NOTE]
-> `px2ansi` scales better with resolution. Even though the NixOS image has
-> double the pixels of the Scream image, it actually completes the task
+> [!NOTE] `px2ansi` scales better with resolution. Even though the NixOS image
+> has double the pixels of the Scream image, it actually completes the task
 > faster.
 
 ---
@@ -598,11 +598,11 @@ The `parallel` feature enables [Rayon](https://crates.io/crates/rayon)-based
 multi-threaded rendering via `into_par_iter()` for Pass 2 (glyph mapping and
 colorization).
 
-**Important:** Rayon has a fixed thread-pool startup cost of ~1–2 ms. For
-typical terminal-sized output (~200×100 = 20,000 pixels) this overhead
-**exceeds** the render time itself. The library therefore only activates
-parallel rendering dynamically when the pixel count exceeds **120,000 pixels**,
-falling back to the fast serial + SIMD path otherwise:
+> [!IMPORTANT] Rayon has a fixed thread-pool startup cost of ~1–2 ms. For
+> typical terminal-sized output (~200×100 = 20,000 pixels) this overhead
+> **exceeds** the render time itself. The library therefore only activates
+> parallel rendering dynamically when the pixel count exceeds **120,000
+> pixels**,falling back to the fast serial + SIMD path otherwise:
 
 ```rust
 # let (width, height) = (100, 100);
@@ -617,7 +617,6 @@ off-screen or file renders automatically scale across all cores.
 The crate root re-exports the most common types so users do not need to dig
 through internal modules:
 
-
 ```rust,no_run
 // Core (always available)
 use px2ansi::{
@@ -629,7 +628,6 @@ use px2ansi::{
 };
 
 // Rasterize (feature = "rasterize")
-// Example and imports guarded so doctests don't fail when the feature is off.
 #[cfg(feature = "rasterize")]
 use px2ansi::{ rasterize_ansi, rasterize_ansi_with_theme, RasterTheme };
 ```
@@ -653,7 +651,7 @@ match result {
         eprintln!("Unsupported charset: {name}");
         assert_eq!(name, "invalid_mode");
     }
-    # // The following are hidden but keep the test exhaustive if needed
+    #
     # Err(RenderError::Io(e)) => {
     #     eprintln!("A writing error occurred: {e}");
     # }
@@ -663,12 +661,15 @@ match result {
 
 **Error Variants**
 
-| **Variant**              | **Description**                                                      |
-| ------------------------ | -------------------------------------------------------------------- |
-| `InvalidCharset(String)` | Triggered when a string cannot be parsed into a valid `CharsetMode`. |
-| `InvalidDensity(String)` | Triggered when a string cannot be parsed into a valid `Density`.     |
-| `Io(std::io::Error)`     | Wrapped standard I/O errors (e.g., pipe broken, disk full).          |
-| `Image(String)`          | Errors during image manipulation or resizing.                        |
+| **Variant**               | **Description**                                                             |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `InvalidCharset(String)`  | Triggered when a string cannot be parsed into a valid `CharsetMode`.        |
+| `InvalidDensity(String)`  | Triggered when a string cannot be parsed into a valid `Density`.            |
+| `Io(std::io::Error)`      | Wrapped standard I/O errors (e.g., pipe broken, disk full).                 |
+| `Image(String)`           | Errors during image manipulation or resizing.                               |
+| `Font(String)`            | Errors during font loading or glyph rasterization via fontdue.              |
+| `EmptyCells`              | Returned when ANSI input parses to zero cells, producing nothing to render. |
+| `Json(serde_json::Error)` | Errors during JSON serialization of the image index.                        |
 
 ---
 

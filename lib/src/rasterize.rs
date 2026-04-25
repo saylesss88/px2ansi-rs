@@ -1,5 +1,6 @@
 #![cfg(feature = "rasterize")]
 use crate::themes::RasterTheme;
+use crate::RenderError;
 
 use fontdue::{Font, FontSettings};
 use image::{Rgba, RgbaImage};
@@ -23,7 +24,7 @@ const DEFAULT_FONT: &[u8] = include_bytes!("../assets/IosevkaCharonMono-Regular.
 /// Returns an error if:
 /// * The embedded font fails to initialize.
 /// * The input produces an empty grid (no renderable content).
-pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
+pub fn rasterize_ansi(ansi: &[u8]) -> Result<RgbaImage, RenderError> {
     rasterize_ansi_with_theme(ansi, RasterTheme::default())
 }
 
@@ -49,13 +50,17 @@ pub fn rasterize_ansi(ansi: &[u8]) -> anyhow::Result<RgbaImage> {
 /// Returns an error if:
 /// * The embedded font fails to initialize.
 /// * The input produces an empty grid (no renderable content).
-pub fn rasterize_ansi_with_theme(ansi: &[u8], theme: RasterTheme) -> anyhow::Result<RgbaImage> {
+pub fn rasterize_ansi_with_theme(
+    ansi: &[u8],
+    theme: RasterTheme,
+) -> Result<RgbaImage, RenderError> {
     let font = Font::from_bytes(DEFAULT_FONT, FontSettings::default())
-        .map_err(|e| anyhow::anyhow!("Font error: {e}"))?;
-
+        .map_err(|e| RenderError::Font(e.to_string()))?;
     let bg_color = theme.color();
     let cells = parse_ansi(ansi, bg_color);
-    anyhow::ensure!(!cells.is_empty(), "No cells to render");
+    if cells.is_empty() {
+        return Err(RenderError::EmptyCells);
+    }
 
     let cols = cells.iter().map(std::vec::Vec::len).max().unwrap_or(0);
     let rows = cells.len();

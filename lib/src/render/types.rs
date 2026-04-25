@@ -133,18 +133,24 @@ pub enum RenderError {
     /// Returned when a requested character set mode is not recognized.
     #[error("Invalid charset mode: {0}")]
     InvalidCharset(String),
-
     /// Errors originating from underlying disk I/O or terminal stream operations.
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-
     /// Errors occurring during image decoding, resizing, or pixel manipulation.
     #[error("Image processing error: {0}")]
     Image(String),
-
     /// Returned when an unsupported density string is provided via configuration.
     #[error("Invalid density: {0}. (valid: light, medium, heavy)")]
     InvalidDensity(String),
+    /// Errors occurring during font loading or glyph rasterization via fontdue.
+    #[error("Font error: {0}")]
+    Font(String),
+    /// Returned when ANSI input parses to zero cells, producing nothing to render.
+    #[error("No cells to render")]
+    EmptyCells,
+    /// Errors occurring during JSON serialization of the image index.
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
 }
 
 /// Specifies the color depth and encoding used for terminal output.
