@@ -270,8 +270,7 @@ pub fn write_ansi_art<W: Write>(
 /// Renders an image using the Sixel graphics protocol.
 ///
 /// Sixel encodes pixel data directly into the terminal escape sequence stream,
-/// allowing true pixel-accurate images in supported terminals.
-///
+/// allowing true pixel-accurate images in supported terminals.///
 /// # Errors
 ///
 /// This function will return an error if `viuer` fails to write to the terminal
@@ -279,26 +278,24 @@ pub fn write_ansi_art<W: Write>(
 #[cfg(feature = "sixel")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sixel")))]
 pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> io::Result<()> {
-    use super::utils::get_terminal_size;
-
-    let (term_w, term_h) = get_terminal_size();
-    let width = options.width().unwrap_or(term_w);
-
+    // The image arrives at its original dimensions (calculate_dimensions returns
+    // orig for sixel). Let viuer do a single, correct resize using its internal
+    // 6×12 px/cell model. Passing height: None preserves the aspect ratio.
     let cfg = viuer::Config {
         use_kitty: false,
         use_iterm: false,
         absolute_offset: false,
         x: 0,
         y: 0,
-        width: Some(width),
-        height: Some(term_h),
+        width: options.width(),
+        height: None,
         restore_cursor: false,
         truecolor: true,
+        transparent: true,
         ..viuer::Config::default()
     };
 
-    let rgb = image::DynamicImage::ImageRgb8(img.to_rgb8());
-    viuer::print(&rgb, &cfg)
+    viuer::print(img, &cfg)
         .map(|_| ())
         .map_err(|e| io::Error::other(e.to_string()))
 }

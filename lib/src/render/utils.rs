@@ -57,9 +57,12 @@ impl RenderOptions {
                 // CharsetMode::Unicode if self.style().full => {
                 //     fit_preserving_aspect(orig_w, orig_h, term_w / 2, term_h, 1.0, 1.0)
                 // }
-                CharsetMode::Sixel => {
-                    fit_preserving_aspect(orig_w, orig_h, term_w * 8, term_h * 16, 1.0, 1.0)
-                }
+                // For sixel, skip the pre-resize here and let viuer handle sizing
+                // directly from the original image. Viuer's sixel printer uses its
+                // own 6×12 px/cell assumption; pre-sizing here would cause a
+                // double-resize with a mismatched cell-size, producing blur and
+                // a distorted aspect ratio.
+                CharsetMode::Sixel => (orig_w, orig_h),
                 CharsetMode::Ascii
                 | CharsetMode::Fade
                 | CharsetMode::Kanji
