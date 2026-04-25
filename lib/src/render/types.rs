@@ -86,6 +86,7 @@ pub struct RenderStyle {
     pub(crate) full: bool,
     pub(crate) density: Density,
     pub(crate) dither: bool,
+    pub(crate) wide: bool,
 }
 
 impl Default for RenderStyle {
@@ -94,6 +95,7 @@ impl Default for RenderStyle {
             full: false,
             density: Density::Medium,
             dither: false,
+            wide: false,
         }
     }
 }
