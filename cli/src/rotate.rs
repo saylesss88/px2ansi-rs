@@ -322,10 +322,24 @@ pub fn run_spin_loop<W: Write>(
     }
     // writer.write_all(SHOW_CURSOR)?;
 }
-/// Like `run_spin_loop` but renders each frame side-by-side with fetch info.
+
+/// # Errors
 ///
-/// The fetch info is captured once before the loop — system stats won't
-/// flicker or re-query on every frame.
+/// This function will return an error if any of the following occur:
+///
+/// * **Pre-rendering Failure**: Any individual frame fails to render or compose.
+///   If using the `parallel` feature, this error may be propagated from a
+///   background thread via [`rayon`].
+/// * **Terminal Control Failure**: The function fails to write the initial ANSI
+///   sequences to hide the cursor or clear the screen.
+/// * **IO Write/Flush Failure**: During the animation loop, a write to the
+///   `writer` fails (e.g., the terminal window is closed, resulting in a
+///   broken pipe).
+///
+/// # Panics
+///
+/// This function may panic if `fps` is 0, though it includes a `max(1)` guard
+/// to prevent division by zero when calculating the frame delay.
 pub fn run_spin_fetch_loop<W: Write>(
     img: &DynamicImage,
     render: &RenderOptions,

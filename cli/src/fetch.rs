@@ -9,7 +9,19 @@ use std::env;
 use std::io::Write;
 use sysinfo::System;
 
-/// Static fetch: render `img` to ANSI once, then print side-by-side with info.
+/// # Errors
+///
+/// This function will return an error if any of the following occur:
+///
+/// * **Rendering Failure**: The internal [`render.render()`] call fails. This typically happens
+///   if the image dimensions are incompatible with the selected [`CharsetMode`] or if the
+///   underlying color quantization fails.
+/// * **UTF-8 Lossy Conversion**: While [`String::from_utf8_lossy`] is used to prevent hard
+///   panics on invalid sequences, any upstream failure in the buffer population that violates
+///   basic string constraints during the write process may propagate through the [`Result`].
+/// * **IO Errors**: The `writer` fails to process the output stream. This is common if
+///   the terminal is disconnected, a pipe is broken (`SIGPIPE`), or there is insufficient
+///   space in the buffer.
 pub fn print_fetch_with_image<W: Write>(
     img: &DynamicImage,
     render: &RenderOptions,
@@ -89,7 +101,24 @@ pub fn fetch_lines() -> Vec<String> {
         // format!("{}: {}", key("Slashers"), script_count.to_string().cyan()),
     ]
 }
-/// Writes the side-by-side layout to any `Write`.
+
+/// # Errors
+///
+/// This function will return an error if any of the following occur:
+///
+/// * **IO Write Failure**: The function fails to write to the provided `writer`.
+///   This is common if the output stream is closed unexpectedly (e.g., a broken
+///   pipe when piping to `head` or `less`).
+/// * **System Info Retrieval**: While `fetch_lines()` typically handles internal
+///   errors gracefully, any underlying failure in gathering system information
+///   that causes a panic or an empty return may result in an improperly
+///   formatted layout.
+///
+/// # Panics
+///
+/// This function is designed to be panic-safe through the use of `get()` and
+/// `unwrap_or("")`. However, it assumes that [`ansi_width`] correctly handles
+/// the provided string slices.
 pub fn print_with_left_block_writer<W: Write>(left: &str, writer: &mut W) -> Result<()> {
     let left_lines: Vec<&str> = left.lines().collect();
     let right_lines = fetch_lines();

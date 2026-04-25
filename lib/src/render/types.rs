@@ -86,6 +86,7 @@ pub struct RenderStyle {
     pub(crate) full: bool,
     pub(crate) density: Density,
     pub(crate) dither: bool,
+    #[allow(dead_code)]
     pub(crate) wide: bool,
 }
 
