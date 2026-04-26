@@ -43,7 +43,7 @@ impl RenderOptions {
         )]
         let (render_w, render_h) = self.width().map_or_else(
             || match self.charset() {
-                CharsetMode::Ansi | CharsetMode::Unicode => fit_preserving_aspect(
+                CharsetMode::Ansi => fit_preserving_aspect(
                     orig_w,
                     orig_h,
                     term_w.saturating_sub(2),
@@ -51,6 +51,21 @@ impl RenderOptions {
                     1.0,
                     1.0,
                 ),
+
+                CharsetMode::Unicode => {
+                    if self.style().full {
+                        fit_preserving_aspect(orig_w, orig_h, term_w / 2, term_h, 1.0, 1.0)
+                    } else {
+                        fit_preserving_aspect(
+                            orig_w,
+                            orig_h,
+                            term_w.saturating_sub(2),
+                            term_h * 2,
+                            1.0,
+                            1.0,
+                        )
+                    }
+                }
                 CharsetMode::Braille => {
                     fit_preserving_aspect(orig_w, orig_h, term_w * 2, term_h * 4, 1.0, 1.0)
                 }

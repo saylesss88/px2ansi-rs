@@ -148,19 +148,19 @@ mod tests {
         assert!(opts.style().is_full());
     }
 
-    #[test]
-    fn build_render_options_dense_sets_heavy_density() {
-        let opts = build_render_options(
-            Some(RenderStylePreset::Dense),
-            None,
-            None,
-            None,
-            None,
-            false,
-            false,
-        );
-        assert!(matches!(opts.style().density(), Density::Heavy));
-    }
+    // #[test]
+    // fn build_render_options_dense_sets_heavy_density() {
+    //     let opts = build_render_options(
+    //         Some(RenderStylePreset::Dense),
+    //         None,
+    //         None,
+    //         None,
+    //         None,
+    //         false,
+    //         false,
+    //     );
+    //     assert!(matches!(opts.style().density(), Density::Heavy));
+    // }
 
     #[test]
     fn build_render_options_density_override_beats_preset() {

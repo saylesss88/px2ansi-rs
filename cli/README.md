@@ -204,8 +204,9 @@ Options:
 
 ## Usage
 
-> [!NOTE] `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`,
-> `show`, and `list`.
+> [!NOTE]
+> `px2ansi-rs` uses a subcommand-based interface: `convert`, `index`, `show`,
+>  and `list`.
 
 Most subcommands have their own help menus:
 
@@ -256,25 +257,25 @@ px2ansi-rs convert tests/scream.png --filter lanczos3
 
 [Back to TOC](#top)
 
+
 #### Sixel mode
-
 Sixel renders pixel-accurate images in supported terminals (foot, kitty,
-`WezTerm`, xterm). Transparent regions are composited against your terminal's
-actual background color, queried automatically at render time via OSC 11.
+`WezTerm`, xterm). By default, transparent regions are passed through to the
+terminal's native transparency handling.
 
+To composite transparent pixels against your terminal's actual background
+color, use `--composite-bg`. This queries the terminal via OSC 11 at render
+time:
 ```bash
 px2ansi-rs convert image.png --style sixel
-px2ansi-rs show pikachu --style sixel
+px2ansi-rs convert image.png --style sixel --composite-bg
+px2ansi-rs show pikachu --style sixel --composite-bg
 ```
+If your terminal does not support OSC 11 (e.g. Windows Terminal),
+`--composite-bg` has no effect and native transparency is used as the fallback.
 
-If your terminal does not support OSC 11 (e.g. Windows Terminal), sixel mode
-falls back to a black background. You can override this explicitly:
-
-```bash
-# Not yet a flag — set via RenderOptionsBuilder::bg_color in the library API
-```
-
-> [!NOTE] Sixel requires a supporting terminal. Tested on foot and kitty.
+> [!NOTE]
+> Sixel requires a supporting terminal. Tested on foot and kitty.
 > Ghostty works best with `background-opacity = 1.0` — semi-transparent
 > backgrounds interact poorly with sixel compositing in all terminals.
 
@@ -364,7 +365,8 @@ px2ansi-rs convert <image> --color-mode none
 px2ansi-rs show <image> --color-mode ...
 ```
 
-> [!NOTE] In standard RGB space, the distance between two colors is calculated
+> [!NOTE]
+> In standard RGB space, the distance between two colors is calculated
 > using the Pythagorean theorem. However, the human eye is significantly more
 > sensitive to variations in Green than in Blue. If you use raw RGB distance to
 > pick the "closest" 256-color match for a specific NixOS blue, the computer
@@ -556,8 +558,8 @@ You can point `show` at an index anywhere in your filesystem with `-I`:
 px2ansi-rs show -I /home/your-user/pokesprite/pokemon-gen8/shiny/shiny-index.json
 ```
 
-> [!NOTE] Any field omitted from the `.toml` file falls back to the built-in
-> defaults.
+> [!NOTE]
+> Any field omitted from the `.toml` file falls back to the built-in defaults.
 
 #### Configuration on NixOS
 
@@ -650,7 +652,8 @@ programs.zsh.initContent = ''
 | Chinese    | `--style chinese`    | Chinese density ramp (double-width)        | Stylized output              |
 | Sixel      | `--style sixel`      | Pixel-accurate Sixel protocol output       | Supported terminals only     |
 
-> [!NOTE] `--style ascii` also supports `--density light|medium|heavy`.
+> [!NOTE]
+> `--style ascii` also supports `--density light|medium|heavy`.
 > `--style dense` is shorthand for `--style ascii --density heavy`.
 > `--style sixel` is basically a 1 to 1 conversion.
 
@@ -875,8 +878,9 @@ px2ansi-rs convert tests/nixos.png --filter nearest --style ascii --output-image
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-rasterized.png" width="300" alt="Rasterized output example">
 </p>
 
-> [!NOTE] Some styles look better than others. The default background theme is
-> Tokyo Night.
+> [!NOTE]
+> Some styles look better than others. The default background theme is Tokyo
+> Night.
 
 ### Choosing a theme
 
@@ -902,8 +906,9 @@ You can also set a default theme in your config file:
 raster_theme = "gruvbox-dark"
 ```
 
-> [!WARNING] If the `rasterize` feature is not compiled in, using
-> `--output-image` will produce an error asking you to rebuild with the feature
+> [!WARNING]
+> If the `rasterize` feature is not compiled in, using `--output-image` will
+> produce an error asking you to rebuild with the feature
 > enabled.
 
 [Back to TOC](#top)

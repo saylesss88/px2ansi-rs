@@ -586,7 +586,8 @@ processing high-resolution images. These tests were conducted using the
 
 The SIMD luma scan alone roughly **halves CPU time** for the render pass.
 
-> [!NOTE] `px2ansi` scales better with resolution. Even though the NixOS image
+> [!NOTE]
+> `px2ansi` scales better with resolution. Even though the NixOS image
 > has double the pixels of the Scream image, it actually completes the task
 > faster.
 
@@ -598,8 +599,9 @@ The `parallel` feature enables [Rayon](https://crates.io/crates/rayon)-based
 multi-threaded rendering via `into_par_iter()` for Pass 2 (glyph mapping and
 colorization).
 
-> [!IMPORTANT] Rayon has a fixed thread-pool startup cost of ~1–2 ms. For
-> typical terminal-sized output (~200×100 = 20,000 pixels) this overhead
+> [!IMPORTANT]
+> Rayon has a fixed thread-pool startup cost of ~1–2 ms. For typical
+> terminal-sized output (~200×100 = 20,000 pixels) this overhead
 > **exceeds** the render time itself. The library therefore only activates
 > parallel rendering dynamically when the pixel count exceeds **120,000
 > pixels**,falling back to the fast serial + SIMD path otherwise:
