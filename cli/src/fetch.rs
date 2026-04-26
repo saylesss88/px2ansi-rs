@@ -2,7 +2,7 @@
 use ansi_width::ansi_width;
 use anyhow::Result;
 use colored::Colorize;
-use image::DynamicImage;
+use image::{imageops::FilterType, DynamicImage};
 use px2ansi::{CharsetMode, RenderOptions};
 use std::env;
 use std::fs;
@@ -13,31 +13,24 @@ use sysinfo::{Disks, Networks, System};
 // Configuration
 // ---------------------------------------------------------------------------
 
-/// Controls which fields appear in the fetch output and how they're labeled.
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
 pub struct FetchConfig {
-    // Header
     pub show_header: bool,
     pub show_separator: bool,
-    // System
     pub show_os: bool,
     pub show_kernel: bool,
     pub show_arch: bool,
     pub show_hostname: bool,
-    // Hardware
     pub show_cpu: bool,
     pub show_cpu_usage: bool,
     pub show_memory: bool,
     pub show_disk: bool,
-    // Runtime
     pub show_uptime: bool,
     pub show_processes: bool,
     pub show_shell: bool,
-    // Environment
     pub show_locale: bool,
     pub show_local_ip: bool,
-    // Label overrides (None → use built-in default)
     pub label_os: Option<String>,
     pub label_kernel: Option<String>,
     pub label_arch: Option<String>,
@@ -51,7 +44,6 @@ pub struct FetchConfig {
     pub label_shell: Option<String>,
     pub label_locale: Option<String>,
     pub label_local_ip: Option<String>,
-    /// Width of the key column (padded with spaces).
     pub key_width: usize,
 }
 
@@ -63,7 +55,7 @@ impl Default for FetchConfig {
             show_os: true,
             show_kernel: true,
             show_arch: true,
-            show_hostname: false, // already in header
+            show_hostname: false,
             show_cpu: true,
             show_cpu_usage: true,
             show_memory: true,
@@ -92,14 +84,6 @@ impl Default for FetchConfig {
 }
 
 impl FetchConfig {
-    /// Parse a minimal key = value config file.
-    ///
-    /// Lines starting with `#` are ignored. Recognised keys:
-    /// ```text
-    /// show_os      = false
-    /// label_os     = Operating System
-    /// key_width    = 14
-    /// ```
     #[must_use]
     pub fn from_file(path: &str) -> Self {
         let mut cfg = Self::default();
@@ -155,8 +139,6 @@ impl FetchConfig {
         cfg
     }
 
-    /// Convenience: load from `~/.config/yourapp/fetch.conf` if it exists,
-    /// otherwise return defaults.
     #[must_use]
     pub fn load_default() -> Self {
         if let Some(home) = env::var_os("HOME") {
@@ -167,6 +149,38 @@ impl FetchConfig {
         }
         Self::default()
     }
+}
+
+// ---------------------------------------------------------------------------
+// Terminal width
+// ---------------------------------------------------------------------------
+
+/// Returns terminal width in columns. Tries `COLUMNS` env var first (set by
+/// most shells), then the `libc` `TIOCGWINSZ` ioctl, then falls back to 80.
+fn term_cols() -> usize {
+    // 1. Try env var first
+    if let Some(n) = env::var("COLUMNS")
+        .ok()
+        .and_then(|s| s.trim().parse().ok())
+        .filter(|&n| n > 0)
+    {
+        return n;
+    }
+
+    // 2. Unix-specific ioctl fallback
+    #[cfg(unix)]
+    {
+        use std::os::unix::io::AsRawFd;
+        let fds = [std::io::stderr().as_raw_fd(), std::io::stdout().as_raw_fd()];
+        for fd in fds {
+            let mut ws: libc::winsize = unsafe { std::mem::zeroed() };
+            if unsafe { libc::ioctl(fd, libc::TIOCGWINSZ, &mut ws) } == 0 && ws.ws_col > 0 {
+                return ws.ws_col as usize;
+            }
+        }
+    }
+
+    80 // 3. Global fallback
 }
 
 // ---------------------------------------------------------------------------
@@ -185,7 +199,6 @@ pub fn linux_locale() -> String {
 }
 
 fn current_shell() -> String {
-    // $SHELL is the login shell path, e.g. /bin/zsh
     env::var("SHELL").map_or_else(
         |_| "unknown".to_string(),
         |s| s.rsplit('/').next().unwrap_or(&s).to_string(),
@@ -201,7 +214,6 @@ fn cpu_model(sys: &System) -> String {
 fn local_ip() -> String {
     let networks = Networks::new_with_refreshed_list();
     for (iface, data) in &networks {
-        // Skip loopback
         if iface == "lo" || iface.starts_with("lo") {
             continue;
         }
@@ -217,7 +229,6 @@ fn local_ip() -> String {
 
 fn disk_usage() -> String {
     let disks = Disks::new_with_refreshed_list();
-    // Find the root mount
     for disk in &disks {
         if disk.mount_point().to_str() == Some("/") {
             let total = disk.total_space() / 1024 / 1024 / 1024;
@@ -230,7 +241,6 @@ fn disk_usage() -> String {
 }
 
 fn arch() -> String {
-    // std::env::consts::ARCH gives the compile-target arch
     std::env::consts::ARCH.to_string()
 }
 
@@ -246,7 +256,7 @@ fn uptime_string(uptime: u64) -> String {
 }
 
 // ---------------------------------------------------------------------------
-// fetch_lines  (now config-driven)
+// fetch_lines
 // ---------------------------------------------------------------------------
 
 #[must_use]
@@ -261,7 +271,6 @@ pub fn fetch_lines_with_config(cfg: &FetchConfig) -> Vec<String> {
     let mut lines = Vec::new();
     let w = cfg.key_width;
 
-    // Macro to handle the "Label: Value" pattern conditionally
     macro_rules! add {
         ($show:expr, $label:expr, $opt:expr, $val:expr) => {
             if $show {
@@ -283,7 +292,6 @@ pub fn fetch_lines_with_config(cfg: &FetchConfig) -> Vec<String> {
     if cfg.show_separator {
         lines.push("─".repeat(28).white().to_string());
     }
-
     add!(
         cfg.show_os,
         "OS",
@@ -316,7 +324,6 @@ pub fn fetch_lines_with_config(cfg: &FetchConfig) -> Vec<String> {
         current_shell().white()
     );
     add!(cfg.show_cpu, "CPU", &cfg.label_cpu, cpu_model(&sys).white());
-
     if cfg.show_cpu_usage {
         add!(
             true,
@@ -334,7 +341,6 @@ pub fn fetch_lines_with_config(cfg: &FetchConfig) -> Vec<String> {
             format!("{} / {} MiB", u.to_string().yellow(), t.to_string().white())
         );
     }
-
     add!(
         cfg.show_disk,
         "Disk (/)",
@@ -359,331 +365,233 @@ pub fn fetch_lines_with_config(cfg: &FetchConfig) -> Vec<String> {
         &cfg.label_local_ip,
         local_ip().cyan()
     );
-
     lines
-} // pub fn fetch_lines_with_config(cfg: &FetchConfig) -> Vec<String> {
-  //     let mut sys = System::new_all();
-  //     sys.refresh_all();
-
-//     let mut lines = Vec::new();
-//     let w = cfg.key_width;
-
-//     // 1. Logic for formatting keys
-//     let fmt_key = |default: &str, ovr: &Option<String>| {
-//         format!("{:<w$}", ovr.as_deref().unwrap_or(default))
-//             .red()
-//             .bold()
-//     };
-
-//     // 2. Logic for generating the line string (no more borrow errors!)
-//     let gen_line =
-//         |show: bool, label: &str, ovr: &Option<String>, value: colored::ColoredString| {
-//             if show {
-//                 Some(format!("{}: {}", fmt_key(label, ovr), value))
-//             } else {
-//                 None
-//             }
-//         };
-
-//     // --- Header & Separator (Direct push works now) ---
-//     if cfg.show_header {
-//         lines.push(format!(
-//             "{}@{}",
-//             username().red().bold(),
-//             System::host_name().unwrap_or_default().white()
-//         ));
-//     }
-//     if cfg.show_separator {
-//         lines.push("─".repeat(28).white().to_string());
-//     }
-
-//     // --- System Info Rows ---
-//     // Use .extend() with an array of Options to push multiple lines cleanly
-//     lines.extend(
-//         [
-//             gen_line(
-//                 cfg.show_os,
-//                 "OS",
-//                 &cfg.label_os,
-//                 System::name().unwrap_or_default().white(),
-//             ),
-//             gen_line(
-//                 cfg.show_kernel,
-//                 "Kernel",
-//                 &cfg.label_kernel,
-//                 System::kernel_version().unwrap_or_default().white(),
-//             ),
-//             gen_line(cfg.show_arch, "Arch", &cfg.label_arch, arch().white()),
-//             gen_line(
-//                 cfg.show_uptime,
-//                 "Uptime",
-//                 &cfg.label_uptime,
-//                 uptime_string(System::uptime()).white(),
-//             ),
-//             gen_line(
-//                 cfg.show_shell,
-//                 "Shell",
-//                 &cfg.label_shell,
-//                 current_shell().white(),
-//             ),
-//             gen_line(cfg.show_cpu, "CPU", &cfg.label_cpu, cpu_model(&sys).white()),
-//             // Handle special cases with inline logic
-//             if cfg.show_cpu_usage {
-//                 gen_line(
-//                     true,
-//                     "CPU Usage",
-//                     &cfg.label_cpu_usage,
-//                     format!("{:.1}%", sys.global_cpu_usage()).yellow(),
-//                 )
-//             } else {
-//                 None
-//             },
-//             if cfg.show_memory {
-//                 let (u, t) = (
-//                     sys.used_memory() / 1_048_576,
-//                     sys.total_memory() / 1_048_576,
-//                 );
-//                 gen_line(
-//                     true,
-//                     "Memory",
-//                     &cfg.label_memory,
-//                     format!("{} / {} MiB", u.to_string().yellow(), t.to_string().white()).into(),
-//                 )
-//             } else {
-//                 None
-//             },
-//             gen_line(
-//                 cfg.show_disk,
-//                 "Disk (/)",
-//                 &cfg.label_disk,
-//                 disk_usage().yellow(),
-//             ),
-//             gen_line(
-//                 cfg.show_processes,
-//                 "Processes",
-//                 &cfg.label_processes,
-//                 sys.processes().len().to_string().purple(),
-//             ),
-//             gen_line(
-//                 cfg.show_locale,
-//                 "Locale",
-//                 &cfg.label_locale,
-//                 linux_locale().purple(),
-//             ),
-//             gen_line(
-//                 cfg.show_local_ip,
-//                 "Local IP",
-//                 &cfg.label_local_ip,
-//                 local_ip().cyan(),
-//             ),
-//         ]
-//         .into_iter()
-//         .flatten(),
-//     );
-
-//     lines
-// }
-// pub fn fetch_lines_with_config(cfg: &FetchConfig) -> Vec<String> {
-//     let mut sys = System::new_all();
-//     sys.refresh_all();
-
-//     let w = cfg.key_width;
-//     // Build a closure so each field uses the right label + width
-//     let key = |default: &str, override_: &Option<String>| {
-//         let label = override_.as_deref().unwrap_or(default);
-//         format!("{label:<w$}").red().bold()
-//     };
-
-//     // Gather raw values up-front (cheap to compute, only used if shown)
-//     let os = System::name().unwrap_or_else(|| "Unknown".to_string());
-//     let kernel = System::kernel_version().unwrap_or_else(|| "?.?.?".to_string());
-//     let hostname = System::host_name().unwrap_or_else(|| "my-host".to_string());
-//     let uptime_str = uptime_string(System::uptime());
-//     let total_mem = sys.total_memory() / 1024 / 1024;
-//     let used_mem = sys.used_memory() / 1024 / 1024;
-//     let cpu_usage = sys.global_cpu_usage();
-//     let process_count = sys.processes().len();
-
-//     let mut lines: Vec<String> = Vec::new();
-
-//     // Header: user@host
-//     if cfg.show_header {
-//         lines.push(format!("{}@{}", username().red().bold(), hostname.white()));
-//     }
-//     if cfg.show_separator {
-//         lines.push("─".repeat(28).white().to_string());
-//     }
-
-//     if cfg.show_os {
-//         lines.push(format!("{}: {}", key("OS", &cfg.label_os), os.white()));
-//     }
-//     if cfg.show_kernel {
-//         lines.push(format!(
-//             "{}: {}",
-//             key("Kernel", &cfg.label_kernel),
-//             kernel.white()
-//         ));
-//     }
-//     if cfg.show_arch {
-//         lines.push(format!(
-//             "{}: {}",
-//             key("Arch", &cfg.label_arch),
-//             arch().white()
-//         ));
-//     }
-//     if cfg.show_hostname {
-//         lines.push(format!(
-//             "{}: {}",
-//             key("Hostname", &cfg.label_hostname),
-//             hostname.white()
-//         ));
-//     }
-//     if cfg.show_uptime {
-//         lines.push(format!(
-//             "{}: {}",
-//             key("Uptime", &cfg.label_uptime),
-//             uptime_str.white()
-//         ));
-//     }
-//     if cfg.show_shell {
-//         lines.push(format!(
-//             "{}: {}",
-//             key("Shell", &cfg.label_shell),
-//             current_shell().white()
-//         ));
-//     }
-//     if cfg.show_cpu {
-//         lines.push(format!(
-//             "{}: {}",
-//             key("CPU", &cfg.label_cpu),
-//             cpu_model(&sys).white()
-//         ));
-//     }
-//     if cfg.show_cpu_usage {
-//         lines.push(format!(
-//             "{}: {:.1}%",
-//             key("CPU Usage", &cfg.label_cpu_usage),
-//             cpu_usage.to_string().yellow()
-//         ));
-//     }
-//     if cfg.show_memory {
-//         lines.push(format!(
-//             "{}: {} / {} MiB",
-//             key("Memory", &cfg.label_memory),
-//             used_mem.to_string().yellow(),
-//             total_mem.to_string().white()
-//         ));
-//     }
-//     if cfg.show_disk {
-//         lines.push(format!(
-//             "{}: {}",
-//             key("Disk (/)", &cfg.label_disk),
-//             disk_usage().yellow()
-//         ));
-//     }
-//     if cfg.show_processes {
-//         lines.push(format!(
-//             "{}: {}",
-//             key("Processes", &cfg.label_processes),
-//             process_count.to_string().purple()
-//         ));
-//     }
-//     if cfg.show_locale {
-//         lines.push(format!(
-//             "{}: {}",
-//             key("Locale", &cfg.label_locale),
-//             linux_locale().purple()
-//         ));
-//     }
-//     if cfg.show_local_ip {
-//         lines.push(format!(
-//             "{}: {}",
-//             key("Local IP", &cfg.label_local_ip),
-//             local_ip().cyan()
-//         ));
-//     }
-
-//     lines
-// }
+}
 
 // ---------------------------------------------------------------------------
-// Image rendering  (unchanged logic, unchanged public API)
+// ANSI-safe line truncation
 // ---------------------------------------------------------------------------
 
+/// Truncate `s` so its *visible* width ≤ `max_cols`, appending "…" if cut.
+/// Correctly skips over CSI escape sequences when counting width.
+fn truncate_ansi(s: &str, max_cols: usize) -> String {
+    if max_cols == 0 {
+        return String::new();
+    }
+    if ansi_width(s) <= max_cols {
+        return s.to_string();
+    }
+    let target = max_cols.saturating_sub(1); // reserve 1 col for '…'
+    let mut out = String::new();
+    let mut col = 0usize;
+    let mut chars = s.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch == '\x1b' {
+            out.push(ch);
+            if chars.peek() == Some(&'[') {
+                if let Some(bracket) = chars.next() {
+                    out.push(bracket);
+                }
+                for inner in chars.by_ref() {
+                    out.push(inner);
+                    if inner.is_ascii_alphabetic() {
+                        break;
+                    }
+                }
+            }
+            continue;
+        }
+        let w = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0);
+        if col + w > target {
+            break;
+        }
+        out.push(ch);
+        col += w;
+    }
+    out.push_str("\x1b[0m"); // close any open colour
+    out.push('…');
+    out
+}
+
+// ---------------------------------------------------------------------------
+// Image rendering
+// ---------------------------------------------------------------------------
+
+///  Render or IO failure.
 /// # Errors
-/// See module-level docs.
 pub fn print_fetch_with_image<W: Write>(
     img: &DynamicImage,
     render: &RenderOptions,
     writer: &mut W,
 ) -> Result<()> {
-    let target_px_height: u32 = 90;
+    let cols = term_cols();
+    let max_img_cols = u32::try_from(cols.saturating_sub(38).max(20)).unwrap_or(20);
     let (orig_w, orig_h) = (img.width(), img.height());
-    let mut img_buf: Vec<u8> = Vec::new();
+    let mut img_buf = Vec::new();
 
     if matches!(
         render.charset(),
         CharsetMode::Ascii | CharsetMode::Chinese | CharsetMode::Kanji
     ) {
-        let target_cols: u32 = 50;
+        let target_cols = 50_u32.min(max_img_cols);
         let aspect = f64::from(orig_h) / f64::from(orig_w);
-        let char_aspect_correction = 0.5_f64;
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let target_rows = ((f64::from(target_cols) * aspect) * char_aspect_correction)
-            .round()
-            .max(1.0) as u32;
-        let ascii_img = img.resize_exact(
-            target_cols,
-            target_rows,
-            image::imageops::FilterType::Nearest,
-        );
-        let capped = render.with_width(target_cols);
-        capped.render(&ascii_img, &mut img_buf)?;
+        let target_rows = ((f64::from(target_cols) * aspect) * 0.5).max(1.0) as u32;
+        let ascii_img = img.resize_exact(target_cols, target_rows, FilterType::Nearest);
+        render
+            .with_width(target_cols)
+            .render(&ascii_img, &mut img_buf)?;
     } else {
-        let resized;
-        let img_to_render = if orig_h > target_px_height {
-            let scale = f64::from(target_px_height) / f64::from(orig_h);
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            let target_w = (f64::from(orig_w) * scale * 0.5).round().max(1.0) as u32;
-            let rgba = img.to_rgba8();
-            resized = image::DynamicImage::ImageRgba8(rgba).resize(
-                target_w,
-                target_px_height,
-                image::imageops::FilterType::Nearest,
-            );
-            &resized
+        let max_px_w = max_img_cols * 2;
+        let scale = (90.0 / f64::from(orig_h)).min(f64::from(max_px_w) / f64::from(orig_w));
+        // Always apply the 0.5 terminal-column correction to width.
+        // Half-block mode stacks 2 pixels vertically per row, but each
+        // pixel still occupies 1 column horizontally — so to get square-ish
+        // cells we halve the pixel width before handing to the renderer.
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let tw = (f64::from(orig_w) * scale * 0.5).max(1.0) as u32;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let th = (f64::from(orig_h) * scale).max(1.0) as u32;
+        let img_to_render = if tw != orig_w || th != orig_h {
+            img.resize(tw, th, FilterType::Nearest)
         } else {
-            img
+            img.clone()
         };
-        render.render(img_to_render, &mut img_buf)?;
+        render.render(&img_to_render, &mut img_buf)?;
     }
 
     let img_str = String::from_utf8_lossy(&img_buf);
-    crate::fetch::print_with_left_block_writer(&img_str, writer)
+    print_with_left_block_writer(&img_str, writer, cols)
 }
 
 // ---------------------------------------------------------------------------
 // Layout writer
 // ---------------------------------------------------------------------------
 
+/// Minimum columns the right-hand fetch block must have before we fall back
+/// to a stacked (image-above, text-below) layout.
+// const MIN_RIGHT_BUDGET: usize = 20;
+const MIN_RIGHT_BUDGET: usize = 12;
+
+/// Gap (in terminal columns) between the image and the fetch text.
+// const GAP: usize = 3;
+const GAP: usize = 1;
+
 /// # Errors
 /// IO write failure.
-pub fn print_with_left_block_writer<W: Write>(left: &str, writer: &mut W) -> Result<()> {
-    let left_lines: Vec<&str> = left.lines().collect();
-    let right_lines = fetch_lines();
+pub fn print_with_left_block_writer<W: Write>(
+    image_block: &str,
+    writer: &mut W,
+    cols: usize,
+) -> Result<()> {
+    let left_lines: Vec<&str> = image_block.lines().collect();
     let left_width = left_lines.iter().map(|l| ansi_width(l)).max().unwrap_or(0);
-    let pad = left_width + 3;
-    let max_lines = left_lines.len().max(right_lines.len());
+    let pad = left_width + GAP;
+    let right_budget = cols.saturating_sub(pad);
 
+    let info_lines = fetch_lines();
+
+    if right_budget < MIN_RIGHT_BUDGET {
+        writeln!(writer)?;
+        for line in &left_lines {
+            writeln!(writer, "{line}")?;
+        }
+        writeln!(writer)?;
+        for line in &info_lines {
+            writeln!(writer, "{line}")?;
+        }
+        writeln!(writer)?;
+        return Ok(());
+    }
+
+    let max_lines = left_lines.len().max(info_lines.len());
     writeln!(writer)?;
     for i in 0..max_lines {
         let l = *left_lines.get(i).unwrap_or(&"");
-        let r = right_lines.get(i).map_or("", String::as_str);
-        let spaces = pad.saturating_sub(ansi_width(l));
-        write!(writer, "{l}")?;
-        write!(writer, "{:width$}", "", width = spaces)?;
-        writeln!(writer, "{r}")?;
+        let r = info_lines.get(i).map_or("", String::as_str);
+
+        write!(writer, "{l:<pad$}")?;
+        writeln!(writer, "{}", truncate_ansi(r, right_budget))?;
     }
     writeln!(writer)?;
     Ok(())
 }
+// pub fn print_with_left_block_writer<W: Write>(
+//     image_block: &str,
+//     writer: &mut W,
+//     cols: usize,
+// ) -> Result<()> {
+//     let left_lines: Vec<&str> = image_block.lines().collect();
+//     let left_width = left_lines.iter().map(|l| ansi_width(l)).max().unwrap_or(0);
+//     let pad = left_width + GAP;
+//     let right_budget = cols.saturating_sub(pad);
+
+//     let info_lines = fetch_lines();
+
+//     if right_budget < MIN_RIGHT_BUDGET {
+//         // Stacked: image on top, fetch below, both left-aligned.
+//         writeln!(writer)?;
+//         for line in &left_lines {
+//             writeln!(writer, "{line}")?;
+//         }
+//         writeln!(writer)?;
+//         for line in &info_lines {
+//             writeln!(writer, "{line}")?;
+//         }
+//         writeln!(writer)?;
+//         return Ok(());
+//     }
+
+//     // Side-by-side.
+//     let max_lines = left_lines.len().max(info_lines.len());
+//     writeln!(writer)?;
+//     for i in 0..max_lines {
+//         let l = *left_lines.get(i).unwrap_or(&"");
+//         let r = info_lines.get(i).map_or("", String::as_str);
+//         let spaces = pad.saturating_sub(ansi_width(l));
+//         write!(writer, "{l}")?;
+//         write!(writer, "{:width$}", "", width = spaces)?;
+//         writeln!(writer, "{}", truncate_ansi(r, right_budget))?;
+//     }
+//     writeln!(writer)?;
+//     Ok(())
+// }
+// pub fn print_with_left_block_writer<W: Write>(left: &str, writer: &mut W) -> Result<()> {
+//     let cols = term_cols();
+//     let left_lines: Vec<&str> = left.lines().collect();
+//     let left_width = left_lines.iter().map(|l| ansi_width(l)).max().unwrap_or(0);
+//     let pad = left_width + GAP;
+
+//     // How many columns remain for fetch text?
+//     let right_budget = cols.saturating_sub(pad);
+
+//     if right_budget < MIN_RIGHT_BUDGET {
+//         // Too narrow for side-by-side: stack image above fetch text.
+//         writeln!(writer)?;
+//         for line in &left_lines {
+//             writeln!(writer, "{line}")?;
+//         }
+//         writeln!(writer)?;
+//         for line in fetch_lines() {
+//             writeln!(writer, "{line}")?;
+//         }
+//         writeln!(writer)?;
+//         return Ok(());
+//     }
+
+//     let right_lines = fetch_lines();
+//     let max_lines = left_lines.len().max(right_lines.len());
+
+//     writeln!(writer)?;
+//     for i in 0..max_lines {
+//         let l = *left_lines.get(i).unwrap_or(&"");
+//         let r = right_lines.get(i).map_or("", String::as_str);
+//         let spaces = pad.saturating_sub(ansi_width(l));
+//         write!(writer, "{l}")?;
+//         write!(writer, "{:width$}", "", width = spaces)?;
+//         writeln!(writer, "{}", truncate_ansi(r, right_budget))?;
+//     }
+//     writeln!(writer)?;
+//     Ok(())
+// }
