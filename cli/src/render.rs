@@ -42,6 +42,7 @@ pub fn build_render_options(
     filter: Option<ResizeFilter>,
     color_mode: Option<ColorMode>,
     dither: bool,
+    composite_bg: bool,
 ) -> RenderOptions {
     let mut builder = RenderOptions::builder();
 
@@ -58,18 +59,12 @@ pub fn build_render_options(
         builder = builder.filter(f);
     }
 
-    // Move this OUT of the filter else-block so it always runs
     if let Some(mode) = color_mode {
         builder = builder.color_mode(mode);
     }
 
-    // Only query the terminal if we're actually doing sixel —
-    // no point paying the raw mode cost for other render modes
-    eprintln!("[osc11] build_render_options style={:?}", style);
-    if style == Some(RenderStylePreset::Sixel) {
-        if let Some(bg) = crate::terminal::query_terminal_bg() {
-            builder = builder.bg_color(bg);
-        }
+    if let Some(bg) = crate::terminal::query_terminal_bg().filter(|_| composite_bg) {
+        builder = builder.bg_color(bg);
     }
 
     // Always apply the dither flag and then build

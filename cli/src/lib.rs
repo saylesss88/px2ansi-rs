@@ -128,6 +128,7 @@ mod tests {
             None,
             None,
             false,
+            false,
         );
         assert_eq!(opts.charset(), CharsetMode::Braille);
     }
@@ -140,6 +141,7 @@ mod tests {
             None,
             None,
             None,
+            false,
             false,
         );
         assert_eq!(opts.charset(), CharsetMode::Unicode);
@@ -155,6 +157,7 @@ mod tests {
             None,
             None,
             false,
+            false,
         );
         assert!(matches!(opts.style().density(), Density::Heavy));
     }
@@ -169,13 +172,22 @@ mod tests {
             None,
             None,
             false,
+            false,
         );
         assert!(matches!(opts.style().density(), Density::Light));
     }
 
     #[test]
     fn build_render_options_nearest_filter() {
-        let opts = build_render_options(None, None, None, Some(ResizeFilter::Nearest), None, false);
+        let opts = build_render_options(
+            None,
+            None,
+            None,
+            Some(ResizeFilter::Nearest),
+            None,
+            false,
+            false,
+        );
         assert_eq!(opts.filter(), image::imageops::FilterType::Nearest);
     }
 

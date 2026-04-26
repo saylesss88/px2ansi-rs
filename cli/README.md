@@ -259,7 +259,7 @@ px2ansi-rs convert tests/scream.png --filter lanczos3
 #### Sixel mode
 
 Sixel renders pixel-accurate images in supported terminals (foot, kitty,
-WezTerm, xterm). Transparent regions are composited against your terminal's
+`WezTerm`, xterm). Transparent regions are composited against your terminal's
 actual background color, queried automatically at render time via OSC 11.
 
 ```bash

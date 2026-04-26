@@ -96,9 +96,17 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             unidirectional,
             fps,
             fetch,
+            composite_bg,
         } => {
-            let render_opts =
-                render::build_render_options(style, density, width, filter, color_mode, dither);
+            let render_opts = render::build_render_options(
+                style,
+                density,
+                width,
+                filter,
+                color_mode,
+                dither,
+                composite_bg,
+            );
 
             let output_image = output_image.or_else(|| cfg.output_image.as_ref().map(Into::into));
 
@@ -135,9 +143,17 @@ fn build_command(cli: Cli, cfg: &Config, opts: &ResolvedOptions) -> Result<Comma
             unidirectional,
             fps,
             fetch,
+            composite_bg,
         } => {
-            let render_opts =
-                render::build_render_options(style, density, None, filter, color_mode, dither);
+            let render_opts = render::build_render_options(
+                style,
+                density,
+                None,
+                filter,
+                color_mode,
+                dither,
+                composite_bg,
+            );
 
             let rotate = px2ansi_rs::rotate::parse_rotate(rotate, fps, axis, unidirectional)?;
 

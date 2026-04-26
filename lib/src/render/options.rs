@@ -121,7 +121,7 @@ impl RenderOptionsBuilder {
         self
     }
 
-    /// Sets bg color for sixel mode
+    /// Sets the bg color for Sixel
     #[must_use]
     pub const fn bg_color(mut self, color: [u8; 3]) -> Self {
         self.bg_color = Some(color);
@@ -204,12 +204,11 @@ impl RenderOptions {
         self.color_mode
     }
 
-    /// Returns the background color for sixel compositing, if set.
+    /// Returns the bg color of your terminal
     #[must_use]
     pub const fn bg_color(&self) -> Option<[u8; 3]> {
         self.bg_color
     }
-
     /// Prepares a [`DynamicImage`] for terminal rendering through resizing and optional dithering.
     ///
     /// This method handles the core image transformation pipeline:

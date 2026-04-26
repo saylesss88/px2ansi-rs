@@ -25,7 +25,7 @@ use std::time::{Duration, Instant};
 ///
 /// # Terminal support
 ///
-/// Most modern terminals support OSC 11 (foot, kitty, WezTerm, xterm).
+/// Most modern terminals support OSC 11 (foot, kitty, `WezTerm`, xterm).
 /// Ghostty supports it as of recent versions. Windows Terminal does not.
 #[must_use]
 pub fn query_terminal_bg() -> Option<[u8; 3]> {
@@ -38,26 +38,8 @@ pub fn query_terminal_bg() -> Option<[u8; 3]> {
 
     let response = read_osc_response(Duration::from_millis(500))?;
 
-    // Temporary debug — remove after confirming
-    eprintln!("[osc11] raw response: {:?}", response);
-
-    let result = parse_osc11(&response);
-    eprintln!("[osc11] parsed: {:?}", result);
-    result
-} // pub fn query_terminal_bg() -> Option<[u8; 3]> {
-  //     terminal::enable_raw_mode().ok()?;
-  //     // RawModeGuard restores the terminal unconditionally on drop, so any
-  //     // early `?` return below will not leave the terminal in raw mode.
-  //     let _guard = RawModeGuard;
-
-//     let mut stdout = io::stdout();
-//     // OSC 11 query: ESC ] 11 ; ? ST
-//     stdout.write_all(b"\x1b]11;?\x1b\\").ok()?;
-//     stdout.flush().ok()?;
-
-//     let response = read_osc_response(Duration::from_millis(500))?;
-//     parse_osc11(&response)
-// }
+    parse_osc11(&response)
+}
 
 /// RAII guard that restores the terminal from raw mode on drop.
 ///
@@ -92,27 +74,43 @@ fn read_osc_response(timeout: Duration) -> Option<String> {
 
     set_stdin_nonblocking(&mut stdin, true);
 
-    loop {
-        if Instant::now() >= deadline {
-            break;
-        }
+    while Instant::now() < deadline {
         match stdin.read(&mut byte) {
             Ok(1) => {
                 buf.push(byte[0]);
-                let ends_with_st =
-                    buf.len() >= 2 && buf[buf.len() - 2] == b'\x1b' && buf[buf.len() - 1] == b'\\';
-                let ends_with_bel = byte[0] == b'\x07';
-                if ends_with_st || ends_with_bel {
+                // Exit if we hit the String Terminator (ESC \) or Bell (\x07)
+                if byte[0] == b'\x07' || buf.ends_with(b"\x1b\\") {
                     break;
                 }
             }
-            Ok(_) => break,
+            // If the terminal isn't ready, wait a bit and try again
             Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
                 std::thread::sleep(Duration::from_millis(5));
             }
-            Err(_) => break,
+            // Stop on EOF (Ok(0)) or any actual IO error
+            _ => break,
         }
-    }
+    } // loop {
+      //     if Instant::now() >= deadline {
+      //         break;
+      //     }
+      //     match stdin.read(&mut byte) {
+      //         Ok(1) => {
+      //             buf.push(byte[0]);
+      //             let ends_with_st =
+      //                 buf.len() >= 2 && buf[buf.len() - 2] == b'\x1b' && buf[buf.len() - 1] == b'\\';
+      //             let ends_with_bel = byte[0] == b'\x07';
+      //             if ends_with_st || ends_with_bel {
+      //                 break;
+      //             }
+      //         }
+      //         Ok(_) => break,
+      //         Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+      //             std::thread::sleep(Duration::from_millis(5));
+      //         }
+      //         Err(_) => break,
+      //     }
+      // }
 
     set_stdin_nonblocking(&mut stdin, false);
 
@@ -186,24 +184,6 @@ fn parse_osc11(response: &str) -> Option<[u8; 3]> {
 
     Some([r, g, b])
 }
-// fn parse_osc11(response: &str) -> Option<[u8; 3]> {
-//     let start = response.find("rgb:")?;
-//     let rgb_str = &response[start + 4..];
-//     let parts: Vec<&str> = rgb_str.splitn(3, '/').collect();
-//     if parts.len() < 3 {
-//         return None;
-//     }
-//     let r = u8::from_str_radix(parts[0].get(..2)?, 16).ok()?;
-//     let g = u8::from_str_radix(parts[1].get(..2)?, 16).ok()?;
-//     // Strip any trailing non-hex chars (ST, BEL, etc.) before parsing blue
-//     let blue_str: String = parts[2]
-//         .chars()
-//         .take_while(|c| c.is_ascii_hexdigit())
-//         .collect();
-//     let b = u8::from_str_radix(blue_str.get(..2)?, 16).ok()?;
-
-//     Some([r, g, b])
-// }
 
 #[cfg(test)]
 mod tests {

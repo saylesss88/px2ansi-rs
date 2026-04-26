@@ -95,21 +95,21 @@ impl RenderOptions {
             //     (tw.max(1), h.max(1))
             // },
         );
-        // (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE))
-        let result = (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE));
+        (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE))
+        // let result = (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE));
 
-        eprintln!(
-            "DEBUG charset={:?} term={}x{} orig={}x{} render={}x{}",
-            self.charset(),
-            term_w,
-            term_h,
-            orig_w,
-            orig_h,
-            result.0,
-            result.1
-        );
+        // eprintln!(
+        //     "DEBUG charset={:?} term={}x{} orig={}x{} render={}x{}",
+        //     self.charset(),
+        //     term_w,
+        //     term_h,
+        //     orig_w,
+        //     orig_h,
+        //     result.0,
+        //     result.1
+        // );
 
-        result
+        // result
     }
 }
 

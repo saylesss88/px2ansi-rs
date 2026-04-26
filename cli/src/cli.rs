@@ -121,6 +121,10 @@ pub enum Commands {
         /// Pairs with --rotate to spin the image while info stays pinned to the right.
         #[arg(long, default_value = "false")]
         fetch: bool,
+
+        /// Query the terminal background color and composite transparent pixels against it (sixel only)
+        #[arg(long, default_value = "false")]
+        composite_bg: bool,
     },
     /// Create a JSON index of a directory
     Index {
@@ -194,6 +198,10 @@ pub enum Commands {
         /// Pairs with --rotate to spin the image while info stays pinned to the right.
         #[arg(long, default_value = "false")]
         fetch: bool,
+
+        /// Query the terminal background color and composite transparent pixels against it (sixel only)
+        #[arg(long, default_value = "false")]
+        composite_bg: bool,
     },
     /// List entries in the index
     List {
