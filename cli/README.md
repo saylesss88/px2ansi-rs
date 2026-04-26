@@ -94,7 +94,7 @@ browsing, and advanced filters. It is approximately 25x faster.
 - [Performance and workflow](#performance--workflow)
   - [Benchmarks](#-benchmarks)
     - [Latency Metrics](#latency-metrics)
-  - [Testing with PokéSprite](testing-with-pokésprite)
+  - [Testing with `PokéSprite`](testing-with-pokésprite)
 - [Rasterize output to PNG](#rasterize-output-to-png)
   - [Choosing a Raster theme](#choosing-a-theme)
   - [Using the Library Only](#-using-px2ansi-as-a-library)
@@ -541,7 +541,7 @@ key_width      = 8
 > the width of the info block.
 
 
-#### Random PokéSprite with Fetch
+#### Random `PokéSprite `with Fetch
 
 ```bash
 git clone https://github.com/msikma/pokesprite.git
@@ -954,7 +954,7 @@ px2ansi-rs convert <file> --latency
 > **Note**: Latency can also be enabled via the config file (`latency = true`).
 > CLI flags override config settings.
 
-### Testing with PokéSprite
+### Testing with `PokéSprite`
 
 ```bash
 git clone https://github.com/msikma/pokesprite.git
