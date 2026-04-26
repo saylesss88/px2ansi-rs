@@ -717,7 +717,7 @@ dependencies = [
 
 [[package]]
 name = "px2ansi-rs"
-version = "0.5.25"
+version = "0.5.26"
 dependencies = [
  "ansi-width",
  "anyhow",
