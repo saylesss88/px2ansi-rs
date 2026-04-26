@@ -540,7 +540,6 @@ key_width      = 8
 > If text still wraps on an unusually small pane, lowering `key_width` reduces
 > the width of the info block.
 
-The main changes: fixed the missing `--fetch` flag on the first example, changed the prose tip from "lower key_width to fix wrapping" to explaining the automatic behaviour first with key_width as a last resort, and added the one-liner about tiling WM fallback right after the code block where people are most likely to wonder about it.
 
 #### Random PokéSprite with Fetch
 

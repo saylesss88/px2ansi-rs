@@ -95,6 +95,7 @@ pub enum Commands {
         ///   --rotate 90       (rotate 90° and render once)
         ///   --rotate 270      (rotate 270° and render once)
         #[arg(
+            short,
             long,
             num_args = 0..=1,
             default_missing_value = "0",
@@ -105,12 +106,12 @@ pub enum Commands {
 
         /// Spin axis for --rotate animation.
         /// z = canvas spin, y = coin-flip (horizontal mirror), x = cartwheel (vertical mirror)
-        #[arg(long, value_enum, default_value = "z")]
+        #[arg(short, long, value_enum, default_value = "z")]
         axis: RotateAxis,
 
         /// Always spin in the same direction. Only affects --axis y and --axis x.
         /// Default behaviour (without this flag) ping-pongs: front → back → front.
-        #[arg(long, default_value = "false")]
+        #[arg(short, long, default_value = "false")]
         unidirectional: bool,
 
         /// Frames per second for the --rotate spin animation (default: 8)
@@ -172,6 +173,7 @@ pub enum Commands {
         ///   --rotate 90       (rotate 90° and render once)
         ///   --rotate 270      (rotate 270° and render once)
         #[arg(
+            short,
             long,
             num_args = 0..=1,
             default_missing_value = "0",
@@ -182,12 +184,12 @@ pub enum Commands {
 
         /// Spin axis for --rotate animation.
         /// z = canvas spin, y = coin-flip (horizontal mirror), x = cartwheel (vertical mirror)
-        #[arg(long, value_enum, default_value = "z")]
+        #[arg(short, long, value_enum, default_value = "z")]
         axis: RotateAxis,
 
         /// Always spin in the same direction. Only affects --axis y and --axis x.
         /// Default behaviour (without this flag) ping-pongs: front → back → front.
-        #[arg(long, default_value = "false")]
+        #[arg(short, long, default_value = "false")]
         unidirectional: bool,
 
         /// Frames per second for the --rotate spin animation (default: 8)

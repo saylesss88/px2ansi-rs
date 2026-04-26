@@ -446,7 +446,7 @@ fn truncate_ansi(s: &str, max_cols: usize) -> String {
         out.push(ch);
         col += w;
     }
-    out.push_str("\x1b[0m"); // close any open colour
+    out.push_str("\x1b[0m"); // close any open color
     out.push('…');
     out
 }
@@ -508,12 +508,11 @@ pub fn print_fetch_with_image<W: Write>(
 
 /// Minimum columns the right-hand fetch block must have before we fall back
 /// to a stacked (image-above, text-below) layout.
-// const MIN_RIGHT_BUDGET: usize = 20;
 const MIN_RIGHT_BUDGET: usize = 12;
 
 /// Gap (in terminal columns) between the image and the fetch text.
-// const GAP: usize = 3;
 const GAP: usize = 1;
+// const GAP: usize = 3;
 
 /// # Errors
 /// IO write failure.
