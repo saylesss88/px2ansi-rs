@@ -22,6 +22,11 @@
 
 #![deny(missing_docs)]
 
+// use mimalloc::MiMalloc;
+
+// #[global_allocator]
+// static GLOBAL: MiMalloc = MiMalloc;
+
 use px2ansi_rs::{
     commands, output, render, Cli, Command, Commands, Config, ConvertCmd, IndexCmd, ListCmd,
     ResolvedOptions, ShowCmd,

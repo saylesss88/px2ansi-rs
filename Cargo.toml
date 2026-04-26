@@ -7,7 +7,7 @@ default-members = ["lib", "cli"]
 resolver = "3"
 
 [workspace.package]
-version = "0.5.24"
+version = "0.5.25"
 edition = "2024"
 authors = [
 	"T. Sawyer <saylesss87@proton.me>",
@@ -16,6 +16,7 @@ authors = [
 license = "GPL-3.0"
 repository = "https://github.com/saylesss88/px2ansi-rs"
 readme = "README.md"
+changelog = "CHANGELOG.md"
 keywords = ["ansi", "pixel-art", "oklab", "rasterize", "colorspace"]
 
 # ── Shared dependencies ─────────────────────────────────────────────────────
@@ -47,8 +48,10 @@ clap_mangen = "0.3.0"
 rayon = {version = "1.12.0"}
 # Path dep: px2ansi-cli depends on the lib
 px2ansi = {path = "lib", version = "0.2.6", default-features = false}
+# mimalloc = {version = "0.1", default-features = false}
 
 # ── Shared release profile ──────────────────────────────────────────────────
+
 [profile.release]
 opt-level = 3
 lto = true

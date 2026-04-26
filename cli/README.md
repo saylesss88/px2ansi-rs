@@ -102,6 +102,7 @@ browsing, and advanced filters. It is approximately 25x faster.
 - [Troubleshooting](#troubleshooting--errors)
   - [Man Page Generation](#man-page-generation)
   - [Similar Crates](#similar-crates)
+- [Changelog](#changelog)
 - [License](#license)
 
 </details>
@@ -495,23 +496,26 @@ If you want to browse visually, use interactive fuzzy search:
 px2ansi-rs show -i
 ```
 
+
 #### Fetch Mode
 
 ```bash
 # Static ASCII mode
-px2ansi-rs convert nixos.png --style ascii fetch
+px2ansi-rs convert nixos.png --style ascii --fetch
 # Rotating Skull fetch
 px2ansi-rs convert skull.png --style ascii --rotate --axis y --unidirectional --fetch
-# Once you create an index, you can have a random image chosen with
-px2ansi-rs show --fetch
 ```
 
-**Configuring Fetch settings**
+Fetch mode is terminal-width aware — the image is automatically scaled to fit
+alongside the info block, and on narrow terminals (e.g. a tiling WM with a
+half-width pane) it falls back to a stacked layout with the image above the
+text.
+
+**Configuring fetch settings** — place at `~/fetch.conf`:
 
 ```conf
 # fetch.conf — customize your fetch display
 # All fields default to true / built-in label if omitted.
-
 show_hostname  = false   # already shown in the user@host header
 show_arch      = true
 show_cpu       = true
@@ -531,8 +535,41 @@ key_width      = 8
 ```
 
 > [!TIP]
-> If the fetch characters wrap into your image, lower the `key_width` to move
-> the image closer to the text
+> Layout is handled automatically — the image scales down to leave room for
+> fetch text, and switches to a stacked layout if the terminal is too narrow.
+> If text still wraps on an unusually small pane, lowering `key_width` reduces
+> the width of the info block.
+
+The main changes: fixed the missing `--fetch` flag on the first example, changed the prose tip from "lower key_width to fix wrapping" to explaining the automatic behaviour first with key_width as a last resort, and added the one-liner about tiling WM fallback right after the code block where people are most likely to wonder about it.
+
+#### Random PokéSprite with Fetch
+
+```bash
+git clone https://github.com/msikma/pokesprite.git
+## Create an Index
+px2ansi-rs index /home/your-user/pokesprite/pokemon-gen8/shiny -o index.json  ```
+
+Add the index path to your config:
+
+`~/.config/px2ansi-rs/default-config.toml`:
+
+```toml
+filter = "nearest"
+index = "home/your-user/pokesprite/pokemon-gen8/shiny/index.json"
+```
+
+And finally add this to your shell config:
+
+`.zshrc`:
+
+```bash
+# Defaults to random
+px2ansi-rs show --fetch
+# Or more explicitly
+px2ansi-rs show random --fetch
+```
+
+---
 
 ### List assets
 
@@ -746,6 +783,20 @@ px2ansi-rs convert image.png --style sixel
 ```
 
 Falls back gracefully if the terminal does not support Sixel.
+
+### Fetch Performance
+
+`--fetch` is designed to be fast. By using `sysinfo::System::new_with_specifics`
+and only querying the kernel for fields that are actually enabled in config,
+startup time is kept well under 20ms:
+
+| | mean | system time |
+|---|---|---|
+| before | 72.6 ms | 62 ms |
+| **after** | **16.8 ms** | **13 ms** |
+
+> Measured with `hyperfine --warmup 3` on NixOS, Rust nightly.
+> The remaining ~13ms is process startup + PNG decode.
 
 ### Combining Features
 
@@ -1077,6 +1128,10 @@ man 1 px2ansi-rs-show
 - [ansizalizer](https://github.com/Zebbeni/ansizalizer): A feature-rich TUI
   built with Ansipx and Bubble Tea (Go). It looks polished and could point
   toward a compelling future direction for this project.
+
+## Changelog
+
+- [See Changelog](../CHANGELOG.md)
 
 ## License
 

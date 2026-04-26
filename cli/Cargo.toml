@@ -10,7 +10,13 @@ readme = "README.md"
 keywords = ["ansi", "pixel-art", "oklab", "rasterize", "colorspace"]
 categories = ["command-line-utilities", "multimedia::images", "rendering"]
 description = "CLI frontend for the px2ansi terminal art engine"
-include = ["src/**/*", "Cargo.toml", "README.md", "../LICENSE"]
+include = [
+	"src/**/*",
+	"Cargo.toml",
+	"README.md",
+	"../LICENSE",
+	"../CHANGELOG.md",
+]
 
 [[bin]]
 name = "px2ansi-rs"
@@ -39,6 +45,8 @@ confy = "2.0.0"
 crossterm = {version = "0.29.0", default-features = false}
 sysinfo = "0.38.4"
 libc = "0.2.186"
+unicode-width = "0.2.2"
+# mimalloc.workspace = true
 
 [dev-dependencies]
 assert_cmd = "2.0"
