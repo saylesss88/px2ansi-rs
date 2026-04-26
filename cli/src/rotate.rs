@@ -14,7 +14,7 @@ use rayon::prelude::*;
 
 use anyhow::Result;
 use image::{imageops, DynamicImage};
-use px2ansi::RenderOptions;
+use px2ansi::{CharsetMode, RenderOptions};
 use std::{io::Write, thread, time::Duration};
 
 /// How the image is oriented during a `--rotate` spin animation.
@@ -403,8 +403,35 @@ fn compose_fetch_frame(
 ) -> Result<Vec<u8>> {
     use ansi_width::ansi_width;
 
+    let target_px_height: u32 = 90;
+    let (orig_w, orig_h) = (frame.width(), frame.height());
     let mut img_buf = Vec::with_capacity(frame.width() as usize * frame.height() as usize * 2);
-    render.render(frame, &mut img_buf)?;
+
+    let cs = render.charset();
+    if cs == CharsetMode::Ascii || cs == CharsetMode::Chinese || cs == CharsetMode::Kanji {
+        let target_cols: u32 = 50;
+        let aspect = f64::from(orig_h) / f64::from(orig_w);
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let target_h = ((f64::from(target_cols) * aspect) * 0.5).round().max(1.0) as u32;
+        let ascii_img =
+            frame.resize_exact(target_cols, target_h, image::imageops::FilterType::Nearest);
+        let capped = render.with_width(target_cols);
+        capped.render(&ascii_img, &mut img_buf)?;
+    } else if orig_h > target_px_height {
+        let scale = f64::from(target_px_height) / f64::from(orig_h);
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let target_w = (f64::from(orig_w) * scale * 0.5).round().max(1.0) as u32;
+        let rgba = frame.to_rgba8();
+        let dynimg = image::DynamicImage::ImageRgba8(rgba);
+        let resized = dynimg.resize(
+            target_w,
+            target_px_height,
+            image::imageops::FilterType::Nearest,
+        );
+        render.render(&resized, &mut img_buf)?;
+    } else {
+        render.render(frame, &mut img_buf)?;
+    }
     let img_str = String::from_utf8_lossy(&img_buf);
 
     let left_lines: Vec<&str> = img_str.lines().collect();

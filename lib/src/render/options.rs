@@ -209,6 +209,14 @@ impl RenderOptions {
     pub const fn bg_color(&self) -> Option<[u8; 3]> {
         self.bg_color
     }
+    /// Returns a copy of these options with the target width overridden.
+    #[must_use]
+    pub const fn with_width(self, width: u32) -> Self {
+        Self {
+            width: Some(width),
+            ..self
+        }
+    }
     /// Prepares a [`DynamicImage`] for terminal rendering through resizing and optional dithering.
     ///
     /// This method handles the core image transformation pipeline:

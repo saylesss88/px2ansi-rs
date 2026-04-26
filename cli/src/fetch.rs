@@ -4,7 +4,7 @@ use ansi_width::ansi_width;
 use anyhow::Result;
 use colored::Colorize;
 use image::DynamicImage;
-use px2ansi::RenderOptions;
+use px2ansi::{CharsetMode, RenderOptions};
 use std::env;
 use std::io::Write;
 use sysinfo::System;
@@ -27,14 +27,64 @@ pub fn print_fetch_with_image<W: Write>(
     render: &RenderOptions,
     writer: &mut W,
 ) -> Result<()> {
+    let target_px_height: u32 = 90;
+    let (orig_w, orig_h) = (img.width(), img.height());
     let mut img_buf: Vec<u8> = Vec::new();
-    render.render(img, &mut img_buf)?;
+
+    if matches!(
+        render.charset(),
+        CharsetMode::Ascii | CharsetMode::Chinese | CharsetMode::Kanji
+    ) {
+        // let target_cols: u32 = 40;
+        let target_cols: u32 = 50;
+        let aspect = f64::from(orig_h) / f64::from(orig_w);
+
+        // Terminal character cells are taller than they are wide,
+        // so shrink height to compensate.
+        let char_aspect_correction = 0.5_f64;
+
+        // let target_rows = (f64::from(target_cols) * aspect * char_aspect_correction)
+        //     .round()
+        //     .max(1.0) as u32;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let target_rows = ((f64::from(target_cols) * aspect) * char_aspect_correction)
+            .round()
+            .max(1.0) as u32;
+
+        let ascii_img = img.resize_exact(
+            target_cols,
+            target_rows,
+            image::imageops::FilterType::Nearest,
+        );
+
+        let capped = render.with_width(target_cols);
+        capped.render(&ascii_img, &mut img_buf)?;
+    } else {
+        let resized;
+        let img_to_render = if orig_h > target_px_height {
+            let scale = f64::from(target_px_height) / f64::from(orig_h);
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let target_w = (f64::from(orig_w) * scale * 0.5).round().max(1.0) as u32;
+            let rgba = img.to_rgba8();
+            let dynimg = image::DynamicImage::ImageRgba8(rgba);
+            resized = dynimg.resize(
+                target_w,
+                target_px_height,
+                image::imageops::FilterType::Nearest,
+            );
+            &resized
+        } else {
+            img
+        };
+        render.render(img_to_render, &mut img_buf)?;
+    }
+
     let img_str = String::from_utf8_lossy(&img_buf);
     crate::fetch::print_with_left_block_writer(&img_str, writer)
 }
 
 fn username() -> String {
-    std::env::var("USER").unwrap_or_else(|_| "victim".to_string())
+    std::env::var("USER").unwrap_or_else(|_| "user_name".to_string())
 }
 
 #[must_use]

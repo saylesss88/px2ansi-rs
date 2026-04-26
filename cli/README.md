@@ -56,6 +56,12 @@ browsing, and advanced filters. It is approximately 25x faster.
 
 </details>
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/fetch-demo.gif" width="600" alt="px2ansi-rs demo">
+</p>
+
+
+
 <a id="top"></a>
 
 ## Table of contents
@@ -81,6 +87,7 @@ browsing, and advanced filters. It is approximately 25x faster.
   - [Show by Name](#show-by-name)
     - [Quick way with Fuzzy Matching](#quick-way-with-fuzzy-matching)
     - [Interactive Search](#interactive-search)
+    - [Fetch Mode](#fetch-mode)
 - [Configuration](#configuration)
 - [Shell completions](#shell-completions)
 - [Rendering styles](#rendering-styles)
@@ -128,6 +135,8 @@ browsing, and advanced filters. It is approximately 25x faster.
 - **Smart background detection** — Sixel mode queries the terminal's actual
   background color via OSC 11, so transparent image regions blend correctly
   instead of defaulting to black.
+- **System Fetch**: Integrated fetch to display your system info next to your
+  chosen image. Either static or rotating images work.
 
 `px2ansi-rs` is built on top of [`px2ansi`](https://crates.io/crates/px2ansi), a
 standalone Rust library that exposes the full rendering engine as a public API.
@@ -484,6 +493,17 @@ If you want to browse visually, use interactive fuzzy search:
 
 ```bash
 px2ansi-rs show -i
+```
+
+#### Fetch Mode
+
+```bash
+# Static ASCII mode
+px2ansi-rs convert nixos.png --style ascii fetch
+# Rotating Skull fetch
+px2ansi-rs convert skull.png --style ascii --rotate --axis y --unidirectional --fetch
+# Once you create an index, you can have a random image chosen with
+px2ansi-rs show --fetch
 ```
 
 ### List assets
