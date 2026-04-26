@@ -506,6 +506,34 @@ px2ansi-rs convert skull.png --style ascii --rotate --axis y --unidirectional --
 px2ansi-rs show --fetch
 ```
 
+**Configuring Fetch settings**
+
+```conf
+# fetch.conf — customize your fetch display
+# All fields default to true / built-in label if omitted.
+
+show_hostname  = false   # already shown in the user@host header
+show_arch      = true
+show_cpu       = true
+show_cpu_usage = true
+show_disk      = true
+show_local_ip  = true
+show_shell     = true
+
+# Rename any label
+label_os       = System
+label_cpu      = Processor
+label_memory   = RAM
+label_disk     = Storage
+
+# Width of the left-hand label column (default 12)
+key_width      = 8
+```
+
+> [!TIP]
+> If the fetch characters wrap into your image, lower the `key_width` to move
+> the image closer to the text
+
 ### List assets
 
 ```bash
