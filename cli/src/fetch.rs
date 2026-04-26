@@ -266,6 +266,7 @@ pub fn fetch_lines() -> Vec<String> {
     fetch_lines_with_config(&FetchConfig::load_default())
 }
 
+#[allow(clippy::too_many_lines)]
 #[must_use]
 pub fn fetch_lines_with_config(cfg: &FetchConfig) -> Vec<String> {
     // Only refresh what we actually need — skips full process list,
@@ -403,108 +404,6 @@ pub fn fetch_lines_with_config(cfg: &FetchConfig) -> Vec<String> {
 
     lines
 }
-// pub fn fetch_lines_with_config(cfg: &FetchConfig) -> Vec<String> {
-//     let mut sys = System::new_all();
-//     sys.refresh_all();
-//     let mut lines = Vec::new();
-//     let w = cfg.key_width;
-
-//     macro_rules! add {
-//         ($show:expr, $label:expr, $opt:expr, $val:expr) => {
-//             if $show {
-//                 let key = format!("{:<w$}", $opt.as_deref().unwrap_or($label))
-//                     .red()
-//                     .bold();
-//                 lines.push(format!("{key}: {}", $val));
-//             }
-//         };
-//     }
-
-//     if cfg.show_header {
-//         lines.push(format!(
-//             "{}@{}",
-//             username().red().bold(),
-//             System::host_name().unwrap_or_default().white()
-//         ));
-//     }
-//     if cfg.show_separator {
-//         lines.push("─".repeat(28).white().to_string());
-//     }
-//     add!(
-//         cfg.show_os,
-//         "OS",
-//         &cfg.label_os,
-//         System::name().unwrap_or_default().white()
-//     );
-//     add!(
-//         cfg.show_kernel,
-//         "Kernel",
-//         &cfg.label_kernel,
-//         System::kernel_version().unwrap_or_default().white()
-//     );
-//     add!(cfg.show_arch, "Arch", &cfg.label_arch, arch().white());
-//     add!(
-//         cfg.show_hostname,
-//         "Hostname",
-//         &cfg.label_hostname,
-//         System::host_name().unwrap_or_default().white()
-//     );
-//     add!(
-//         cfg.show_uptime,
-//         "Uptime",
-//         &cfg.label_uptime,
-//         uptime_string(System::uptime()).white()
-//     );
-//     add!(
-//         cfg.show_shell,
-//         "Shell",
-//         &cfg.label_shell,
-//         current_shell().white()
-//     );
-//     add!(cfg.show_cpu, "CPU", &cfg.label_cpu, cpu_model(&sys).white());
-//     if cfg.show_cpu_usage {
-//         add!(
-//             true,
-//             "CPU Usage",
-//             &cfg.label_cpu_usage,
-//             format!("{:.1}%", sys.global_cpu_usage()).yellow()
-//         );
-//     }
-//     if cfg.show_memory {
-//         let (u, t) = (sys.used_memory() >> 20, sys.total_memory() >> 20);
-//         add!(
-//             true,
-//             "Memory",
-//             &cfg.label_memory,
-//             format!("{} / {} MiB", u.to_string().yellow(), t.to_string().white())
-//         );
-//     }
-//     add!(
-//         cfg.show_disk,
-//         "Disk (/)",
-//         &cfg.label_disk,
-//         disk_usage().yellow()
-//     );
-//     add!(
-//         cfg.show_processes,
-//         "Processes",
-//         &cfg.label_processes,
-//         sys.processes().len().to_string().purple()
-//     );
-//     add!(
-//         cfg.show_locale,
-//         "Locale",
-//         &cfg.label_locale,
-//         linux_locale().purple()
-//     );
-//     add!(
-//         cfg.show_local_ip,
-//         "Local IP",
-//         &cfg.label_local_ip,
-//         local_ip().cyan()
-//     );
-//     lines
-// }
 
 // ---------------------------------------------------------------------------
 // ANSI-safe line truncation

@@ -57,7 +57,7 @@ browsing, and advanced filters. It is approximately 25x faster.
 </details>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/fetch-demo.gif" width="600" alt="px2ansi-rs demo">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/fetch-demo2.gif" width="600" alt="px2ansi-rs demo">
 </p>
 
 
@@ -568,6 +568,10 @@ px2ansi-rs show --fetch
 # Or more explicitly
 px2ansi-rs show random --fetch
 ```
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/fetch.png" width="400" alt="Fetch example">
+</p>
 
 ---
 
