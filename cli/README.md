@@ -57,7 +57,7 @@ browsing, and advanced filters. It is approximately 25x faster.
 </details>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/fetch-demo2.gif" width="600" alt="px2ansi-rs demo">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/fetch-new-demo.gif" width="600" alt="px2ansi-rs fetch demo">
 </p>
 
 
@@ -546,7 +546,8 @@ key_width      = 8
 ```bash
 git clone https://github.com/msikma/pokesprite.git
 ## Create an Index
-px2ansi-rs index /home/your-user/pokesprite/pokemon-gen8/shiny -o index.json  ```
+px2ansi-rs index /home/your-user/pokesprite/pokemon-gen8/shiny -o index.json
+```
 
 Add the index path to your config:
 
@@ -559,7 +560,7 @@ index = "home/your-user/pokesprite/pokemon-gen8/shiny/index.json"
 
 And finally add this to your shell config:
 
-`.zshrc`:
+`.zshrc`|`.bashrc`:
 
 ```bash
 # Defaults to random
