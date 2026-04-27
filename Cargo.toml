@@ -47,7 +47,7 @@ clap_complete = "4.6.2"
 clap_mangen = "0.3.0"
 rayon = {version = "1.12.0"}
 # Path dep: px2ansi-cli depends on the lib
-px2ansi = {path = "lib", version = "0.2.6", default-features = false}
+px2ansi = {path = "lib", version = "0.2.7", default-features = false}
 # mimalloc = {version = "0.1", default-features = false}
 
 # ── Shared release profile ──────────────────────────────────────────────────
