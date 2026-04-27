@@ -63,8 +63,10 @@ pub fn build_render_options(
         builder = builder.color_mode(mode);
     }
 
-    if let Some(bg) = crate::terminal::query_terminal_bg().filter(|_| composite_bg) {
-        builder = builder.bg_color(bg);
+    if composite_bg {
+        if let Some(bg) = crate::terminal::query_terminal_bg() {
+            builder = builder.bg_color(bg);
+        }
     }
 
     // Always apply the dither flag and then build

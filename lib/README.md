@@ -49,7 +49,8 @@ output to any `Write` target.
 It is the rendering core behind `px2ansi-rs`, but it can also be used directly
 in other Rust projects.
 
-> [!IMPORTANT] This is a new project, the public API is subject to change
+> [!IMPORTANT]
+> This is a new project, the public API is subject to change
 
 ## Features
 

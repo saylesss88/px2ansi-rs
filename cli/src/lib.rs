@@ -108,16 +108,31 @@ mod tests {
 
     // --- build_render_options ---
 
-    // #[test]
-    // fn build_render_options_applies_overrides_and_no_color() {
-    //     let opts = build_render_options(None, None, Some(80), None, None, false);
-    //     assert_eq!(opts.width(), Some(80));
-    //     assert_eq!(opts.color_mode(), ColorMode::None);
-
-    //     let opts2 = build_render_options(None, None, None, None, None, false);
-    //     assert_eq!(opts2.width(), None);
-    //     assert_eq!(opts2.color_mode(), ColorMode::None);
-    // }
+    #[test]
+    fn build_render_options_applies_overrides_and_no_color() {
+        let opts = build_render_options(
+            None,
+            None,
+            Some(80),
+            None,
+            Some(px2ansi::ColorMode::None),
+            false,
+            false,
+        );
+        assert_eq!(opts.width(), Some(80));
+        assert_eq!(opts.color_mode(), px2ansi::ColorMode::None);
+        let opts2 = build_render_options(
+            None,
+            None,
+            None,
+            None,
+            Some(px2ansi::ColorMode::None),
+            false,
+            false,
+        );
+        assert_eq!(opts2.width(), None);
+        assert_eq!(opts2.color_mode(), px2ansi::ColorMode::None);
+    }
 
     #[test]
     fn build_render_options_braille_preset_sets_charset() {
@@ -126,13 +141,12 @@ mod tests {
             None,
             None,
             None,
-            None,
+            Some(px2ansi::ColorMode::None),
             false,
             false,
         );
         assert_eq!(opts.charset(), CharsetMode::Braille);
     }
-
     #[test]
     fn build_render_options_full_block_sets_full_flag() {
         let opts = build_render_options(
@@ -148,19 +162,19 @@ mod tests {
         assert!(opts.style().is_full());
     }
 
-    // #[test]
-    // fn build_render_options_dense_sets_heavy_density() {
-    //     let opts = build_render_options(
-    //         Some(RenderStylePreset::Dense),
-    //         None,
-    //         None,
-    //         None,
-    //         None,
-    //         false,
-    //         false,
-    //     );
-    //     assert!(matches!(opts.style().density(), Density::Heavy));
-    // }
+    #[test]
+    fn build_render_options_dense_sets_heavy_density() {
+        let opts = build_render_options(
+            Some(RenderStylePreset::Dense),
+            None,
+            None,
+            None,
+            None,
+            false,
+            false,
+        );
+        assert!(matches!(opts.style().density(), Density::Heavy));
+    }
 
     #[test]
     fn build_render_options_density_override_beats_preset() {
