@@ -12,7 +12,7 @@ use super::types::ColorMode;
 pub(super) enum ColorState {
     #[default]
     None,
-    /// 24-bit TrueColor: (R, G, B)
+    /// 24-bit `TrueColor`: (R, G, B)
     TrueColor(u8, u8, u8),
     /// Xterm-style 256 color index
     Ansi256(u8),
