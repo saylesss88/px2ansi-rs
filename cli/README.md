@@ -57,7 +57,7 @@ browsing, and advanced filters. It is approximately 25x faster.
 </details>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/fetch-new-demo.gif" width="600" alt="px2ansi-rs fetch demo">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/fetcher.gif" width="600" alt="px2ansi-rs fetch demo">
 </p>
 
 
