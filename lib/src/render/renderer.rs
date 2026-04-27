@@ -13,6 +13,8 @@ use crate::ColorMode;
 #[cfg(feature = "parallel")]
 use super::parallel::render_parallel;
 
+/// Internal engine that coordinates the conversion of image pixels into
+/// terminal-friendly character output.
 struct Renderer<'img, 'w, W: Write> {
     writer: &'w mut W,
     img: &'img DynamicImage,
@@ -28,8 +30,11 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         }
     }
 
+    /// Renders using the "Half-Block" method (▄), which allows for two vertical
+    /// "pixels" per terminal cell by setting different foreground and background colors.
     fn ansi_blocks(&mut self) -> io::Result<()> {
         let (width, height) = self.img.dimensions();
+        // We step by 2 because one terminal row covers two rows of image pixels.
         for y in (0..height).step_by(2) {
             for x in 0..width {
                 let top = self.img.get_pixel(x, y);
@@ -40,11 +45,13 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                 };
                 write_half_block(self.writer, top, bot)?;
             }
-            writeln!(self.writer, "\x1b[0m")?;
+            writeln!(self.writer, "\x1b[0m")?; // Reset color at EOL
         }
         Ok(())
     }
 
+    /// Renders using full block characters (█). If 'full' is false, it
+    /// defaults back to the more efficient half-block method.
     fn unicode_blocks(&mut self, full: bool) -> io::Result<()> {
         if full {
             let (width, height) = self.img.dimensions();
@@ -60,6 +67,8 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         Ok(())
     }
 
+    /// Renders using Unicode Braille patterns (U+2800 - U+28FF).
+    /// This provides a 2x4 "sub-pixel" resolution within a single character cell.
     fn braille(&mut self) -> io::Result<()> {
         let rgba: Cow<'_, RgbaImage> = self
             .img
@@ -67,7 +76,11 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
             .map_or_else(|| Cow::Owned(self.img.to_rgba8()), Cow::Borrowed);
         let (width, height) = rgba.dimensions();
 
-        // Braille dot mapping (standard 2x4 grid)
+        // Braille dot-to-bit mapping (standard 2x4 grid)
+        // .1 .4
+        // .2 .5
+        // .3 .6
+        // .7 .8
         let dots: [(u32, u32, u8); 8] = [
             (0, 0, 0x01),
             (0, 1, 0x02),
@@ -93,7 +106,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                     if px_x < width && px_y < height {
                         let px = rgba.get_pixel(px_x, px_y);
                         let [r, g, b, a] = px.0;
-                        // Only process pixels that are sufficiently opaque
+                        // Ignore transparent pixels; calculate luma for the rest
                         if a > 10 {
                             let luma =
                                 (2126 * u32::from(r) + 7152 * u32::from(g) + 722 * u32::from(b))
@@ -110,15 +123,16 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                 }
 
                 // --- RENDERING LOGIC ---
+                //
+                // Render the accumulated 2x4 block
                 if byte == 0 || lit_count == 0 {
                     // No dots are lit: Reset color if needed and print empty braille
                     if mode != ColorMode::None && last_color != ColorState::default() {
                         write!(self.writer, "\x1b[0m")?;
                         last_color = ColorState::default();
                     }
-                    write!(self.writer, "\u{2800}")?;
+                    write!(self.writer, "\u{2800}")?; // Empty braille cell
                 } else {
-                    // let r = (r_sum / lit_count) as u8;
                     let r = u8::try_from(r_sum / lit_count).unwrap_or(0);
                     let g = u8::try_from(g_sum / lit_count).unwrap_or(0);
                     let b = u8::try_from(b_sum / lit_count).unwrap_or(0);
@@ -147,10 +161,12 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         Ok(())
     }
 
+    /// Renders using a gradient of block characters (░▒▓█) based on luminance.
     fn fade(&mut self) -> io::Result<()> {
         self.charset_colored(&[" ", "░", "▒", "▓", "█"], false)
     }
 
+    /// Renders using standard ASCII characters mapped by visual density.
     fn ascii(&mut self, density: Density) -> io::Result<()> {
         let charset: &[&str] = match density {
             Density::Light => &[
@@ -169,6 +185,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         self.charset_colored(charset, false)
     }
 
+    /// High-resolution rendering using Kanji characters of varying complexity.
     fn kanji(&mut self) -> io::Result<()> {
         self.charset_colored(
             &[
@@ -178,6 +195,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         )
     }
 
+    /// High-resolution rendering using Chinese characters of varying complexity.
     fn chinese(&mut self) -> io::Result<()> {
         self.charset_colored(
             &[
@@ -188,17 +206,22 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         )
     }
 
+    /// Generic rendering path for custom character sets.
+    /// Handles luminance normalization to ensure the full range of the charset is used.
     fn charset_colored(&mut self, charset: &[&str], wide: bool) -> io::Result<()> {
         let rgba = self.img.to_rgba8();
         let (width, height) = rgba.dimensions();
         let x_step: usize = if wide { 2 } else { 1 };
         let blank: &str = if wide { "  " } else { " " };
         let num_chars_minus_1 = u32::try_from(charset.len()).unwrap_or(1) - 1;
+
+        // Use parallel rendering if the image is large enough to justify the overhead
         let use_parallel = cfg!(feature = "parallel") && (width * height > 120_000);
 
         let (luma_min, luma_max) =
             luma_range_pass1(&rgba, width, height, x_step, wide, use_parallel);
 
+        // If the image is completely transparent/black
         if luma_min == u32::MAX {
             for _ in 0..height {
                 for _ in (0..width).step_by(x_step) {
@@ -275,8 +298,6 @@ pub fn write_ansi_art<W: Write>(
 ///
 /// This function will return an error if `viuer` fails to write to the terminal
 /// buffer or if the image cannot be encoded into the Sixel format.
-// #[cfg(feature = "sixel")]
-// #[cfg_attr(docsrs, doc(cfg(feature = "sixel")))]
 #[cfg(feature = "sixel")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sixel")))]
 pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> io::Result<()> {

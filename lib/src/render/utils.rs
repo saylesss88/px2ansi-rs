@@ -69,14 +69,6 @@ impl RenderOptions {
                 CharsetMode::Braille => {
                     fit_preserving_aspect(orig_w, orig_h, term_w * 2, term_h * 4, 1.0, 1.0)
                 }
-                // CharsetMode::Unicode if self.style().full => {
-                //     fit_preserving_aspect(orig_w, orig_h, term_w / 2, term_h, 1.0, 1.0)
-                // }
-                // For sixel, skip the pre-resize here and let viuer handle sizing
-                // directly from the original image. Viuer's sixel printer uses its
-                // own 6×12 px/cell assumption; pre-sizing here would cause a
-                // double-resize with a mismatched cell-size, producing blur and
-                // a distorted aspect ratio.
                 CharsetMode::Sixel => (orig_w, orig_h),
                 CharsetMode::Ascii
                 | CharsetMode::Fade
@@ -91,24 +83,12 @@ impl RenderOptions {
                         let w_from_h = ((f64::from(term_h) * 2.0) / aspect).floor() as u32;
                         (w_from_h.max(1), term_h)
                     }
-                } // _ => fit_preserving_aspect(
-                  //     orig_w,
-                  //     orig_h,
-                  //     term_w.saturating_sub(2),
-                  //     term_h * 2 / 3,
-                  //     1.0,
-                  //     1.0,
-                  // ),
+                }
             },
             |tw| {
                 let h = fit_preserving_aspect(orig_w, orig_h, tw, u32::MAX, 1.0, 2.0).1;
                 (tw.max(1), h.max(1))
             },
-            // |tw| {
-            //     let aspect = f64::from(orig_h) / f64::from(orig_w);
-            //     let h = (f64::from(tw) * aspect / 2.0).ceil() as u32;
-            //     (tw.max(1), h.max(1))
-            // },
         );
         (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE))
         // let result = (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE));

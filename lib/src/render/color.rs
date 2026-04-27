@@ -4,15 +4,24 @@ use std::io::Write;
 
 use super::types::ColorMode;
 
-/// Tracks the last-written color to suppress redundant ANSI escape sequences.
+/// Tracks the terminal's current SGR (Select Graphic Rendition) state.
+///
+/// This is used to optimize the output stream by skipping redundant color
+/// escape codes if the next pixel has the same color as the previous one.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(super) enum ColorState {
     #[default]
     None,
+    /// 24-bit TrueColor: (R, G, B)
     TrueColor(u8, u8, u8),
+    /// Xterm-style 256 color index
     Ansi256(u8),
 }
 
+/// Writes a single character (glyph) with the specified foreground color.
+///
+/// This function is "state-aware"—it checks `last` to see if a color
+/// change is actually necessary before writing the ANSI sequence.
 pub(super) fn write_colored_glyph<W: Write>(
     writer: &mut W,
     glyph: &str,
@@ -24,6 +33,7 @@ pub(super) fn write_colored_glyph<W: Write>(
 ) -> std::io::Result<()> {
     match color_mode {
         ColorMode::TrueColor => {
+            // Only emit the 24-bit color sequence (\x1b[38;2;R;G;Bm) if the color changed
             if !matches!(last, ColorState::TrueColor(lr, lg, lb) if *lr == r && *lg == g && *lb == b)
             {
                 write!(writer, "\x1b[38;2;{r};{g};{b}m")?;
@@ -32,6 +42,7 @@ pub(super) fn write_colored_glyph<W: Write>(
             writer.write_all(glyph.as_bytes())
         }
         ColorMode::Ansi256 => {
+            // Convert RGB to the closest 8-bit color index (\x1b[38;5;Idxm)
             let idx = crate::color::rgb_to_xterm256(r, g, b);
             if !matches!(last, ColorState::Ansi256(li) if *li == idx) {
                 write!(writer, "\x1b[38;5;{idx}m")?;
@@ -43,6 +54,10 @@ pub(super) fn write_colored_glyph<W: Write>(
     }
 }
 
+/// Renders two vertical pixels using half-block characters (▀ or ▄).
+///
+/// This technique uses the foreground color for the top half and the
+/// background color for the bottom half, effectively doubling vertical resolution.
 pub(super) fn write_half_block<W: Write>(
     out: &mut W,
     top: image::Rgba<u8>,
@@ -60,6 +75,10 @@ pub(super) fn write_half_block<W: Write>(
     }
 }
 
+/// Renders a single pixel as a "double-wide" block (██).
+///
+/// This is used for modes that don't support sub-pixel resolution,
+/// providing a chunky, square-pixel look.
 pub(super) fn write_full_block<W: Write>(out: &mut W, px: image::Rgba<u8>) -> std::io::Result<()> {
     if px[3] > 0 {
         write!(out, "\x1b[38;2;{};{};{}m██", px[0], px[1], px[2])
@@ -68,6 +87,11 @@ pub(super) fn write_full_block<W: Write>(out: &mut W, px: image::Rgba<u8>) -> st
     }
 }
 
+/// A specialized version of `write_colored_glyph` for parallel rendering.
+///
+/// Since parallel threads render chunks into independent Strings, we don't
+/// track state between them (it would require complex locking). Instead,
+/// every glyph gets its own color sequence.
 #[cfg(feature = "parallel")]
 pub(super) fn write_colored_glyph_to_str(
     buf: &mut String,

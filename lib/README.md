@@ -256,8 +256,7 @@ use px2ansi::{ColorMode, RenderOptions, RenderStylePreset};
 let mut builder = RenderOptions::builder()
     .preset(RenderStylePreset::FullBlock)
     .width(80);
-
-// Since methods take 'self', we must capture the returned 'Self'
+  
 builder = if monochrome {
     builder.color_mode(ColorMode::None)
 } else {
@@ -280,7 +279,6 @@ if opts.style().is_full() {
     println!("Rendering in double-width mode!");
 }
 
-// These assertions prove the 'inspecting' logic is correct
 assert!(opts.style().is_full());
 println!("Current density: {:?}", opts.style().density());
 ```
@@ -297,7 +295,7 @@ use px2ansi::indexer::{build_index, ImageEntry};
 use std::path::Path;
 
 fn build_and_read_index() {
-    // Build the index — scans subdirectories, ignores non-image files
+    // Build the index, scans subdirectories, ignores non-image files
     build_index(
         Path::new("/home/user/sprites"),
         Path::new("/home/user/sprites/index.json"),
