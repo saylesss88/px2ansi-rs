@@ -1,5 +1,5 @@
 use crate::fetch::print_fetch_with_image;
-use crate::rotate::{apply_static, run_spin_fetch_loop, run_spin_loop, RotateMode};
+use crate::rotate::{RotateMode, apply_static, run_spin_fetch_loop, run_spin_loop};
 use anyhow::Result;
 use px2ansi::{RasterTheme, RenderOptions};
 use std::io::Write;
@@ -86,20 +86,20 @@ impl ConvertCmd {
             external_writer.flush()?;
             return Ok(());
         } // if let Some(RotateMode::Spin {
-          //     fps,
-          //     axis,
-          //     unidirectional,
-          // }) = self.rotate
-          // {
-          //     return run_spin_loop(
-          //         &img,
-          //         &self.render,
-          //         fps,
-          //         axis,
-          //         unidirectional,
-          //         external_writer,
-          //     );
-          // }
+        //     fps,
+        //     axis,
+        //     unidirectional,
+        // }) = self.rotate
+        // {
+        //     return run_spin_loop(
+        //         &img,
+        //         &self.render,
+        //         fps,
+        //         axis,
+        //         unidirectional,
+        //         external_writer,
+        //     );
+        // }
 
         // 3. Apply static rotation if requested.
         let img = match self.rotate {

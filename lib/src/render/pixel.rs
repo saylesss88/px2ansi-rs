@@ -5,7 +5,7 @@ use std::io::Write;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use super::color::{write_colored_glyph, ColorState};
+use super::color::{ColorState, write_colored_glyph};
 use super::types::ColorMode;
 
 pub(super) const ALPHA_THRESHOLD: u8 = 30;

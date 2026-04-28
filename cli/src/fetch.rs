@@ -2,7 +2,7 @@
 use ansi_width::ansi_width;
 use anyhow::Result;
 use colored::Colorize;
-use image::{imageops::FilterType, DynamicImage};
+use image::{DynamicImage, imageops::FilterType};
 use px2ansi::{CharsetMode, RenderOptions};
 use std::env;
 use std::fs;

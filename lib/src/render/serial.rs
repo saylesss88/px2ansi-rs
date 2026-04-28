@@ -2,7 +2,7 @@ use std::io;
 use std::io::Write;
 
 use super::color::ColorState;
-use super::pixel::{write_pixel_scalar, ColorParams, LumaParams, PixelRgba, RenderCtx};
+use super::pixel::{ColorParams, LumaParams, PixelRgba, RenderCtx, write_pixel_scalar};
 
 #[cfg(feature = "simd")]
 use super::pixel::write_pixel;

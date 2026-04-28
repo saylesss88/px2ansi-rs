@@ -13,7 +13,7 @@
 use rayon::prelude::*;
 
 use anyhow::Result;
-use image::{imageops, DynamicImage};
+use image::{DynamicImage, imageops};
 use px2ansi::{CharsetMode, RenderOptions};
 use std::{io::Write, thread, time::Duration};
 

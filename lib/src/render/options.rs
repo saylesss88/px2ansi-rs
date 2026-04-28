@@ -1,8 +1,8 @@
 use super::types::{CharsetMode, Density, RenderStyle};
-use crate::cli_enums::{RenderStylePreset, ResizeFilter};
 use crate::RenderError;
-use crate::{get_terminal_size, ColorMode};
-use image::{imageops::FilterType, DynamicImage};
+use crate::cli_enums::{RenderStylePreset, ResizeFilter};
+use crate::{ColorMode, get_terminal_size};
+use image::{DynamicImage, imageops::FilterType};
 use std::io::Write;
 
 /// The master configuration for the rendering pipeline.

@@ -1,6 +1,6 @@
 #![cfg(feature = "rasterize")]
-use crate::themes::RasterTheme;
 use crate::RenderError;
+use crate::themes::RasterTheme;
 
 use fontdue::{Font, FontSettings};
 use image::{Rgba, RgbaImage};

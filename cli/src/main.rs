@@ -28,8 +28,8 @@
 // static GLOBAL: MiMalloc = MiMalloc;
 
 use px2ansi_rs::{
-    commands, output, render, Cli, Command, Commands, Config, ConvertCmd, IndexCmd, ListCmd,
-    ResolvedOptions, ShowCmd,
+    Cli, Command, Commands, Config, ConvertCmd, IndexCmd, ListCmd, ResolvedOptions, ShowCmd,
+    commands, output, render,
 };
 
 use clap::{CommandFactory, Parser};

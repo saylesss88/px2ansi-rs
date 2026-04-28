@@ -3,9 +3,9 @@ use std::io::{self, Write};
 
 use image::{DynamicImage, GenericImageView, Rgba, RgbaImage};
 
-use super::color::{write_colored_glyph, write_full_block, write_half_block, ColorState};
+use super::color::{ColorState, write_colored_glyph, write_full_block, write_half_block};
 use super::options::RenderOptions;
-use super::pixel::{luma_range_pass1, ColorParams, LumaParams, RenderCtx};
+use super::pixel::{ColorParams, LumaParams, RenderCtx, luma_range_pass1};
 use super::serial::render_serial;
 use super::types::{CharsetMode, Density};
 use crate::ColorMode;

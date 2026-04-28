@@ -1,10 +1,10 @@
+use crate::RotateMode;
 use crate::fetch::print_fetch_with_image;
 use crate::rotate::{apply_static, run_spin_fetch_loop, run_spin_loop};
-use crate::RotateMode;
 use anyhow::Result;
 use colored::Colorize;
-use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
+use fuzzy_matcher::skim::SkimMatcherV2;
 use px2ansi::indexer::ImageEntry;
 use px2ansi::render::RenderOptions;
 use rand::prelude::IndexedRandom;

@@ -1,7 +1,7 @@
 use super::options::RenderOptions;
 use crate::render::CharsetMode;
 
-use terminal_size::{terminal_size, Height, Width};
+use terminal_size::{Height, Width, terminal_size};
 
 impl RenderOptions {
     /// Calculates the optimal target dimensions for the terminal.

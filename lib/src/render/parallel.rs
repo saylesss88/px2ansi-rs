@@ -4,7 +4,7 @@ use std::io::Write;
 use rayon::prelude::*;
 
 use super::color::write_colored_glyph_to_str;
-use super::pixel::{ColorParams, LumaParams, RenderCtx, ALPHA_THRESHOLD};
+use super::pixel::{ALPHA_THRESHOLD, ColorParams, LumaParams, RenderCtx};
 
 pub(super) fn render_parallel<W: Write>(
     writer: &mut W,
