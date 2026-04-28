@@ -7,7 +7,7 @@ default-members = ["lib", "cli"]
 resolver = "3"
 
 [workspace.package]
-version = "0.5.28"
+version = "0.5.29"
 edition = "2024"
 authors = [
 	"T. Sawyer <saylesss87@proton.me>",
@@ -16,7 +16,6 @@ authors = [
 license = "GPL-3.0"
 repository = "https://github.com/saylesss88/px2ansi-rs"
 readme = "README.md"
-changelog = "CHANGELOG.md"
 keywords = ["ansi", "pixel-art", "oklab", "rasterize", "colorspace"]
 
 # ── Shared dependencies ─────────────────────────────────────────────────────
