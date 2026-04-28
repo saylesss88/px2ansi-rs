@@ -457,10 +457,11 @@ fn truncate_ansi(s: &str, max_cols: usize) -> String {
 
 ///  Render or IO failure.
 /// # Errors
-pub fn print_fetch_with_image<W: Write>(
+// pub fn print_fetch_with_image<W: Write>(
+pub fn print_fetch_with_image(
     img: &DynamicImage,
     render: &RenderOptions,
-    writer: &mut W,
+    writer: &mut dyn Write,
 ) -> Result<()> {
     let cols = term_cols();
     let max_img_cols = u32::try_from(cols.saturating_sub(38).max(20)).unwrap_or(20);
@@ -516,9 +517,9 @@ const GAP: usize = 1;
 
 /// # Errors
 /// IO write failure.
-pub fn print_with_left_block_writer<W: Write>(
+pub fn print_with_left_block_writer(
     image_block: &str,
-    writer: &mut W,
+    writer: &mut dyn Write,
     cols: usize,
 ) -> Result<()> {
     let left_lines: Vec<&str> = image_block.lines().collect();

@@ -253,13 +253,14 @@ fn pad_to_height(img: DynamicImage, target_h: u32) -> DynamicImage {
 /// # Errors
 ///
 /// Returns an error if any write or render call fails.
-pub fn run_spin_loop<W: Write>(
+pub fn run_spin_loop(
     img: &DynamicImage,
     render: &RenderOptions,
     fps: u8,
     axis: RotateAxis,
     unidirectional: bool,
-    writer: &mut W,
+    writer: &mut dyn Write,
+    // writer: &mut W,
 ) -> Result<()> {
     const HIDE_CURSOR: &[u8] = b"\x1b[?25l";
     // const SHOW_CURSOR: &[u8] = b"\x1b[?25h";
@@ -340,13 +341,13 @@ pub fn run_spin_loop<W: Write>(
 ///
 /// This function may panic if `fps` is 0, though it includes a `max(1)` guard
 /// to prevent division by zero when calculating the frame delay.
-pub fn run_spin_fetch_loop<W: Write>(
+pub fn run_spin_fetch_loop(
     img: &DynamicImage,
     render: &RenderOptions,
     fps: u8,
     axis: RotateAxis,
     unidirectional: bool,
-    writer: &mut W,
+    writer: &mut dyn Write,
 ) -> Result<()> {
     const HIDE_CURSOR: &[u8] = b"\x1b[?25l";
     const GOTO_HOME: &[u8] = b"\x1b[H";

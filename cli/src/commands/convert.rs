@@ -30,7 +30,8 @@ impl ConvertCmd {
     ///
     /// Returns an error if writing to the provided writer fails or if
     /// the command logic encounters a processing error.
-    pub fn run<W: Write>(&self, external_writer: &mut W) -> Result<()> {
+    // pub fn run<W: Write>(&self, external_writer: &mut W) -> Result<()> {
+    pub fn run(&self, external_writer: &mut dyn Write) -> Result<()> {
         // 1. Load and decode
         let img = image::ImageReader::open(&self.input)?.decode()?;
 
@@ -51,7 +52,8 @@ impl ConvertCmd {
                     *fps,
                     *axis,
                     *unidirectional,
-                    external_writer,
+                    // external_writer
+                    &mut *external_writer,
                 );
             }
             (
@@ -68,7 +70,8 @@ impl ConvertCmd {
                     *fps,
                     *axis,
                     *unidirectional,
-                    external_writer,
+                    // external_writer,
+                    &mut *external_writer,
                 );
             }
             _ => {}
