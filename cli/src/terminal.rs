@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 ///
 /// Temporarily enables raw mode so the terminal's response can be read back
 /// from stdin without waiting for a newline. Raw mode is restored
-/// unconditionally via [`RawModeGuard`] even if parsing fails or an early
+/// unconditionally via `RawModeGuard` even if parsing fails or an early
 /// return occurs.
 ///
 /// # Returns
@@ -25,7 +25,7 @@ use std::time::{Duration, Instant};
 ///
 /// # Terminal support
 ///
-/// Most modern terminals support OSC 11 (foot, kitty, `WezTerm`, xterm).
+/// Most modern terminals support OSC 11 (`foot`, `kitty`, `WezTerm`, `xterm`).
 /// Ghostty supports it as of recent versions. Windows Terminal does not.
 #[must_use]
 pub fn query_terminal_bg() -> Option<[u8; 3]> {
@@ -91,26 +91,26 @@ fn read_osc_response(timeout: Duration) -> Option<String> {
             _ => break,
         }
     } // loop {
-      //     if Instant::now() >= deadline {
-      //         break;
-      //     }
-      //     match stdin.read(&mut byte) {
-      //         Ok(1) => {
-      //             buf.push(byte[0]);
-      //             let ends_with_st =
-      //                 buf.len() >= 2 && buf[buf.len() - 2] == b'\x1b' && buf[buf.len() - 1] == b'\\';
-      //             let ends_with_bel = byte[0] == b'\x07';
-      //             if ends_with_st || ends_with_bel {
-      //                 break;
-      //             }
-      //         }
-      //         Ok(_) => break,
-      //         Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-      //             std::thread::sleep(Duration::from_millis(5));
-      //         }
-      //         Err(_) => break,
-      //     }
-      // }
+    //     if Instant::now() >= deadline {
+    //         break;
+    //     }
+    //     match stdin.read(&mut byte) {
+    //         Ok(1) => {
+    //             buf.push(byte[0]);
+    //             let ends_with_st =
+    //                 buf.len() >= 2 && buf[buf.len() - 2] == b'\x1b' && buf[buf.len() - 1] == b'\\';
+    //             let ends_with_bel = byte[0] == b'\x07';
+    //             if ends_with_st || ends_with_bel {
+    //                 break;
+    //             }
+    //         }
+    //         Ok(_) => break,
+    //         Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+    //             std::thread::sleep(Duration::from_millis(5));
+    //         }
+    //         Err(_) => break,
+    //     }
+    // }
 
     set_stdin_nonblocking(&mut stdin, false);
 

@@ -1,3 +1,5 @@
+//! Utility to generate manpages for px2ansi-rs.
+
 use clap::CommandFactory;
 use clap_mangen::Man;
 use std::path::PathBuf;

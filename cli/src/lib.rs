@@ -1,3 +1,8 @@
+//! # px2ansi-rs
+//!
+//! A Rust library/CLI tool to convert pixels to ANSI sequences for terminal display.
+//! This crate contains the core logic and CLI definitions.
+
 pub mod cli;
 pub mod commands;
 pub mod config;
