@@ -1,6 +1,6 @@
 [package]
 name = "px2ansi"
-version = "0.2.8"
+version = "0.2.9"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -18,7 +18,8 @@ include = [
 ]
 
 [package.metadata.docs.rs]
-all-features = true
+all-features = false
+features = ["rasterize", "parallel", "simd"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
