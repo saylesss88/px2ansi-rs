@@ -1,6 +1,5 @@
 use super::options::RenderOptions;
 use crate::render::CharsetMode;
-
 use terminal_size::{Height, Width, terminal_size};
 
 impl RenderOptions {
@@ -8,7 +7,6 @@ impl RenderOptions {
     #[must_use]
     pub fn calculate_dimensions(&self, orig_w: u32, orig_h: u32) -> (u32, u32) {
         const MAX_SAFE: u32 = 16_384;
-
         #[expect(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
@@ -24,7 +22,6 @@ impl RenderOptions {
         ) -> (u32, u32) {
             let img_aspect = f64::from(orig_h) / f64::from(orig_w);
             let cell_aspect = cell_h / cell_w;
-
             let h_from_w = (f64::from(max_w) * img_aspect * cell_aspect).ceil() as u32;
             if h_from_w <= max_h {
                 (max_w.max(1), h_from_w.max(1))
@@ -33,9 +30,7 @@ impl RenderOptions {
                 (w_from_h.max(1), max_h.max(1))
             }
         }
-
         let (term_w, term_h) = get_terminal_size();
-
         #[expect(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
@@ -51,7 +46,6 @@ impl RenderOptions {
                     1.0,
                     1.0,
                 ),
-
                 CharsetMode::Unicode => {
                     if self.style().full {
                         fit_preserving_aspect(orig_w, orig_h, term_w / 2, term_h, 1.0, 1.0)
@@ -69,20 +63,30 @@ impl RenderOptions {
                 CharsetMode::Braille => {
                     fit_preserving_aspect(orig_w, orig_h, term_w * 2, term_h * 4, 1.0, 1.0)
                 }
-                CharsetMode::Sixel => (orig_w, orig_h),
+
+                CharsetMode::Sixel => {
+                    let px_w = term_w * 8;
+                    let px_h = term_h * 16;
+                    let scale = (f64::from(px_w) / f64::from(orig_w))
+                        .min(f64::from(px_h) / f64::from(orig_h))
+                        .min(1.0);
+                    (
+                        (f64::from(orig_w) * scale) as u32,
+                        (f64::from(orig_h) * scale) as u32,
+                    )
+                }
+                // ASCII/Fade/Kanji/Chinese: derive height directly from terminal
+                // width using aspect ratio + cell correction (cells are ~2:1 tall:wide).
+                // Do NOT use fit_preserving_aspect here -- the two-way fit shrinks width
+                // to satisfy height constraints and breaks the output.
                 CharsetMode::Ascii
                 | CharsetMode::Fade
                 | CharsetMode::Kanji
                 | CharsetMode::Chinese => {
                     let w = term_w.saturating_sub(2);
                     let aspect = f64::from(orig_h) / f64::from(orig_w);
-                    let h_from_w = (f64::from(w) * aspect / 2.0).ceil() as u32;
-                    if h_from_w <= term_h {
-                        (w, h_from_w.max(1))
-                    } else {
-                        let w_from_h = ((f64::from(term_h) * 2.0) / aspect).floor() as u32;
-                        (w_from_h.max(1), term_h)
-                    }
+                    let h = (f64::from(w) * aspect / 2.0).ceil() as u32;
+                    (w, h.min(term_h))
                 }
             },
             |tw| {
@@ -90,38 +94,35 @@ impl RenderOptions {
                 (tw.max(1), h.max(1))
             },
         );
-        (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE))
-        // let result = (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE));
-
-        // eprintln!(
-        //     "DEBUG charset={:?} term={}x{} orig={}x{} render={}x{}",
-        //     self.charset(),
-        //     term_w,
-        //     term_h,
-        //     orig_w,
-        //     orig_h,
-        //     result.0,
-        //     result.1
-        // );
-
-        // result
+        let result = (render_w.clamp(1, MAX_SAFE), render_h.clamp(1, MAX_SAFE));
+        eprintln!(
+            "DEBUG charset={:?} term={}x{} orig={}x{} render={}x{}",
+            self.charset(),
+            term_w,
+            term_h,
+            orig_w,
+            orig_h,
+            result.0,
+            result.1
+        );
+        result
     }
 }
 
-/// Use Env vars to get the terminal size
+/// Returns the terminal size in character columns/rows.
+/// Prefers the actual ioctl result, falls back to COLUMNS/LINES env vars,
+/// then a safe 80x24 default.
 #[must_use]
 pub fn get_terminal_size() -> (u32, u32) {
-    let ts = terminal_size();
+    if let Some((Width(w), Height(h))) = terminal_size() {
+        return (u32::from(w), u32::from(h));
+    }
     let env_cols = std::env::var("COLUMNS")
         .ok()
         .and_then(|s| s.parse::<u32>().ok());
     let env_rows = std::env::var("LINES")
         .ok()
         .and_then(|s| s.parse::<u32>().ok());
-
-    if let Some((Width(w), Height(h))) = ts {
-        return (u32::from(w), u32::from(h));
-    }
     if let (Some(c), Some(r)) = (env_cols, env_rows) {
         return (c, r);
     }

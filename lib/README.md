@@ -674,6 +674,21 @@ match result {
 
 ---
 
+### Dev Tips
+
+> [!TIP]
+> For faster compile times during development, you can use the `mold` linker
+> by adding this to your local `~/.cargo/config.toml`:
+>
+> ```toml
+>  [target.x86_64-unknown-linux-gnu]
+>  rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+> ```
+>
+> This requires `mold` to be installed
+
+---
+
 ## Library vs CLI
 
 `px2ansi` is the reusable rendering library.
