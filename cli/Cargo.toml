@@ -10,13 +10,7 @@ readme = "README.md"
 keywords = ["ansi", "pixel-art", "oklab", "rasterize", "colorspace"]
 categories = ["command-line-utilities", "multimedia::images", "rendering"]
 description = "CLI frontend for the px2ansi terminal art engine"
-include = [
-	"src/**/*",
-	"Cargo.toml",
-	"README.md",
-	"../LICENSE",
-	"../CHANGELOG.md",
-]
+include = ["src/**/*", "Cargo.toml", "README.md", "../LICENSE"]
 
 [[bin]]
 name = "px2ansi-rs"
