@@ -293,52 +293,100 @@ pub fn write_ansi_art<W: Write>(
 /// Renders an image using the Sixel graphics protocol.
 ///
 /// Sixel encodes pixel data directly into the terminal escape sequence stream,
-/// allowing true pixel-accurate images in supported terminals.///
+/// allowing true pixel-accurate images in supported terminals.
+///
 /// # Errors
 ///
-/// This function will return an error if `viuer` fails to write to the terminal
-/// buffer or if the image cannot be encoded into the Sixel format.
+/// This function will return an error if the image cannot be encoded into
+/// the Sixel format or if writing to stdout fails.
 #[cfg(feature = "sixel")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sixel")))]
 pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> io::Result<()> {
-    let base_cfg = viuer::Config {
-        use_kitty: false,
-        use_iterm: false,
-        absolute_offset: false,
-        x: 0,
-        y: 0,
-        width: options.width(),
-        height: None,
-        restore_cursor: false,
-        truecolor: true,
-        ..viuer::Config::default()
+    use icy_sixel::{BackgroundMode, EncodeOptions, PixelAspectRatio, QuantizeMethod, SixelImage};
+    use std::io::{self, Write};
+
+    // Resize to requested width if specified, preserving aspect ratio
+    let mut resized = DynamicImage::default();
+    let img: &image::DynamicImage = options.width().map_or(img, |w| {
+        let h = (img.height() * w) / img.width().max(1);
+        resized = img.resize(w, h, image::imageops::FilterType::Lanczos3);
+        &resized
+    });
+
+    let encode_opts = EncodeOptions {
+        max_colors: 256,
+        diffusion: 0.875,
+        quantize_method: QuantizeMethod::Wu,
     };
 
-    match options.bg_color() {
-        Some(bg) => {
-            let base = image::Rgba([bg[0], bg[1], bg[2], 255u8]);
-            let mut composited = image::RgbaImage::from_pixel(img.width(), img.height(), base);
-            image::imageops::overlay(&mut composited, &img.to_rgba8(), 0, 0);
-            let composited = image::DynamicImage::ImageRgba8(composited);
-            viuer::print(
-                &composited,
-                &viuer::Config {
-                    transparent: false,
-                    ..base_cfg
-                },
-            )
-        }
-        None => {
-            // Terminal didn't respond to OSC 11: let it handle transparency natively
-            viuer::print(
-                img,
-                &viuer::Config {
-                    transparent: true,
-                    ..base_cfg
-                },
-            )
-        }
+    let sixel = if let Some(bg) = options.bg_color() {
+        let base = image::Rgba([bg[0], bg[1], bg[2], 255u8]);
+        let mut composited = image::RgbaImage::from_pixel(img.width(), img.height(), base);
+        image::imageops::overlay(&mut composited, &img.to_rgba8(), 0, 0);
+        SixelImage::try_from_rgba(
+            composited.into_raw(),
+            img.width() as usize,
+            img.height() as usize,
+        )
+        .map_err(|e| io::Error::other(e.to_string()))?
+        .with_background_mode(BackgroundMode::Opaque)
+        .encode_with(&encode_opts)
+    } else {
+        let rgba = img.to_rgba8();
+        SixelImage::try_from_rgba(rgba.into_raw(), img.width() as usize, img.height() as usize)
+            .map_err(|e| io::Error::other(e.to_string()))?
+            .with_background_mode(BackgroundMode::Transparent)
+            .with_aspect_ratio(PixelAspectRatio::Square)
+            .encode_with(&encode_opts)
     }
-    .map(|_| ())
-    .map_err(|e| io::Error::other(e.to_string()))
+    .map_err(|e| io::Error::other(e.to_string()))?;
+
+    let stdout = io::stdout();
+    let mut out = stdout.lock();
+    out.write_all(sixel.as_bytes())?;
+    out.flush()
 }
+// #[cfg(feature = "sixel")]
+// #[cfg_attr(docsrs, doc(cfg(feature = "sixel")))]
+// pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> io::Result<()> {
+//     let base_cfg = viuer::Config {
+//         use_kitty: false,
+//         use_iterm: false,
+//         absolute_offset: false,
+//         x: 0,
+//         y: 0,
+//         width: options.width(),
+//         height: None,
+//         restore_cursor: false,
+//         truecolor: true,
+//         ..viuer::Config::default()
+//     };
+
+//     match options.bg_color() {
+//         Some(bg) => {
+//             let base = image::Rgba([bg[0], bg[1], bg[2], 255u8]);
+//             let mut composited = image::RgbaImage::from_pixel(img.width(), img.height(), base);
+//             image::imageops::overlay(&mut composited, &img.to_rgba8(), 0, 0);
+//             let composited = image::DynamicImage::ImageRgba8(composited);
+//             viuer::print(
+//                 &composited,
+//                 &viuer::Config {
+//                     transparent: false,
+//                     ..base_cfg
+//                 },
+//             )
+//         }
+//         None => {
+//             // Terminal didn't respond to OSC 11: let it handle transparency natively
+//             viuer::print(
+//                 img,
+//                 &viuer::Config {
+//                     transparent: true,
+//                     ..base_cfg
+//                 },
+//             )
+//         }
+//     }
+//     .map(|_| ())
+//     .map_err(|e| io::Error::other(e.to_string()))
+// }
