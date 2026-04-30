@@ -18,8 +18,7 @@ include = [
 ]
 
 [package.metadata.docs.rs]
-all-features = false
-features = ["rasterize", "parallel", "simd"]
+all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
