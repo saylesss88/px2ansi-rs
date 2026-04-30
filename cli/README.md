@@ -857,6 +857,10 @@ with the remainder being process startup and I/O.
 
 ### Sixel rendering (`--style sixel` vs `viu --static`)
 
+I recently moved from `viuer` to using `icy_sixel` because it's a pure rust
+implementation. `icy_sixel` is slightly slower than what `viuer` uses which is
+`sixel-sys`, FFI bindings to `libsixel`, a C library.
+
 | Image        | `px2ansi-rs`     | `viu`                | Gap/Delta   | Winner           |
 | ------------ | ---------------- | -------------------- | ----------- | ---------------- |
 | `nixos.png`  | 17.7 ms ± 0.4 ms | **17.9 ms** ± 0.6 ms | +0.2 ms(🚀) | Tie/`px2ansi-rs` |
