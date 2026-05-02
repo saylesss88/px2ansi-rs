@@ -29,7 +29,7 @@ pub(super) struct RenderCtx<'a> {
     pub(super) charset: &'a [&'a str],
     pub(super) width: u32,
     pub(super) height: u32,
-    #[allow(dead_code)]
+    // #[allow(dead_code)]
     pub(super) x_step: usize,
     pub(super) wide: bool,
 }
@@ -63,7 +63,7 @@ pub(super) fn luma_range_pass1(
     x_step: usize,
     wide: bool,
     use_parallel: bool,
-) -> (u32, u32) {
+) -> Option<(u32, u32)> {
     if use_parallel {
         #[cfg(feature = "parallel")]
         {
@@ -74,34 +74,36 @@ pub(super) fn luma_range_pass1(
                     .map(|row| {
                         let mut lo = u32::MAX;
                         let mut hi = u32::MIN;
-                        let chunks = row.chunks_exact(8);
-                        let rem = chunks.remainder();
-                        for px in chunks {
+                        for px in row.chunks_exact(4) {
                             if px[3] >= ALPHA_THRESHOLD {
                                 let l = crate::simd::luma_scalar(px[0], px[1], px[2]);
                                 lo = lo.min(l);
                                 hi = hi.max(l);
                             }
                         }
-                        if rem.len() >= 4 && rem[3] >= ALPHA_THRESHOLD {
-                            let l = crate::simd::luma_scalar(rem[0], rem[1], rem[2]);
-                            lo = lo.min(l);
-                            hi = hi.max(l);
-                        }
-                        (lo, hi)
+                        if lo == u32::MAX { None } else { Some((lo, hi)) }
                     })
                     .reduce(
-                        || (u32::MAX, u32::MIN),
-                        |(m1, x1), (m2, x2)| (m1.min(m2), x1.max(x2)),
+                        || None,
+                        |a, b| match (a, b) {
+                            (Some((m1, x1)), Some((m2, x2))) => Some((m1.min(m2), x1.max(x2))),
+                            (Some(v), None) | (None, Some(v)) => Some(v),
+                            (None, None) => None,
+                        },
                     );
             }
+
             return rgba
                 .as_raw()
                 .par_chunks(32 * 1024)
                 .map(crate::simd::find_luma_range_rgba_bytes)
                 .reduce(
-                    || (u32::MAX, u32::MIN),
-                    |(m1, x1), (m2, x2)| (m1.min(m2), x1.max(x2)),
+                    || None,
+                    |a, b| match (a, b) {
+                        (Some((m1, x1)), Some((m2, x2))) => Some((m1.min(m2), x1.max(x2))),
+                        (Some(v), None) | (None, Some(v)) => Some(v),
+                        (None, None) => None,
+                    },
                 );
         }
         #[cfg(not(feature = "parallel"))]
@@ -121,29 +123,9 @@ pub(super) fn luma_range_pass1(
                 }
             }
         }
-        (lo, hi)
+        if lo == u32::MAX { None } else { Some((lo, hi)) }
     } else {
         crate::simd::find_luma_range_rgba_bytes(rgba.as_raw())
-    }
-}
-
-/// Writes one pixel whose charset index was pre-computed by SIMD.
-#[cfg(feature = "simd")]
-#[inline]
-pub(super) fn write_pixel<W: Write>(
-    writer: &mut W,
-    charset: &[&str],
-    idx: usize,
-    px: PixelRgba,
-    opaque: bool,
-    cp: ColorParams<'_>,
-    last: &mut ColorState,
-) -> io::Result<()> {
-    if !opaque || px.a < ALPHA_THRESHOLD {
-        write_blank(writer, cp, last)
-    } else {
-        let glyph = charset[idx.min(charset.len() - 1)];
-        write_glyph(writer, glyph, px.r, px.g, px.b, cp, last)
     }
 }
 

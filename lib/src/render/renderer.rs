@@ -218,11 +218,10 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
         // Use parallel rendering if the image is large enough to justify the overhead
         let use_parallel = cfg!(feature = "parallel") && (width * height > 120_000);
 
-        let (luma_min, luma_max) =
-            luma_range_pass1(&rgba, width, height, x_step, wide, use_parallel);
-
-        // If the image is completely transparent/black
-        if luma_min == u32::MAX {
+        let Some((luma_min, luma_max)) =
+            luma_range_pass1(&rgba, width, height, x_step, wide, use_parallel)
+        else {
+            // Image is entirely transparent — fill with blanks and return
             for _ in 0..height {
                 for _ in (0..width).step_by(x_step) {
                     write!(self.writer, "{blank}")?;
@@ -230,8 +229,7 @@ impl<'img, 'w, W: Write> Renderer<'img, 'w, W> {
                 writeln!(self.writer)?;
             }
             return Ok(());
-        }
-
+        };
         let lp = LumaParams {
             min: luma_min,
             range: (luma_max - luma_min).max(1),

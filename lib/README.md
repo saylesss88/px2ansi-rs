@@ -501,6 +501,40 @@ let png = rasterize_ansi_with_theme(&buf, RasterTheme::Dracula).unwrap();
 
 ## ⚡ Performance
 
+### Vectorization
+
+This crate relies on LLVM's auto-vectorizer rather than explicit SIMD
+intrinsics. There is no simd feature flag and no platform-specific dependency.
+The same source compiles everywhere, and on capable hardware LLVM emits wide
+vector instructions automatically.
+
+**How to get the speed benefits**
+
+The key is telling the compiler it can use your CPU's full instruction set. By
+default, Rust compiles for a baseline x86-64 target (SSE2 only) so binaries run
+on any machine. To unlock AVX2 or AVX-512 on your own hardware:
+
+For a local binary — add to .cargo/config.toml in your project:
+
+```toml
+[build]
+rustflags = ["-C", "target-cpu=native"]
+```
+Or per-invocation:
+
+```bash
+RUSTFLAGS="-C target-cpu=native" cargo build --release
+```
+
+This tells LLVM your exact CPU model and lets it emit 256-bit (AVX2) or wider vector instructions for the pixel processing loops.
+Verifying vectorization fired
+You can confirm LLVM actually vectorized the hot loops with:
+```bash
+RUSTFLAGS="-C target-cpu=native -C llvm-args=-pass-remarks=loop-vectorize" \
+cargo build --release 2>&1 | grep remark
+```
+Output like `vectorized loop (vectorization width: 8, interleaved count: 2)` means it worked. You can also inspect the emitted assembly and look for `ymm` registers (AVX2/256-bit) or xmm (SSE/128-bit).
+
 ### SIMD Acceleration (`simd` feature)
 
 The `simd` feature enables hardware-accelerated pixel processing via the
