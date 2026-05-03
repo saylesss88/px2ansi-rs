@@ -30,8 +30,8 @@ impl Default for RenderOptions {
             style: RenderStyle::default(),
             color_mode: ColorMode::detect(),
             bg_color: None,
-            sixel_max_colors: 256,
-            sixel_diffusion: 0.875,
+            sixel_max_colors: 64,
+            sixel_diffusion: 0.0,
         }
     }
 }

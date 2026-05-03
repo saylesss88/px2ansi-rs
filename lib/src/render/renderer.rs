@@ -305,63 +305,119 @@ pub fn write_sixel<W: Write>(
     writer: &mut W,
 ) -> io::Result<()> {
     use icy_sixel::{BackgroundMode, EncodeOptions, PixelAspectRatio, QuantizeMethod, SixelImage};
-    use std::io::Write;
 
-    // let mut resized = DynamicImage::default();
-    // let img = options.width().map_or(img, |w| {
-    //     let h = (img.height() * w) / img.width().max(1);
-    //     resized = img.resize(w, h, image::imageops::FilterType::Lanczos3);
-    //     &resized
-    // });
+    let bg = options.bg_color(); // call once
 
-    // Convert once, reuse for both branches
-    //
-    let (raw, width, height, bg_mode, aspect) = options.bg_color().map_or_else(
-        || {
-            let rgba = img.to_rgba8();
-            let (w, h) = (rgba.width(), rgba.height());
-            (
-                rgba.into_raw(),
-                w as usize,
-                h as usize,
-                BackgroundMode::Transparent,
-                Some(PixelAspectRatio::Square),
-            )
-        },
-        |bg| {
-            let base = image::Rgba([bg[0], bg[1], bg[2], 255u8]);
-            let mut composited = image::RgbaImage::from_pixel(img.width(), img.height(), base);
-            image::imageops::overlay(&mut composited, &img.to_rgba8(), 0, 0);
-            let (w, h) = (composited.width(), composited.height());
-            (
-                composited.into_raw(),
-                w as usize,
-                h as usize,
-                BackgroundMode::Opaque,
-                None,
-            )
-        },
-    );
-
+    let rgba = img.to_rgba8(); // call once
+    let (raw, width, height) = match bg {
+        None => {
+            let (w, h) = rgba.dimensions();
+            (rgba.into_raw(), w as usize, h as usize)
+        }
+        Some(bg) => {
+            let mut composited = image::RgbaImage::from_pixel(
+                rgba.width(),
+                rgba.height(),
+                image::Rgba([bg[0], bg[1], bg[2], 255]),
+            );
+            image::imageops::overlay(&mut composited, &rgba, 0, 0);
+            let (w, h) = composited.dimensions();
+            (composited.into_raw(), w as usize, h as usize)
+        }
+    };
     let encode_opts = EncodeOptions {
         max_colors: options.sixel_max_colors(),
         diffusion: options.sixel_diffusion(),
-        quantize_method: QuantizeMethod::Wu,
+        quantize_method: QuantizeMethod::Wu, // K-means is slower
     };
-    let mut sixel_img = SixelImage::try_from_rgba(raw, width, height)
-        .map_err(|e| io::Error::other(e.to_string()))?
-        .with_background_mode(bg_mode);
 
-    if let Some(ar) = aspect {
-        sixel_img = sixel_img.with_aspect_ratio(ar);
-    }
+    let sixel_img = SixelImage::try_from_rgba(raw, width, height)
+        .map_err(|e| io::Error::other(e.to_string()))?
+        .with_background_mode(if options.bg_color().is_some() {
+            BackgroundMode::Opaque
+        } else {
+            BackgroundMode::Transparent
+        });
+
+    // Only set aspect ratio when needed (avoids unnecessary work)
+    let sixel_img = if options.bg_color().is_none() {
+        sixel_img.with_aspect_ratio(PixelAspectRatio::Square)
+    } else {
+        sixel_img
+    };
 
     let sixel = sixel_img
         .encode_with(&encode_opts)
         .map_err(|e| io::Error::other(e.to_string()))?;
 
-    // Write to the provided writer instead of hardcoded stdout
-    let mut out = io::BufWriter::with_capacity(1 << 20, writer);
+    // High-capacity buffered write
+    let mut out = io::BufWriter::with_capacity(1 << 20, writer); // 1 MiB
     out.write_all(sixel.as_bytes())?;
     out.flush()
 }
+// pub fn write_sixel<W: Write>(
+//     img: &image::DynamicImage,
+//     options: &RenderOptions,
+//     writer: &mut W,
+// ) -> io::Result<()> {
+//     use icy_sixel::{BackgroundMode, EncodeOptions, PixelAspectRatio, QuantizeMethod, SixelImage};
+//     use std::io::Write;
+
+//     // let mut resized = DynamicImage::default();
+//     // let img = options.width().map_or(img, |w| {
+//     //     let h = (img.height() * w) / img.width().max(1);
+//     //     resized = img.resize(w, h, image::imageops::FilterType::Lanczos3);
+//     //     &resized
+//     // });
+
+//     // Convert once, reuse for both branches
+//     //
+//     let (raw, width, height, bg_mode, aspect) = options.bg_color().map_or_else(
+//         || {
+//             let rgba = img.to_rgba8();
+//             let (w, h) = (rgba.width(), rgba.height());
+//             (
+//                 rgba.into_raw(),
+//                 w as usize,
+//                 h as usize,
+//                 BackgroundMode::Transparent,
+//                 Some(PixelAspectRatio::Square),
+//             )
+//         },
+//         |bg| {
+//             let base = image::Rgba([bg[0], bg[1], bg[2], 255u8]);
+//             let mut composited = image::RgbaImage::from_pixel(img.width(), img.height(), base);
+//             image::imageops::overlay(&mut composited, &img.to_rgba8(), 0, 0);
+//             let (w, h) = (composited.width(), composited.height());
+//             (
+//                 composited.into_raw(),
+//                 w as usize,
+//                 h as usize,
+//                 BackgroundMode::Opaque,
+//                 None,
+//             )
+//         },
+//     );
+
+//     let encode_opts = EncodeOptions {
+//         max_colors: options.sixel_max_colors(),
+//         diffusion: options.sixel_diffusion(),
+//         quantize_method: QuantizeMethod::Wu,
+//     };
+//     let mut sixel_img = SixelImage::try_from_rgba(raw, width, height)
+//         .map_err(|e| io::Error::other(e.to_string()))?
+//         .with_background_mode(bg_mode);
+
+//     if let Some(ar) = aspect {
+//         sixel_img = sixel_img.with_aspect_ratio(ar);
+//     }
+
+//     let sixel = sixel_img
+//         .encode_with(&encode_opts)
+//         .map_err(|e| io::Error::other(e.to_string()))?;
+
+//     // Write to the provided writer instead of hardcoded stdout
+//     let mut out = io::BufWriter::with_capacity(1 << 20, writer);
+//     out.write_all(sixel.as_bytes())?;
+//     out.flush()
+// }
