@@ -957,7 +957,7 @@ dependencies = [
 
 [[package]]
 name = "px2ansi"
-version = "0.3.10"
+version = "0.3.11"
 dependencies = [
  "criterion",
  "fontdue",
@@ -974,7 +974,7 @@ dependencies = [
 
 [[package]]
 name = "px2ansi-rs"
-version = "0.5.30"
+version = "0.5.31"
 dependencies = [
  "ansi-width",
  "anyhow",

@@ -10,8 +10,8 @@
 [![Nix](https://img.shields.io/badge/Nix-5277C3?style=flat&logo=nixos&logoColor=white)](https://nixos.org)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-`px2ansi-rs` is a high-fidelity terminal art engine and asset manager.
-It transforms images into terminal-native art using 10 rendering styles, from
+`px2ansi-rs` is a high-fidelity terminal art engine and asset manager. It
+transforms images into terminal-native art using 10 rendering styles, from
 classic ANSI blocks to high-density Braille and Kanji. With built-in indexing
 and manifest support, it is designed to manage and display entire sprite
 libraries with the same ease as `pokemon-colorscripts`.
@@ -113,8 +113,8 @@ browsing, and advanced filters.
 - **High-performance backend**: SIMD-accelerated pixel processing via
   auto-vectorization; optional multi-core via `rayon`
 
-Built on top of [`px2ansi`](https://crates.io/crates/px2ansi), a standalone
-Rust library exposing the full rendering engine as a public API.
+Built on top of [`px2ansi`](https://crates.io/crates/px2ansi), a standalone Rust
+library exposing the full rendering engine as a public API.
 
 ### Optional Features
 
@@ -215,17 +215,17 @@ px2ansi-rs convert image.png --style ascii --color-mode 256 --dither
 ### Color Modes
 
 `px2ansi-rs` goes beyond simple ANSI escapes by prioritizing perceptual
-accuracy. When rendering in 256-color mode it uses the **Oklab color space**
-for quantization — a perceptually uniform space where equal numerical distances
-correspond to equal perceived color differences. Raw pixels are linearized via
-a fast lookup table to account for gamma correction before matching, so teals
-stay teal and NixOS blues don't drift toward purple.
+accuracy. When rendering in 256-color mode it uses the **Oklab color space** for
+quantization — a perceptually uniform space where equal numerical distances
+correspond to equal perceived color differences. Raw pixels are linearized via a
+fast lookup table to account for gamma correction before matching, so teals stay
+teal and NixOS blues don't drift toward purple.
 
-| Mode        | Description                                                      |
-| ----------- | ---------------------------------------------------------------- |
-| `truecolor` | (Default) 24-bit ANSI sequences. Best for modern terminals.      |
-| `ansi256`   | Quantizes to xterm-256 palette using Oklab perceptual matching.  |
-| `none`      | Disables all color escapes. Useful for piping or monochrome.     |
+| Mode        | Description                                                     |
+| ----------- | --------------------------------------------------------------- |
+| `truecolor` | (Default) 24-bit ANSI sequences. Best for modern terminals.     |
+| `ansi256`   | Quantizes to xterm-256 palette using Oklab perceptual matching. |
+| `none`      | Disables all color escapes. Useful for piping or monochrome.    |
 
 **Auto-detection order**
 
@@ -274,8 +274,8 @@ px2ansi-rs convert skull.png --rotate --axis y --unidirectional
 px2ansi-rs index ./assets/sprites --output index.json
 ```
 
-If `--output` is omitted the index path falls back to the configured default
-(or `index.json`).
+If `--output` is omitted the index path falls back to the configured default (or
+`index.json`).
 
 ### Show by Name
 
@@ -367,6 +367,9 @@ px2ansi-rs show --fetch
   <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/fetch.png" width="400" alt="Fetch example">
 </p>
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/scream-fetch.png" width="400" alt="Sixel Scream Fetch example">
+</p>
 ### List Assets
 
 ```bash
@@ -385,11 +388,11 @@ px2ansi-rs -I /path/to/custom.json list
 
 ### File location
 
-| OS      | Path                                                      |
-| ------- | --------------------------------------------------------- |
-| Linux   | `~/.config/px2ansi-rs/default-config.toml`               |
+| OS      | Path                                                           |
+| ------- | -------------------------------------------------------------- |
+| Linux   | `~/.config/px2ansi-rs/default-config.toml`                     |
 | macOS   | `~/Library/Application Support/px2ansi-rs/default-config.toml` |
-| Windows | `%AppData%\px2ansi-rs\config\default-config.toml`         |
+| Windows | `%AppData%\px2ansi-rs\config\default-config.toml`              |
 
 ### Example `default-config.toml`
 
@@ -491,22 +494,22 @@ programs.zsh.initContent = ''
 
 **What is auto-vectorization?**
 
-Modern CPUs can process multiple data values in a single instruction using
-SIMD registers (`SSE4.2`, `AVX2` on `x86_64`; `NEON` on `ARM`). Normally you
-either write intrinsics by hand (tedious, brittle, architecture-specific) or let
-the compiler figure it out automatically. (that second approach is
+Modern CPUs can process multiple data values in a single instruction using SIMD
+registers (`SSE4.2`, `AVX2` on `x86_64`; `NEON` on `ARM`). Normally you either
+write intrinsics by hand (tedious, brittle, architecture-specific) or let the
+compiler figure it out automatically. (that second approach is
 auto-vectorization)
 
 When code is written in a way the compiler can reason about (tight loops over
-contiguous slices, no pointer aliasing, predictable access patterns) `rustc`
-and LLVM will emit vectorized machine code automatically, processing 8, 16, or
-32 bytes per cycle instead of one.
+contiguous slices, no pointer aliasing, predictable access patterns) `rustc` and
+LLVM will emit vectorized machine code automatically, processing 8, 16, or 32
+bytes per cycle instead of one.
 
-The pixel-processing hot path in `px2ansi-rs` (`find_luma_range_rgba_bytes`
-and related routines) is exactly this shape: scanning raw `&[u8]` slices with
-simple arithmetic. Restructuring those loops to be alias-free and slice-bounded
-gave the compiler everything it needed to generate AVX2 or SSE4.2 code without
-a single `std::arch` intrinsic.
+The pixel-processing hot path in `px2ansi-rs` (`find_luma_range_rgba_bytes` and
+related routines) is exactly this shape: scanning raw `&[u8]` slices with simple
+arithmetic. Restructuring those loops to be alias-free and slice-bounded gave
+the compiler everything it needed to generate AVX2 or SSE4.2 code without a
+single `std::arch` intrinsic.
 
 **What does this mean for you?**
 
@@ -525,7 +528,8 @@ rustc --print cfg | grep target_feature
 
 > [!NOTE]
 > `target-cpu=native` produces a binary that may not run on older machines.
-> Distribute without this flag; use it for personal builds or benchmarking.
+> Distribute without this flag; use it for personal builds or
+> benchmarking.
 
 **Pixel Processing Throughput**
 
@@ -533,22 +537,22 @@ The following benchmarks measure `find_luma_range_rgba_bytes`, the core
 brightness-normalization scan run on every frame.
 
 | Buffer Size | Throughput (GiB/s) | Improvement vs. explicit SIMD |
-| ----------- | ------------------ | ------------------------------ |
-| 256 B       | 3.44 GiB/s         | +71.7%                         |
-| 1 KiB       | 3.40 GiB/s         | +67.1%                         |
-| 4 KiB       | 3.50 GiB/s         | +79.0%                         |
-| 64 KiB      | 3.51 GiB/s         | +84.7%                         |
+| ----------- | ------------------ | ----------------------------- |
+| 256 B       | 3.44 GiB/s         | +71.7%                        |
+| 1 KiB       | 3.40 GiB/s         | +67.1%                        |
+| 4 KiB       | 3.50 GiB/s         | +79.0%                        |
+| 64 KiB      | 3.51 GiB/s         | +84.7%                        |
 
 **End-to-End Rendering**
 
-| Config                       | Improvement |
-| ---------------------------- | ----------- |
-| Fastest / Nearest filter     | ~7.8% faster |
-| High-quality / Lanczos3      | ~6.4% faster |
+| Config                   | Improvement  |
+| ------------------------ | ------------ |
+| Fastest / Nearest filter | ~7.8% faster |
+| High-quality / Lanczos3  | ~6.4% faster |
 
 > [!NOTE]
-> Benchmarks run on `v0.3.10` with `criterion`. Results vary by CPU
-> architecture and available SIMD width (SSE4.2, AVX2, NEON, etc.).
+> Benchmarks run on `v0.3.11` with `criterion`. Results vary by CPU architecture
+> and available SIMD width (SSE4.2, AVX2, NEON, etc.).
 
 ### Benchmarks
 
@@ -559,7 +563,7 @@ benchmarks into two categories:
   range and charset index calculation.
 
 - End-to-End Rendering (`benches/rendering.rs`): Measures the full pipeline from
-  raw bytes to ANSI output.
+  raw bytes to ANSI/Sixel output.
 
 **More benches with hyperfine**
 
@@ -569,39 +573,39 @@ Benchmarked against [`viu`](https://github.com/atanunq/viu) with
 
 **Half-block rendering (`--style ansi` vs `viu --blocks`)**
 
-| Image        | `px2ansi-rs`        | `viu -b`            | Improvement  |
-| ------------ | ------------------- | ---------------- | ------------ |
-| `nixos.png`  | **4.4 ms** ± 0.7 ms | 13.9 ms ± 0.7 ms | 3× faster  |
-| `scream.png` | **6.2 ms**  | 11.9 ms  | 1.9× faster  |
+| Image        | `px2ansi-rs`        | `viu -b`         | Improvement |
+| ------------ | ------------------- | ---------------- | ----------- |
+| `nixos.png`  | **4.4 ms** ± 0.7 ms | 13.9 ms ± 0.7 ms | 3× faster   |
+| `scream.png` | **6.2 ms**          | 11.9 ms          | 1.9× faster |
 
 User CPU time is 2.2 ms vs 10.6 ms — a ~4.8× reduction in actual compute; the
 remainder is process startup and I/O.
 
 **Sixel rendering (`--style sixel` vs `viu --static`)**
 
-| Image        | `px2ansi-rs`(`icy_sixel`)     | `viu` (`viuer`)            | Delta    |
-| ------------ | ---------------- | ---------------- | -------- |
-| `nixos.png`  | 18.4 ms | 14.2 ms  | +4.2 ms  |
-| `scream.png` | 25 ms | 12.1 | +12.9 ms  |
+| Image        | `px2ansi-rs`(`icy_sixel`) | `viu` (`viuer`) | Difference |
+| ------------ | ------------------------- | --------------- | --------------- |
+| `nixos.png`  | 18.6 ms                   | 14.2 ms         | viu 4.4 ms faster         |
+| `scream.png` | 24.9 ms                     | 11.9            | viu +13.0 ms faster        |
 
 `px2ansi-rs` is slower here, and that is worth being honest about. Sixel
-encoding is CPU-intensive, it involves palette quantization and bit-packing
-that `viu` offloads to `libsixel`, a heavily optimized C library with over a
-years of micro-optimization work behind it.
+encoding is CPU-intensive, it involves palette quantization and bit-packing that
+`viu` offloads to `libsixel`, a heavily optimized C library with over a years of
+micro-optimization work behind it.
 
 `px2ansi-rs` uses `icy_sixel`, a pure-Rust encoder. The trade-off is deliberate:
 
-- **No FFI**, no unsafe boundary: libsixel is linked via FFI, which means
-a C toolchain dependency at build time, potential undefined behavior at the
-FFI boundary, and unsafe code that rustc cannot reason about.
+- **No FFI**, no unsafe boundary: libsixel is linked via FFI, which means a C
+  toolchain dependency at build time, potential undefined behavior at the FFI
+  boundary, and unsafe code that rustc cannot reason about.
 
 - **Cross-platform without extra steps**: `icy_sixel` compiles anywhere Rust
-does. No `pkg-config`, no system `libsixel`, no Homebrew dependency.
+  does. No `pkg-config`, no system `libsixel`, no Homebrew dependency.
 
-- **Optimization headroom**: `icy_sixel` is actively developed and has not
-had the same years of profiling that libsixel has. The gap is a maturity
-difference, not a fundamental one; auto-vectorization of the quantization
-loop alone could close much of it.
+- **Optimization headroom**: `icy_sixel` is actively developed and has not had
+  the same years of profiling that libsixel has. The gap is a maturity
+  difference, not a fundamental one; auto-vectorization of the quantization loop
+  alone could close much of it.
 
 If raw Sixel throughput is your priority and you are comfortable with a C
 dependency, `viu` is the faster choice today. If you want a fully auditable,
@@ -619,22 +623,22 @@ dependency-minimal binary that compiles anywhere, `px2ansi-rs` is it.
 ```
 
 - The Encoder Bottleneck: Sixel encoding requires complex quantization and
- bit-packing. `viu` uses libsixel (optimized C), while `icy_sixel` is
- prioritizing correctness and being 100% Rust over the aggressive
- micro-optimizations found in older C libraries.
+  bit-packing. `viu` uses libsixel (optimized C), while `icy_sixel` is
+  prioritizing correctness and being 100% Rust over the aggressive
+  micro-optimizations found in older C libraries.
 
 ### Fetch Performance
 
 `--fetch` is designed for shell startup. By querying only the kernel fields
 actually enabled in config, startup time is kept well under 20 ms:
 
-|            | Mean    | System time |
-| ---------- | ------- | ----------- |
-| Before     | 72.6 ms | 62 ms       |
-| **After**  | **16.8 ms** | **13 ms** |
+|           | Mean        | System time |
+| --------- | ----------- | ----------- |
+| Before    | 72.6 ms     | 62 ms       |
+| **After** | **16.8 ms** | **13 ms**   |
 
-> Measured with `hyperfine --warmup 3` on NixOS, Rust nightly. The remaining
-> ~13 ms is process startup + PNG decode.
+> Measured with `hyperfine --warmup 3` on NixOS, Rust nightly. The remaining ~13
+> ms is process startup + PNG decode.
 
 ### Latency Metrics
 
@@ -665,8 +669,8 @@ Most noticeable on large images with `--style ascii`, `--style kanji`, or
 
 ## Rasterize Output to PNG
 
-Use `--output-image` (`-O`) to convert terminal escape codes into a `.png`
-file. Requires the `rasterize` feature (enabled by default).
+Use `--output-image` (`-O`) to convert terminal escape codes into a `.png` file.
+Requires the `rasterize` feature (enabled by default).
 
 ```bash
 px2ansi-rs convert tests/nixos.png --filter nearest --style ascii \
@@ -706,8 +710,8 @@ raster_theme = "gruvbox-dark"
 - **`px2ansi`** (library) — pure rendering logic, math, and character sets.
 - **`px2ansi-rs`** (CLI) — terminal flags, config files, and user interaction.
 
-This separation keeps the library fast, minimal, and embeddable without
-pulling in CLI dependencies.
+This separation keeps the library fast, minimal, and embeddable without pulling
+in CLI dependencies.
 
 See [px2ansi on crates.io](https://crates.io/crates/px2ansi) for the API.
 
@@ -727,14 +731,14 @@ See [px2ansi on crates.io](https://crates.io/crates/px2ansi) for the API.
 
 `px2ansi-rs` uses `anyhow` for error handling.
 
-| Symptom | Fix |
-| ------- | --- |
-| **Invalid style** | Check valid `--style` values with `--help`. |
-| **Missing file** | `convert` on a nonexistent file fails gracefully. |
-| **Broken pipe** | Normal when piping into `head` or similar. |
-| **Missing index** | Ensure `index.json` exists or pass `-I <PATH>`. |
-| **Low fuzzy score** | Use a more specific query or `-i` for interactive search. |
-| **Terminal gaps** | Your terminal line-height may be greater than `1.0`. |
+| Symptom                     | Fix                                                       |
+| --------------------------- | --------------------------------------------------------- |
+| **Invalid style**           | Check valid `--style` values with `--help`.               |
+| **Missing file**            | `convert` on a nonexistent file fails gracefully.         |
+| **Broken pipe**             | Normal when piping into `head` or similar.                |
+| **Missing index**           | Ensure `index.json` exists or pass `-I <PATH>`.           |
+| **Low fuzzy score**         | Use a more specific query or `-i` for interactive search. |
+| **Terminal gaps**           | Your terminal line-height may be greater than `1.0`.      |
 | **Rasterize not available** | Rebuild: `cargo install px2ansi-rs --features rasterize`. |
 
 ### Man Page Generation
@@ -755,8 +759,7 @@ sudo cp man/*.1 /usr/local/share/man/man1/
 sudo mandb
 ```
 
-> [!TIP]
-> For faster compile times during development, add the `mold` linker to
+> [!TIP] For faster compile times during development, add the `mold` linker to
 > `~/.cargo/config.toml`:
 >
 > ```toml
@@ -770,9 +773,9 @@ sudo mandb
 
 ## Similar Crates
 
-- [rascii_art](https://crates.io/crates/rascii_art): A well-structured,
-  readable implementation. Comparing against it was helpful for spotting
-  aspect-ratio issues and discovering additional charsets.
+- [rascii_art](https://crates.io/crates/rascii_art): A well-structured, readable
+  implementation. Comparing against it was helpful for spotting aspect-ratio
+  issues and discovering additional charsets.
 - [ansimage](https://crates.io/crates/ansimage): Untested.
 - [ansizalizer](https://github.com/Zebbeni/ansizalizer): A feature-rich TUI
   built with Ansipx and Bubble Tea (Go). Polished and worth a look.

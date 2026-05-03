@@ -49,8 +49,7 @@ output to any `Write` target.
 It is the rendering core behind `px2ansi-rs`, but it can also be used directly
 in other Rust projects.
 
-> [!IMPORTANT]
-> This is a new project, the public API is subject to change
+> [!IMPORTANT] This is a new project, the public API is subject to change
 
 ## Features
 
@@ -67,7 +66,7 @@ in other Rust projects.
 
 - Optional Sixel output for terminals that support it.
 
-- Optional SIMD (`wide`) and optional parallel execution (`rayon`)
+- Optional parallel execution (`rayon`)
 
 ## Installation
 
@@ -256,7 +255,7 @@ use px2ansi::{ColorMode, RenderOptions, RenderStylePreset};
 let mut builder = RenderOptions::builder()
     .preset(RenderStylePreset::FullBlock)
     .width(80);
-  
+
 builder = if monochrome {
     builder.color_mode(ColorMode::None)
 } else {
@@ -290,7 +289,7 @@ println!("Current density: {:?}", opts.style().density());
 The indexer scans a directory for image files and produces a JSON index. It is
 part of the public `px2ansi` library API:
 
-```rust,no_run
+```rust
 use px2ansi::indexer::{build_index, ImageEntry};
 use std::path::Path;
 
@@ -348,12 +347,12 @@ fn build_and_read_index() {
 All features are **disabled by default**. Enable them individually or together
 for minimal builds.
 
-| Feature     | Dependency | What it does                                                                                   |
-| ----------- | ---------- | ---------------------------------------------------------------------------------------------- |
-| `rasterize` | `fontdue`  | Renders ANSI art to a PNG image using an embedded monospace font                               |
-| `sixel`     | `icy_sixel`    | Streams pixel-accurate images directly to Sixel-compatible terminals                           |
-| `parallel`  | `rayon`    | Enables parallel processing for performance                                                    |
-| `simd`      | `wide`     | Accelerates color matching and pixel processing by using CPU vector instructions (AVX2, NEON). |
+| Feature     | Dependency  | What it does                                                                                   |
+| ----------- | ----------- | ---------------------------------------------------------------------------------------------- |
+| `rasterize` | `fontdue`   | Renders ANSI art to a PNG image using an embedded monospace font                               |
+| `sixel`     | `icy_sixel` | Streams pixel-accurate images directly to Sixel-compatible terminals                           |
+| `parallel`  | `rayon`     | Enables parallel processing for performance                                                    |
+| `simd`      | `wide`      | Accelerates color matching and pixel processing by using CPU vector instructions (AVX2, NEON). |
 
 ### Controlling Features
 
@@ -367,8 +366,8 @@ cargo add px2ansi --features sixel
 # PNG rasterization, no Sixel output
 cargo add px2ansi --features rasterize
 
-# Enable all optimization features
-cargo add px2ansi --features simd parallel
+# Enable rayon
+cargo add px2ansi --features parallel
 
 # Everything (full feature set)
 cargo add px2ansi --features full
@@ -378,10 +377,10 @@ In `Cargo.toml`:
 
 ```toml
 # Default (Minimal, no features enabled)
-px2ansi = "0.2.3"
+px2ansi = "0.3.11"
 
 # Pick what you need
-px2ansi = { version = "0.2.3",  features = ["parallel", "simd"] }
+px2ansi = { version = "0.3.11",  features = ["parallel", "sixel"] }
 
 # Include all features ("parallel", "simd", "rasterize", "sixel")
 px2ansi = { version = "0.2.3",  features = ["full"] }
@@ -397,18 +396,21 @@ Renders pixel-accurate images inline in the terminal using the
 **Compatible terminals:** `foot`, `WezTerm`, `iTerm2`, `ghosTTY`, `xterm` (with
 `-ti 340`)
 
-```rust,no_run
+```rust
 use px2ansi::{RenderOptions, RenderStylePreset};
 # use image::{DynamicImage, ImageBuffer};
 # let img = DynamicImage::ImageRgba8(ImageBuffer::new(1, 1));
-
 let opts = RenderOptions::builder()
     .preset(RenderStylePreset::Sixel)
+    .max_colors(256)   // default: 64, max: 256
+    .diffusion(0.8)    // 0.0 = none, 1.0 = full Floyd-Steinberg
     .build();
-
 let mut out = std::io::stdout();
 opts.render_centered(&img, &mut out).unwrap();
 ```
+
+- I chose `64` for performance reasons and didn't notice a difference in the
+  output.
 
 ---
 
@@ -419,7 +421,7 @@ Diffusion algorithm. This is designed to solve the "banding" problem common in
 terminal art, where a limited character set or color palette creates harsh
 transitions in gradients.
 
-```rust,no_run
+```rust
 use px2ansi::{RenderOptions, RenderStylePreset};
 # use image::{DynamicImage, ImageBuffer};
 # let img = DynamicImage::ImageRgba8(ImageBuffer::new(10, 10));
@@ -503,125 +505,131 @@ let png = rasterize_ansi_with_theme(&buf, RasterTheme::Dracula).unwrap();
 
 ### Vectorization
 
-This crate relies on LLVM's auto-vectorizer rather than explicit SIMD
-intrinsics. There is no simd feature flag and no platform-specific dependency.
-The same source compiles everywhere, and on capable hardware LLVM emits wide
-vector instructions automatically.
+The pixel pipeline relies on LLVM's auto-vectorizer rather than explicit SIMD
+intrinsics. No `simd` feature flag, no platform-specific dependency, no unsafe
+code. The same source compiles everywhere, and on capable hardware LLVM emits
+wide vector instructions automatically.
 
-**How to get the speed benefits**
 
-The key is telling the compiler it can use your CPU's full instruction set. By
-default, Rust compiles for a baseline x86-64 target (SSE2 only) so binaries run
-on any machine. To unlock AVX2 or AVX-512 on your own hardware:
+By moving away from custom SIMD code and using standard Rust patterns, I let the
+compiler handle the heavy lifting. By organizing the image data into predictable
+32-byte chunks, the compiler was able to automatically trigger AVX2 and NEON
+hardware acceleration. This resulted in an 80% reduction in CPU time for
+processing brightness and character mapping.
 
-For a local binary — add to .cargo/config.toml in your project:
+**Getting the most out of it**
+
+By default Rust targets a conservative baseline (SSE2 on x86-64) so binaries
+run on any machine. To unlock AVX2 on your own hardware, add to
+`.cargo/config.toml`:
 
 ```toml
 [build]
 rustflags = ["-C", "target-cpu=native"]
 ```
+
 Or per-invocation:
 
 ```bash
 RUSTFLAGS="-C target-cpu=native" cargo build --release
+
+# Verify what was enabled (look for avx2, sse4.2, neon, etc.)
+rustc --print cfg | grep target_feature
 ```
 
-This tells LLVM your exact CPU model and lets it emit 256-bit (AVX2) or wider vector instructions for the pixel processing loops.
-Verifying vectorization fired
-You can confirm LLVM actually vectorized the hot loops with:
+To confirm vectorization fired:
+
 ```bash
 RUSTFLAGS="-C target-cpu=native -C llvm-args=-pass-remarks=loop-vectorize" \
-cargo build --release 2>&1 | grep remark
-```
-Output like `vectorized loop (vectorization width: 8, interleaved count: 2)` means it worked. You can also inspect the emitted assembly and look for `ymm` registers (AVX2/256-bit) or xmm (SSE/128-bit).
-
-### SIMD Acceleration (`simd` feature)
-
-The `simd` feature enables hardware-accelerated pixel processing via the
-[wide](https://crates.io/crates/wide) crate. This implementation is portable,
-100% safe Rust, and requires no architecture-specific intrinsics or nightly
-compiler. LLVM automatically lowers the wide vector types to AVX2, SSE4.1, or
-NEON instructions depending on your target hardware.
-
-### Performance Impact
-
-`px2ansi` uses SIMD to accelerate the two most critical stages of rendering:
-
-1. **Luma Range Scanning (Pass 1)**: Scans the entire image to find the
-   perceptual brightness floor and ceiling (L*min* and L*max*). This allows the
-   library to maximize contrast by stretching the character ramp to fit the
-   image's actual dynamic range.
-
-2. **Character Indexing (Pass 2)**: Maps every pixel to a character in your
-   charset. By processing 8 pixels at a time in a single `u32x8` vector lane, we
-   significantly reduce the CPU cycles required for the normalization math.
-
-**How it works**
-
-With the `simd` feature enabled, the renderer processes chunks of 8 pixels in a
-single instruction rather than one at a time:
-
-```text
-// (explanatory snippet about SIMD — do not compile it in doctests)
-// 8 Rec.709 luma values computed simultaneously:
-// let luma_raw = r * u32x8::splat(2126) + g * u32x8::splat(7152) + b * u32x8::splat(722);
+  cargo build --release 2>&1 | grep remark
 ```
 
-- **Branchless Transparency**: Transparent pixels (alpha < 30) are handled using
-  bitmasks. This avoids per-pixel branching, keeping the CPU pipeline full and
-  predictable.
+`vectorized loop (vectorization width: 8, interleaved count: 2)` means it
+worked. Look for `ymm` registers in the disassembly (AVX2/256-bit) or `xmm`
+(SSE/128-bit).
 
-- **Exact Fallback**: Any remaining pixels that don't fill a full 8-pixel chunk
-  are handled by an identical scalar fallback, so output is bit-for-bit
-  identical regardless of hardware support.
 
-#### Rec.709 luma formula
+### How the pixel pipeline works
 
-Both the SIMD and scalar paths use the same perceptually-weighted formula:
+Rendering runs in two passes over the image data:
 
-```latex
+1. **Luma Range Scanning (Pass 1)** — scans all opaque pixels to find the
+   perceptual brightness floor and ceiling (L*min* and L*max*), allowing the
+   character ramp to be stretched across the image's actual dynamic range for
+   maximum contrast.
+2. **Character Indexing (Pass 2)** — maps every pixel to a character in the
+   selected charset by normalising its luma into the ramp index.
+
+Both passes use the Rec.709 perceptual luma formula:
+
 $$Y = \frac{2126 \cdot R + 7152 \cdot G + 722 \cdot B}{10000}$$
-```
 
 This matches the [ITU-R BT.709](https://www.itu.int/rec/R-REC-BT.709) standard
-used in HDTV and sRGB color spaces, giving accurate brightness perception across
-all charset modes.
+used in HDTV and sRGB color spaces. Transparent pixels (alpha < 30) are skipped
+in both passes via an early-exit check on 32-byte chunks before any luma math
+runs.
 
-#### Enabling SIMD
-
-```toml
-[dependencies]
-px2ansi = { version = "0.2.3", features = ["simd"] }
-```
-
-Or to enable everything:
-
-```toml
-[dependencies]
-px2ansi = { version = "0.2.3", features = ["full"] }
-```
-
-If the `simd` feature is **not** enabled, the library automatically falls back
-to a scalar implementation with identical output — no code changes required.
+LLVM auto-vectorizes both loops when compiled with `target-cpu=native`. See
+[Vectorization](#vectorization) above.
 
 #### Benchmark
 
-The following benchmarks demonstrate the impact of the `simd` feature when
-processing high-resolution images. These tests were conducted using the
-`px2ansi-rs` CLI on an
+The library ships with [Criterion.rs](https://github.com/bheisler/criterion.rs)
+benchmarks covering both rendering throughput and low-level pixel pipeline
+performance.
+
+### Running
+
+```bash
+# Full benchmark suite (requires sixel feature for Sixel groups):
+cargo bench --features sixel
+
+# Pixel pipeline only (no features needed):
+cargo bench --bench pixels
+
+# All groups including Sixel and parallel rendering:
+cargo bench --features full
+```
+
+Results are written to `target/criterion/` as HTML reports with run-to-run
+comparison.
+
+### Rendering benchmarks (`benches/rendering.rs`)
+
+Covers the full render pipeline from raw `DynamicImage` to terminal output:
+
+- **Engine Performance**: compares `Nearest` vs `Lanczos3` resize filters at a
+  fixed width, giving a baseline cost for the ANSI render path.
+- **Sixel / Width**: renders at `w80`, `w160`, and `w320` with a pre-resized
+  reference run, isolating encode cost from resize cost.
+- **Sixel / Quantization**: sweeps color palette size (64–256) and diffusion
+  strength (`0.0` vs `0.875`) so you can tune the quality/performance trade-off
+  for your use case.
+
+### Pixel pipeline benchmarks (`benches/pixels.rs`)
+
+Microbenchmarks for the SIMD-accelerated inner loops, with throughput reported
+in MB/s:
+
+| Benchmark                    | What it measures                                     |
+| ---------------------------- | ---------------------------------------------------- |
+| `find_luma_range_rgba_bytes` | Min/max luma scan over RGBA buffers (256 – 65536 px) |
+| `compute_charset_indices`    | Luma → charset index mapping for an 8-pixel chunk    |
+| `luma_scalar`                | Scalar BT.709 luma baseline for auto-vectorization      |
+
 
 | Mode             | Wall time | User CPU | Test Image                    |
 | ---------------- | --------- | -------- | ----------------------------- |
-| `px2ansi` (SIMD) | ~7.6 ms   | ~2.2 ms  | `nixos.png` (1.2M px, sparse) |
-| `px2ansi` (SIMD) | ~9.1 ms   | ~4.6 ms  | `scream.png` (0.6M px, dense) |
-| `rascii --color` | ~10.0 ms  | ~4.5 ms  | `nixos.png`                   |
-| `rascii --color` | ~10.2 ms  | ~5.8 ms  | `scream.png`                  |
+| `px2ansi`  | ~3.9 ms   | ~1.7 ms  | `nixos.png` (1.2M px, sparse) |
+| `px2ansi`  | ~5.9 ms   | ~3.9 ms  | `scream.png` (0.6M px, dense) |
+| `rascii --color` | ~6.1 ms  | ~3.9 ms  | `nixos.png`                   |
+| `rascii --color` | ~7.1 ms  | ~5.2 ms  | `scream.png`                  |
 
 The SIMD luma scan alone roughly **halves CPU time** for the render pass.
 
 > [!NOTE]
-> `px2ansi` scales better with resolution. Even though the NixOS image
-> has double the pixels of the Scream image, it actually completes the task
+> `px2ansi` scales better with resolution. Even though the NixOS image has
+> double the pixels of the Scream image, it actually completes the task
 > faster.
 
 ---
@@ -710,9 +718,8 @@ match result {
 
 ### Dev Tips
 
-> [!TIP]
-> For faster compile times during development, you can use the `mold` linker
-> by adding this to your local `~/.cargo/config.toml`:
+> [!TIP] For faster compile times during development, you can use the `mold`
+> linker by adding this to your local `~/.cargo/config.toml`:
 >
 > ```toml
 >  [target.x86_64-unknown-linux-gnu]
