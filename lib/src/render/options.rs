@@ -17,6 +17,8 @@ pub struct RenderOptions {
     style: RenderStyle,
     color_mode: ColorMode,
     bg_color: Option<[u8; 3]>,
+    sixel_max_colors: u16,
+    sixel_diffusion: f32,
 }
 
 impl Default for RenderOptions {
@@ -28,6 +30,8 @@ impl Default for RenderOptions {
             style: RenderStyle::default(),
             color_mode: ColorMode::detect(),
             bg_color: None,
+            sixel_max_colors: 256,
+            sixel_diffusion: 0.875,
         }
     }
 }
@@ -69,6 +73,8 @@ pub struct RenderOptionsBuilder {
     color_mode: Option<ColorMode>,
     dither: Option<bool>,
     bg_color: Option<[u8; 3]>,
+    sixel_max_colors: Option<u16>,
+    sixel_diffusion: Option<f32>,
 }
 
 impl RenderOptionsBuilder {
@@ -128,6 +134,19 @@ impl RenderOptionsBuilder {
         self
     }
 
+    /// Sixel max colors
+    #[must_use]
+    pub const fn max_colors(mut self, n: u16) -> Self {
+        self.sixel_max_colors = Some(n);
+        self
+    }
+    /// Sixel diffusion
+    #[must_use]
+    pub const fn diffusion(mut self, d: f32) -> Self {
+        self.sixel_diffusion = Some(d);
+        self
+    }
+
     /// Finalizes the builder and returns a configured [`RenderOptions`].
     ///
     /// This follows a specific priority:
@@ -156,6 +175,13 @@ impl RenderOptionsBuilder {
         }
         if let Some(bg) = self.bg_color {
             opts.bg_color = Some(bg);
+        }
+
+        if let Some(n) = self.sixel_max_colors {
+            opts.sixel_max_colors = n;
+        }
+        if let Some(d) = self.sixel_diffusion {
+            opts.sixel_diffusion = d;
         }
         opts
     }
@@ -216,6 +242,28 @@ impl RenderOptions {
             width: Some(width),
             ..self
         }
+    }
+    /// Sixel max colors
+    #[must_use]
+    pub const fn sixel_max_colors(&self) -> u16 {
+        self.sixel_max_colors
+    }
+    /// Sixel diffusion
+    #[must_use]
+    pub const fn sixel_diffusion(&self) -> f32 {
+        self.sixel_diffusion
+    }
+    /// Sixel max colors chosen
+    #[must_use]
+    pub const fn with_sixel_max_colors(mut self, n: u16) -> Self {
+        self.sixel_max_colors = n;
+        self
+    }
+    /// Sixel diffusion chosen
+    #[must_use]
+    pub const fn with_sixel_diffusion(mut self, d: f32) -> Self {
+        self.sixel_diffusion = d;
+        self
     }
     /// Prepares a [`DynamicImage`] for terminal rendering through resizing and optional dithering.
     ///
@@ -400,10 +448,15 @@ impl RenderOptions {
         prepared_img: &DynamicImage,
         writer: &mut W,
     ) -> Result<(), RenderError> {
+        #[cfg(feature = "sixel")]
+        if self.charset == CharsetMode::Sixel {
+            let sized = self.prepare_image(prepared_img);
+            crate::render::write_sixel(&sized, self, writer)?;
+            return Ok(());
+        }
         crate::render::write_ansi_art(prepared_img, writer, *self)?;
         Ok(())
     }
-
     /// This method calculates the horizontal padding required to center the output,
     /// captures the rendered ANSI art into an internal buffer, and then writes it
     /// line-by-line to the provided writer with the calculated offset.

@@ -343,7 +343,7 @@ key_width      = 8
 > Layout is handled automatically. If text wraps on an unusually small pane,
 > lowering `key_width` reduces the width of the info block.
 
-**PokéSprite fetch setup**
+**`PokéSprite` fetch setup**
 
 ```bash
 git clone https://github.com/msikma/pokesprite.git
@@ -492,12 +492,13 @@ programs.zsh.initContent = ''
 **What is auto-vectorization?**
 
 Modern CPUs can process multiple data values in a single instruction using
-SIMD registers (SSE4.2, AVX2 on x86_64; NEON on ARM). Normally you either
-write intrinsics by hand (tedious, brittle, architecture-specific) or let the
-compiler figure it out automatically — that second approach is auto-vectorization.
+SIMD registers (`SSE4.2`, `AVX2` on `x86_64`; `NEON` on `ARM`). Normally you
+either write intrinsics by hand (tedious, brittle, architecture-specific) or let
+the compiler figure it out automatically. (that second approach is
+auto-vectorization)
 
-When code is written in a way the compiler can reason about — tight loops over
-contiguous slices, no pointer aliasing, predictable access patterns — `rustc`
+When code is written in a way the compiler can reason about (tight loops over
+contiguous slices, no pointer aliasing, predictable access patterns) `rustc`
 and LLVM will emit vectorized machine code automatically, processing 8, 16, or
 32 bytes per cycle instead of one.
 
@@ -510,8 +511,8 @@ a single `std::arch` intrinsic.
 **What does this mean for you?**
 
 Nothing to install and nothing to configure. `cargo install px2ansi-rs` gives
-you a binary already compiled for your architecture's baseline (SSE2 on
-x86_64). If you build from source you can tell the compiler to target your
+you a binary already compiled for your architecture's baseline (`SSE2` on
+`x86_64`). If you build from source you can tell the compiler to target your
 specific CPU and unlock wider vector units:
 
 ```bash

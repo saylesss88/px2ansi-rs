@@ -278,7 +278,7 @@ pub fn write_ansi_art<W: Write>(
         CharsetMode::Kanji => renderer.kanji(),
         CharsetMode::Chinese => renderer.chinese(),
         #[cfg(feature = "sixel")]
-        CharsetMode::Sixel => write_sixel(img, &options),
+        CharsetMode::Sixel => write_sixel(img, &options, writer),
         #[cfg(not(feature = "sixel"))]
         CharsetMode::Sixel => {
             eprintln!("Sixel support requires the 'sixel' feature.");
@@ -299,51 +299,117 @@ pub fn write_ansi_art<W: Write>(
 /// the Sixel format or if writing to stdout fails.
 #[cfg(feature = "sixel")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sixel")))]
-pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> io::Result<()> {
+pub fn write_sixel<W: Write>(
+    img: &image::DynamicImage,
+    options: &RenderOptions,
+    writer: &mut W,
+) -> io::Result<()> {
     use icy_sixel::{BackgroundMode, EncodeOptions, PixelAspectRatio, QuantizeMethod, SixelImage};
-    use std::io::{self, Write};
+    use std::io::Write;
 
-    // Resize to requested width if specified, preserving aspect ratio
-    let mut resized = DynamicImage::default();
-    let img: &image::DynamicImage = options.width().map_or(img, |w| {
-        let h = (img.height() * w) / img.width().max(1);
-        resized = img.resize(w, h, image::imageops::FilterType::Lanczos3);
-        &resized
-    });
+    // let mut resized = DynamicImage::default();
+    // let img = options.width().map_or(img, |w| {
+    //     let h = (img.height() * w) / img.width().max(1);
+    //     resized = img.resize(w, h, image::imageops::FilterType::Lanczos3);
+    //     &resized
+    // });
+
+    // Convert once, reuse for both branches
+    //
+    let (raw, width, height, bg_mode, aspect) = options.bg_color().map_or_else(
+        || {
+            let rgba = img.to_rgba8();
+            let (w, h) = (rgba.width(), rgba.height());
+            (
+                rgba.into_raw(),
+                w as usize,
+                h as usize,
+                BackgroundMode::Transparent,
+                Some(PixelAspectRatio::Square),
+            )
+        },
+        |bg| {
+            let base = image::Rgba([bg[0], bg[1], bg[2], 255u8]);
+            let mut composited = image::RgbaImage::from_pixel(img.width(), img.height(), base);
+            image::imageops::overlay(&mut composited, &img.to_rgba8(), 0, 0);
+            let (w, h) = (composited.width(), composited.height());
+            (
+                composited.into_raw(),
+                w as usize,
+                h as usize,
+                BackgroundMode::Opaque,
+                None,
+            )
+        },
+    );
 
     let encode_opts = EncodeOptions {
-        max_colors: 256,
-        diffusion: 0.875,
+        max_colors: options.sixel_max_colors(),
+        diffusion: options.sixel_diffusion(),
         quantize_method: QuantizeMethod::Wu,
     };
-
-    let sixel = if let Some(bg) = options.bg_color() {
-        let base = image::Rgba([bg[0], bg[1], bg[2], 255u8]);
-        let mut composited = image::RgbaImage::from_pixel(img.width(), img.height(), base);
-        image::imageops::overlay(&mut composited, &img.to_rgba8(), 0, 0);
-        SixelImage::try_from_rgba(
-            composited.into_raw(),
-            img.width() as usize,
-            img.height() as usize,
-        )
+    let mut sixel_img = SixelImage::try_from_rgba(raw, width, height)
         .map_err(|e| io::Error::other(e.to_string()))?
-        .with_background_mode(BackgroundMode::Opaque)
-        .encode_with(&encode_opts)
-    } else {
-        let rgba = img.to_rgba8();
-        SixelImage::try_from_rgba(rgba.into_raw(), img.width() as usize, img.height() as usize)
-            .map_err(|e| io::Error::other(e.to_string()))?
-            .with_background_mode(BackgroundMode::Transparent)
-            .with_aspect_ratio(PixelAspectRatio::Square)
-            .encode_with(&encode_opts)
-    }
-    .map_err(|e| io::Error::other(e.to_string()))?;
+        .with_background_mode(bg_mode);
 
-    let stdout = io::stdout();
-    let mut out = stdout.lock();
+    if let Some(ar) = aspect {
+        sixel_img = sixel_img.with_aspect_ratio(ar);
+    }
+
+    let sixel = sixel_img
+        .encode_with(&encode_opts)
+        .map_err(|e| io::Error::other(e.to_string()))?;
+
+    // Write to the provided writer instead of hardcoded stdout
+    let mut out = io::BufWriter::with_capacity(1 << 20, writer);
     out.write_all(sixel.as_bytes())?;
     out.flush()
 }
+// pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> io::Result<()> {
+//     use icy_sixel::{BackgroundMode, EncodeOptions, PixelAspectRatio, QuantizeMethod, SixelImage};
+//     use std::io::{self, Write};
+
+//     // Resize to requested width if specified, preserving aspect ratio
+//     let mut resized = DynamicImage::default();
+//     let img: &image::DynamicImage = options.width().map_or(img, |w| {
+//         let h = (img.height() * w) / img.width().max(1);
+//         resized = img.resize(w, h, image::imageops::FilterType::Lanczos3);
+//         &resized
+//     });
+
+//     let encode_opts = EncodeOptions {
+//         max_colors: 256,
+//         diffusion: 0.875,
+//         quantize_method: QuantizeMethod::Wu,
+//     };
+
+//     let sixel = if let Some(bg) = options.bg_color() {
+//         let base = image::Rgba([bg[0], bg[1], bg[2], 255u8]);
+//         let mut composited = image::RgbaImage::from_pixel(img.width(), img.height(), base);
+//         image::imageops::overlay(&mut composited, &img.to_rgba8(), 0, 0);
+//         SixelImage::try_from_rgba(
+//             composited.into_raw(),
+//             img.width() as usize,
+//             img.height() as usize,
+//         )
+//         .map_err(|e| io::Error::other(e.to_string()))?
+//         .with_background_mode(BackgroundMode::Opaque)
+//         .encode_with(&encode_opts)
+//     } else {
+//         let rgba = img.to_rgba8();
+//         SixelImage::try_from_rgba(rgba.into_raw(), img.width() as usize, img.height() as usize)
+//             .map_err(|e| io::Error::other(e.to_string()))?
+//             .with_background_mode(BackgroundMode::Transparent)
+//             .with_aspect_ratio(PixelAspectRatio::Square)
+//             .encode_with(&encode_opts)
+//     }
+//     .map_err(|e| io::Error::other(e.to_string()))?;
+
+//     let stdout = io::stdout();
+//     let mut out = stdout.lock();
+//     out.write_all(sixel.as_bytes())?;
+//     out.flush()
+// }
 // #[cfg(feature = "sixel")]
 // #[cfg_attr(docsrs, doc(cfg(feature = "sixel")))]
 // pub fn write_sixel(img: &image::DynamicImage, options: &RenderOptions) -> io::Result<()> {
