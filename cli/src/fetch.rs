@@ -540,7 +540,7 @@ pub fn print_fetch_with_image(
 
         // Step 3: Write fetch lines on the right side first
         if right_budget >= MIN_RIGHT_BUDGET {
-            for line in info_lines.iter() {
+            for line in &info_lines {
                 write!(writer, "\x1b[{text_col}G")?;
                 write!(writer, "{}", truncate_ansi(line, right_budget))?;
                 write!(writer, "\x1b[1B\x1b[1G")?;
@@ -610,9 +610,6 @@ pub fn print_fetch_with_image(
     print_with_left_block_writer(&img_str, img_cols, writer, cols)
 }
 
-//     let img_str = String::from_utf8_lossy(&img_buf);
-//     print_with_left_block_writer(&img_str, img_cols, writer, cols)
-// }
 // ---------------------------------------------------------------------------
 // Layout writer
 // ---------------------------------------------------------------------------
