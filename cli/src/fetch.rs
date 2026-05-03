@@ -480,6 +480,28 @@ pub fn print_fetch_with_image(
         render
             .with_width(target_cols)
             .render(&ascii_img, &mut img_buf)?;
+    } else if matches!(render.charset(), CharsetMode::Sixel) {
+        // Sixel: pixels map 1:1 to terminal pixel dimensions.
+        // Target ~N character rows tall. Typical cell height is ~20px,
+        // so 30 rows ≈ 600px tall. Width has no 0.5 correction needed.
+        let target_char_rows: u32 = 30; // tune this
+        let cell_px_h: u32 = 20; // typical xterm/kitty cell height
+        let target_px_h = target_char_rows * cell_px_h;
+
+        let scale = (f64::from(target_px_h) / f64::from(orig_h))
+            .min(f64::from(max_img_cols * cell_px_h) / f64::from(orig_w));
+
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let tw = (f64::from(orig_w) * scale).max(1.0) as u32;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let th = (f64::from(orig_h) * scale).max(1.0) as u32;
+
+        let img_to_render = if tw != orig_w || th != orig_h {
+            img.resize(tw, th, FilterType::Nearest)
+        } else {
+            img.clone()
+        };
+        render.render(&img_to_render, &mut img_buf)?;
     } else {
         let max_px_w = max_img_cols * 2;
         let scale = (90.0 / f64::from(orig_h)).min(f64::from(max_px_w) / f64::from(orig_w));
