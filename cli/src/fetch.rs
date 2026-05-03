@@ -455,76 +455,164 @@ fn truncate_ansi(s: &str, max_cols: usize) -> String {
 // Image rendering
 // ---------------------------------------------------------------------------
 
+fn term_cell_px_w() -> u32 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::io::AsRawFd;
+        let fds = [std::io::stderr().as_raw_fd(), std::io::stdout().as_raw_fd()];
+        for fd in fds {
+            let mut ws: libc::winsize = unsafe { std::mem::zeroed() };
+            if unsafe { libc::ioctl(fd, libc::TIOCGWINSZ, &mut ws) } == 0
+                && ws.ws_row > 0
+                && ws.ws_xpixel > 0
+            {
+                return (u32::from(ws.ws_xpixel) / u32::from(ws.ws_col)).max(1);
+            }
+        }
+    }
+    10
+}
+fn term_cell_px_h() -> u32 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::io::AsRawFd;
+        let fds = [std::io::stderr().as_raw_fd(), std::io::stdout().as_raw_fd()];
+        for fd in fds {
+            let mut ws: libc::winsize = unsafe { std::mem::zeroed() };
+            if unsafe { libc::ioctl(fd, libc::TIOCGWINSZ, &mut ws) } == 0
+                && ws.ws_row > 0
+                && ws.ws_ypixel > 0
+            {
+                return (u32::from(ws.ws_ypixel) / u32::from(ws.ws_row)).max(1);
+            }
+        }
+    }
+    20
+}
 ///  Render or IO failure.
 /// # Errors
 // pub fn print_fetch_with_image<W: Write>(
 pub fn print_fetch_with_image(
     img: &DynamicImage,
+
     render: &RenderOptions,
+
     writer: &mut dyn Write,
 ) -> Result<()> {
     let cols = term_cols();
+
     let max_img_cols = u32::try_from(cols.saturating_sub(38).max(20)).unwrap_or(20);
+
     let (orig_w, orig_h) = (img.width(), img.height());
-    let mut img_buf = Vec::new();
 
-    if matches!(
-        render.charset(),
-        CharsetMode::Ascii | CharsetMode::Chinese | CharsetMode::Kanji
-    ) {
-        let target_cols = 50_u32.min(max_img_cols);
-        let aspect = f64::from(orig_h) / f64::from(orig_w);
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let target_rows = ((f64::from(target_cols) * aspect) * 0.5).max(1.0) as u32;
-        let ascii_img = img.resize_exact(target_cols, target_rows, FilterType::Nearest);
-        render
-            .with_width(target_cols)
-            .render(&ascii_img, &mut img_buf)?;
-    } else if matches!(render.charset(), CharsetMode::Sixel) {
-        // Sixel: pixels map 1:1 to terminal pixel dimensions.
-        // Target ~N character rows tall. Typical cell height is ~20px,
-        // so 30 rows ≈ 600px tall. Width has no 0.5 correction needed.
-        let target_char_rows: u32 = 30; // tune this
-        let cell_px_h: u32 = 20; // typical xterm/kitty cell height
+    if matches!(render.charset(), CharsetMode::Sixel) {
+        let target_char_rows: u32 = 30;
+        let cell_px_h = term_cell_px_h();
+        let cell_px_w = term_cell_px_w();
         let target_px_h = target_char_rows * cell_px_h;
-
-        let scale = (f64::from(target_px_h) / f64::from(orig_h))
-            .min(f64::from(max_img_cols * cell_px_h) / f64::from(orig_w));
-
+        let scale_h = f64::from(target_px_h) / f64::from(orig_h);
+        let scale_w = f64::from(max_img_cols * cell_px_w) / f64::from(orig_w);
+        let scale = scale_h.min(scale_w);
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let tw = (f64::from(orig_w) * scale).max(1.0) as u32;
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let th = (f64::from(orig_h) * scale).max(1.0) as u32;
+        let img_to_render = if tw != orig_w || th != orig_h {
+            img.resize(tw, th, FilterType::Nearest)
+        } else {
+            img.clone()
+        };
+        let img_cols = (tw as usize).div_ceil(cell_px_w as usize);
+        let text_col = img_cols + GAP + 1;
+        let right_budget = cols.saturating_sub(text_col.saturating_sub(1));
+        let info_lines = fetch_lines();
+        let total_rows = (target_char_rows as usize).max(info_lines.len());
 
-        let img_to_render = if tw != orig_w || th != orig_h {
-            img.resize(tw, th, FilterType::Nearest)
-        } else {
-            img.clone()
-        };
-        render.render(&img_to_render, &mut img_buf)?;
-    } else {
-        let max_px_w = max_img_cols * 2;
-        let scale = (90.0 / f64::from(orig_h)).min(f64::from(max_px_w) / f64::from(orig_w));
-        // Always apply the 0.5 terminal-column correction to width.
-        // Half-block mode stacks 2 pixels vertically per row, but each
-        // pixel still occupies 1 column horizontally — so to get square-ish
-        // cells we halve the pixel width before handing to the renderer.
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let tw = (f64::from(orig_w) * scale * 0.5).max(1.0) as u32;
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let th = (f64::from(orig_h) * scale).max(1.0) as u32;
-        let img_to_render = if tw != orig_w || th != orig_h {
-            img.resize(tw, th, FilterType::Nearest)
-        } else {
-            img.clone()
-        };
-        render.render(&img_to_render, &mut img_buf)?;
+        // Step 1: Reserve vertical space by printing blank lines
+        for _ in 0..total_rows {
+            writeln!(writer)?;
+        }
+        // Move back up to the top of the block
+        write!(writer, "\x1b[{total_rows}A\x1b[1G")?;
+
+        // Step 2: Save cursor at top of block
+        write!(writer, "\x1b[s")?;
+
+        // Step 3: Write fetch lines on the right side first
+        if right_budget >= MIN_RIGHT_BUDGET {
+            for line in info_lines.iter() {
+                write!(writer, "\x1b[{text_col}G")?;
+                write!(writer, "{}", truncate_ansi(line, right_budget))?;
+                write!(writer, "\x1b[1B\x1b[1G")?;
+            }
+        }
+
+        // Step 4: Restore to top of block, render sixel on the left
+        write!(writer, "\x1b[u")?;
+        let mut buf = Vec::new();
+        render.render(&img_to_render, &mut buf)?;
+        writer.write_all(&buf)?;
+
+        // Step 5: Move cursor below the entire block
+        // After sixel, cursor may be anywhere — restore and jump down
+        write!(writer, "\x1b[u")?;
+        write!(writer, "\x1b[{total_rows}B\x1b[1G")?;
+        writeln!(writer)?;
+        writer.flush()?;
+        return Ok(());
     }
 
+    let mut img_buf = Vec::new();
+
+    let img_cols = match render.charset() {
+        CharsetMode::Ascii | CharsetMode::Chinese | CharsetMode::Kanji => {
+            let target_cols = 50_u32.min(max_img_cols);
+
+            let aspect = f64::from(orig_h) / f64::from(orig_w);
+
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let target_rows = ((f64::from(target_cols) * aspect) * 0.5).max(1.0) as u32;
+
+            let ascii_img = img.resize_exact(target_cols, target_rows, FilterType::Nearest);
+
+            render
+                .with_width(target_cols)
+                .render(&ascii_img, &mut img_buf)?;
+
+            target_cols as usize
+        }
+
+        _ => {
+            let max_px_w = max_img_cols * 2;
+
+            let scale = (90.0 / f64::from(orig_h)).min(f64::from(max_px_w) / f64::from(orig_w));
+
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let tw = (f64::from(orig_w) * scale * 0.5).max(1.0) as u32;
+
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let th = (f64::from(orig_h) * scale).max(1.0) as u32;
+
+            let img_to_render = if tw != orig_w || th != orig_h {
+                img.resize(tw, th, FilterType::Nearest)
+            } else {
+                img.clone()
+            };
+
+            render.render(&img_to_render, &mut img_buf)?;
+
+            tw as usize
+        }
+    };
+
     let img_str = String::from_utf8_lossy(&img_buf);
-    print_with_left_block_writer(&img_str, writer, cols)
+
+    print_with_left_block_writer(&img_str, img_cols, writer, cols)
 }
 
+//     let img_str = String::from_utf8_lossy(&img_buf);
+//     print_with_left_block_writer(&img_str, img_cols, writer, cols)
+// }
 // ---------------------------------------------------------------------------
 // Layout writer
 // ---------------------------------------------------------------------------
@@ -541,11 +629,12 @@ const GAP: usize = 1;
 /// IO write failure.
 pub fn print_with_left_block_writer(
     image_block: &str,
+    left_width: usize,
     writer: &mut dyn Write,
     cols: usize,
 ) -> Result<()> {
     let left_lines: Vec<&str> = image_block.lines().collect();
-    let left_width = left_lines.iter().map(|l| ansi_width(l)).max().unwrap_or(0);
+    // let left_width = left_lines.iter().map(|l| ansi_width(l)).max().unwrap_or(0);
     let pad = left_width + GAP;
     let right_budget = cols.saturating_sub(pad);
 
