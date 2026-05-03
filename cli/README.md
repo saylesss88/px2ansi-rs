@@ -551,6 +551,17 @@ brightness-normalization scan run on every frame.
 
 ### Benchmarks
 
+This crate uses Criterion for rigorous performance tracking. We separate our
+benchmarks into two categories:
+
+- Pixel Processing (`benches/pixels.rs`): Micro-benchmarks for the SIMD luma
+  range and charset index calculation.
+
+- End-to-End Rendering (`benches/rendering.rs`): Measures the full pipeline from
+  raw bytes to ANSI output.
+
+**More benches with hyperfine**
+
 Benchmarked against [`viu`](https://github.com/atanunq/viu) with
 `hyperfine --warmup 3` on NixOS. Images: `nixos.png` (1183×1024) and
 `scream.png` (700×909).

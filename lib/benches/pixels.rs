@@ -2,11 +2,9 @@ use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_m
 
 use px2ansi::simd::{compute_charset_indices, find_luma_range_rgba_bytes, luma_scalar};
 
-// Synthetic RGBA buffers — generated once, reused across all benchmarks.
+// Synthetic RGBA buffers generated once, reused across all benchmarks.
 
 // Using a deterministic pattern so results are reproducible.
-
-//
 
 fn make_rgba_buf(num_pixels: usize) -> Vec<u8> {
     (0..num_pixels)
