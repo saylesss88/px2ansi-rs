@@ -352,7 +352,6 @@ for minimal builds.
 | `rasterize` | `fontdue`   | Renders ANSI art to a PNG image using an embedded monospace font                               |
 | `sixel`     | `icy_sixel` | Streams pixel-accurate images directly to Sixel-compatible terminals                           |
 | `parallel`  | `rayon`     | Enables parallel processing for performance                                                    |
-| `simd`      | `wide`      | Accelerates color matching and pixel processing by using CPU vector instructions (AVX2, NEON). |
 
 ### Controlling Features
 
