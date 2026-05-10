@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Criterion benchmarking suite with auto-vectorization vs explicit SIMD comparisons
+- `--all-features` enabled for docs.rs builds
 - `--fetch` mode: display system info alongside the rendered image, similar to
   neofetch/fastfetch
 - `FetchConfig` struct to control which fields appear and how they are labelled,
@@ -28,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fetch text always has room regardless of image size
 
 ### Changed
+- Replaced explicit SIMD with auto-vectorization for improved portability and
+  comparable or better performance
+- Sixel renderer performance improvements in both standalone and `--fetch` mode
+- Removed DEBUG output from `--output` to file path
 - `print_with_left_block_writer` now accepts an explicit `cols: usize` parameter
   so the image-rendering and layout steps agree on a single terminal-width
   measurement
@@ -40,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tiling window manager with the terminal occupying roughly half the screen)
 
 ### Fixed
+- Sixel renderer now correctly handles small images in `--fetch` mode
 - Fetch text no longer wraps back to the left edge of the screen on half-width
   terminal panes in tiling window managers such as `mango-wc`
 - `chars.next().unwrap()` inside `truncate_ansi` replaced with `if let` to
