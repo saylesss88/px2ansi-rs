@@ -89,6 +89,34 @@ impl RenderOptions {
                     (w, h.min(term_h))
                 }
             },
+            // |tw| match self.charset() {
+            //     CharsetMode::Sixel => {
+            //         let px_w = tw * 8;
+            //         let px_h = u32::MAX;
+            //         let scale = (f64::from(px_w) / f64::from(orig_w))
+            //             .min(f64::from(px_h) / f64::from(orig_h))
+            //             .min(1.0);
+            //         (
+            //             (f64::from(orig_w) * scale) as u32,
+            //             (f64::from(orig_h) * scale) as u32,
+            //         )
+            //     }
+            //     CharsetMode::Braille => {
+            //         fit_preserving_aspect(orig_w, orig_h, tw * 2, u32::MAX, 1.0, 1.0)
+            //     }
+            //     CharsetMode::Ascii
+            //     | CharsetMode::Fade
+            //     | CharsetMode::Kanji
+            //     | CharsetMode::Chinese => {
+            //         let aspect = f64::from(orig_h) / f64::from(orig_w);
+            //         let h = (f64::from(tw) * aspect / 2.0).ceil() as u32;
+            //         (tw.max(1), h.max(1))
+            //     }
+            //     _ => {
+            //         let h = fit_preserving_aspect(orig_w, orig_h, tw, u32::MAX, 1.0, 1.0).1;
+            //         (tw.max(1), h.max(1))
+            //     }
+            // },
             |tw| {
                 let h = fit_preserving_aspect(orig_w, orig_h, tw, u32::MAX, 1.0, 2.0).1;
                 (tw.max(1), h.max(1))
