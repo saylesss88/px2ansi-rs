@@ -440,22 +440,6 @@ Converts ANSI art to a PNG image using an embedded
 [Iosevka Charon Mono](https://github.com/nicowillis/iosevka-charon) font. Useful
 for saving previews or sharing output as an image.
 
-**With the default `TokyoNight` theme:**
-
-It’s a very common instinct to wrap examples in functions to "protect" them from
-the global scope, but in Rust doc tests, that actually creates a "dead code"
-zone where the logic is never verified.
-
-For the Rasterize feature, we have a new hurdle: it's likely gated behind a
-cargo feature. If a user tries to run your docs without that feature enabled,
-the test will fail. We can handle this gracefully using the # trick combined
-with cfg attributes.
-
-1. The Default Rasterize Example We'll strip the function, mock the image, and
-   handle the feature gate so the test only runs if the rasterize feature is
-   active.
-
-Markdown
 
 ```rust
 # #[cfg(feature = "rasterize")]
