@@ -376,10 +376,10 @@ In `Cargo.toml`:
 
 ```toml
 # Default (Minimal, no features enabled)
-px2ansi = "0.3.11"
+px2ansi = "0.3.12"
 
 # Pick what you need
-px2ansi = { version = "0.3.11",  features = ["parallel", "sixel"] }
+px2ansi = { version = "0.3.12",  features = ["parallel", "sixel"] }
 
 # Include all features ("parallel", "simd", "rasterize", "sixel")
 px2ansi = { version = "0.2.3",  features = ["full"] }
