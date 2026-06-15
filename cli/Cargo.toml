@@ -37,14 +37,14 @@ image = {workspace = true}
 ansi-width = "0.1.0"
 confy = "2.0.0"
 crossterm = {version = "0.29.0", default-features = false}
-sysinfo = "0.39.0"
+sysinfo = "0.39.3"
 libc = "0.2.186"
 unicode-width = "0.2.2"
 # mimalloc.workspace = true
 
 [dev-dependencies]
-assert_cmd = "2.0"
-predicates = {version = "3.0", default-features = false}
+assert_cmd = "2.2"
+predicates = {version = "3.1", default-features = false}
 
 
 [features]

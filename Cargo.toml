@@ -14,6 +14,7 @@ license = "GPL-3.0"
 repository = "https://github.com/saylesss88/px2ansi-rs"
 readme = "README.md"
 keywords = ["ansi", "pixel-art", "oklab", "rasterize", "colorspace"]
+description = "A customizable wallpaper daemon for per-monitor cycling, one-shot application, and optional theme synchronization for Waybar and terminals."
 
 # ── Shared dependencies ─────────────────────────────────────────────────────
 [workspace.dependencies]
@@ -23,7 +24,7 @@ image = {version = "0.25.10", features = [
 ], default-features = false}
 anyhow = {version = "1.0", default-features = false}
 terminal_size = "0.4.4"
-serde_json = "1.0.149"
+serde_json = "1.0.150"
 serde = {version = "1.0.228", features = ["derive"], default-features = false}
 rand = "0.10.1"
 colored = "3.1.1"
@@ -39,7 +40,7 @@ clap = {version = "4.6.1", features = [
 	"help",
 	"usage",
 ], default-features = false}
-clap_complete = "4.6.2"
+clap_complete = "4.6.5"
 clap_mangen = "0.3.0"
 rayon = {version = "1.12.0"}
 # Path dep: px2ansi-cli depends on the lib
