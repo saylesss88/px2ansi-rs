@@ -32,7 +32,7 @@ serde_json = {workspace = true}
 serde = {workspace = true}
 walkdir = {workspace = true}
 fontdue = {workspace = true, optional = true}
-thiserror = {version = "2.0.18", default-features = false}
+thiserror = {version = "2.0.19", default-features = false}
 icy_sixel = {version = "0.5", optional = true}
 rayon = {workspace = true, optional = true}
 

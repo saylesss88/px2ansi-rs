@@ -25,8 +25,8 @@ image = {version = "0.25.10", features = [
 anyhow = {version = "1.0", default-features = false}
 terminal_size = "0.4.4"
 serde_json = "1.0.150"
-serde = {version = "1.0.228", features = ["derive"], default-features = false}
-rand = "0.10.1"
+serde = {version = "1.0.229", features = ["derive"], default-features = false}
+rand = "0.10.2"
 colored = "3.1.1"
 fuzzy-matcher = "0.3.7"
 walkdir = "2.5.0"
@@ -35,12 +35,12 @@ dialoguer = {version = "0.12.0", features = [
 ], default-features = false}
 fontdue = {version = "0.9.3", default-features = false}
 # CLI-only — only px2ansi-cli inherits these
-clap = {version = "4.6.1", features = [
+clap = {version = "4.6.2", features = [
 	"derive",
 	"help",
 	"usage",
 ], default-features = false}
-clap_complete = "4.6.5"
+clap_complete = "4.6.7"
 clap_mangen = "0.3.0"
 rayon = {version = "1.12.0"}
 # Path dep: px2ansi-cli depends on the lib
