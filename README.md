@@ -25,10 +25,6 @@ Rust reimplementation.
 </p>
 </details>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/nixos-braille.png" width="400" alt="Braille rendering example">
-</p>
-
 <details>
 <summary>NixOS Kanji</summary>
 <p align="center">
@@ -43,9 +39,6 @@ Rust reimplementation.
 </p>
 </details>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/saylesss88/px2ansi-rs/main/assets/fetcher.gif" width="600" alt="px2ansi-rs fetch demo">
-</p>
 
 <a id="top"></a>
 
@@ -100,20 +93,6 @@ Rust reimplementation.
 Built on [`px2ansi`](https://crates.io/crates/px2ansi), a standalone library
 exposing the full rendering engine as a public API.
 
-### Optional Features
-
-```bash
-# Minimal: no sixel, no rasterization, no rayon
-cargo install px2ansi-rs --no-default-features
-
-cargo install px2ansi-rs --no-default-features --features sixel
-cargo install px2ansi-rs --no-default-features --features parallel
-cargo install px2ansi-rs --no-default-features --features rasterize
-
-# Everything
-cargo install px2ansi-rs --features full
-```
-
 ---
 
 ## Installation
@@ -148,7 +127,6 @@ Options:
   -V, --version          Print version
 ```
 
-Most subcommands have their own help: `px2ansi-rs convert --help`
 
 ---
 
@@ -165,7 +143,7 @@ Most subcommands have their own help: `px2ansi-rs convert --help`
 px2ansi-rs convert image.png
 px2ansi-rs convert image.png --style unicode
 
-# Save to file
+# Save output to file
 px2ansi-rs convert image.png --style braille --output out.txt
 
 # Width and filter
@@ -183,6 +161,12 @@ px2ansi-rs convert image.png --style ascii --density heavy
 px2ansi-rs convert image.png --style ascii --color-mode none
 px2ansi-rs convert image.png --style ascii --color-mode 256 --dither
 ```
+
+**Getting help**
+
+- `px2ansi-rs --help`
+- `px2ansi-rs <subcommand> --help`
+- For shell completions: `px2ansi-rs completions zsh|bash|fish`
 
 ### Color Modes
 
@@ -212,6 +196,8 @@ px2ansi-rs convert skull.png --rotate --axis x  # flip on horizontal axis
 px2ansi-rs show skull --rotate --axis y --fps 4 # slower spin
 px2ansi-rs convert skull.png --rotate 90        # static one-shot
 px2ansi-rs convert skull.png --rotate --axis y --unidirectional
+# shorthand for the above command
+ px2ansi-rs convert skull.png -r -a y -u
 ```
 
 <p align="center">
@@ -293,7 +279,7 @@ px2ansi-rs show --fetch
 
 ```bash
 px2ansi-rs list
-px2ansi-rs list --count 10
+px2ansi-rs list --count 10  # Or px2ansi-rs list -c 10
 px2ansi-rs -I /path/to/custom.json list
 ```
 
@@ -339,6 +325,9 @@ home.file.".config/px2ansi-rs/default-config.toml".text = ''
 
 ## Shell Completions
 
+<details>
+<summary> 🐚 Shell Completions </summary>
+
 ```bash
 source <(px2ansi-rs completions zsh)
 source <(px2ansi-rs completions bash)
@@ -354,6 +343,8 @@ programs.zsh.initContent = ''
   fi
 '';
 ```
+
+</details>
 
 ---
 
@@ -377,104 +368,6 @@ programs.zsh.initContent = ''
 > shorthand for `--style ascii --density heavy`.
 
 ---
-
-## Performance
-
-### Auto-Vectorization
-
-`px2ansi-rs` uses **auto-vectorization** rather than hand-written SIMD
-intrinsics. The pixel-processing hot path (`find_luma_range_rgba_bytes`)
-operates on contiguous `&[u8]` slices with simple arithmetic exactly the shape
-LLVM needs to emit AVX2 or SSE4.2 code automatically.
-
-```bash
-# Unlock wider vector units for your specific CPU
-RUSTFLAGS="-C target-cpu=native" cargo install --path cli
-
-# Verify what was enabled
-rustc --print cfg | grep target_feature
-```
-
-> [!NOTE]
-> `target-cpu=native` produces a binary that may not run on older machines. Use
-> it for personal builds; distribute without it.
-
-**Pixel Processing Throughput** (`find_luma_range_rgba_bytes`, vs. explicit
-SIMD)
-
-| Buffer Size | Throughput | vs. explicit SIMD |
-| ----------- | ---------- | ----------------- |
-| 256 B       | 3.44 GiB/s | +71.7%            |
-| 1 KiB       | 3.40 GiB/s | +67.1%            |
-| 4 KiB       | 3.50 GiB/s | +79.0%            |
-| 64 KiB      | 3.51 GiB/s | +84.7%            |
-
-**End-to-End Rendering**
-
-| Config                   | Improvement  |
-| ------------------------ | ------------ |
-| Fastest / nearest filter | ~7.8% faster |
-| High-quality / lanczos3  | ~6.4% faster |
-
-### Benchmarks
-
-Benchmarked against [`viu`](https://github.com/atanunq/viu) with
-`hyperfine --warmup 3` on Fedora Secureblue (same local builds). Images:
-`nixos.png` (1183×1024) and `scream.png` (700×909).
-
-**ANSI block rendering (`--style ansi` vs `viu --blocks`)**
-
-Both tools use half-block Unicode characters with truecolor ANSI escapes —
-identical output, same terminal requirement.
-
-| Image        | `px2ansi-rs` | `viu --blocks` | Δ                           |
-| ------------ | ------------ | -------------- | --------------------------- |
-| `nixos.png`  | 7.8 ms       | 15.1 ms        | px2ansi-rs **1.94×** faster |
-| `scream.png` | 8.7 ms       | 12.4 ms        | px2ansi-rs **1.42×** faster |
-
-User CPU time is 2.2 ms vs 10.6 ms, a ~4.8× reduction in actual compute; the
-remainder is process startup and I/O.
-
-**Sixel rendering (`--style sixel` vs `viu --static`)**
-
-Both use the `icy_sixel` feature, same encoder, fair comparison. The speed
-difference reflects what each tool renders, not how.
-
-| Image        | `px2ansi-rs` | `viu` (`icy_sixel`) | Δ                    |
-| ------------ | ------------ | ------------------- | -------------------- |
-| `nixos.png`  | 23.2 ms      | 15.1 ms             | viu **1.54×** faster |
-| `scream.png` | 22.0 ms      | 12.5 ms             | viu **1.76×** faster |
-
-`viu` composites against a black background before encoding simple, fast.
-`px2ansi-rs` preserves true alpha throughout, encoding a transparent-background
-sixel stream. More work per pixel, slightly larger output, but transparent
-regions stay transparent rather than going black. It also uses **OkLab
-perceptual color distance** during palette quantization, producing better color
-fidelity in gradients and fine detail.
-
-If your terminal supports sixel transparency and you care about image fidelity,
-`px2ansi-rs` gives you the correct result. If you want the fastest sixel dump of
-an opaque image, `viu` is faster today.
-
-**Summary**
-
-```text
---style ansi:  px2ansi-rs 1.94× faster  (nixos.png)
-               px2ansi-rs 1.42× faster  (scream.png)
-
---style sixel: viu 1.54× faster  (nixos.png)   — viu: black bg  |  px2ansi-rs: true alpha
-               viu 1.76× faster  (scream.png)  — viu: black bg  |  px2ansi-rs: true alpha
-```
-
-### Fetch Performance
-
-`--fetch` is designed for shell startup. By querying only the kernel fields
-enabled in config:
-
-|                           | Mean        | System time |
-| ------------------------- | ----------- | ----------- |
-| Before                    | 72.6 ms     | 62 ms       |
-| After Auto-vectorization  | **16.8 ms** | **13 ms**   |
 
 ### Parallel Rendering (`--features parallel`)
 
@@ -511,7 +404,8 @@ px2ansi-rs convert input.png -O output.png --raster-theme dracula
 raster_theme = "gruvbox-dark"
 ```
 
-> [!WARNING] If `rasterize` was not compiled in, `--output-image` will error:
+> [!WARNING]
+> If `rasterize` was not compiled in, `--output-image` will error:
 > `cargo install px2ansi-rs --features rasterize`
 
 ---
@@ -563,6 +457,7 @@ cp man/*.1 ~/.local/share/man/man1/
 
 ## Similar Crates
 
+- [viu](https://crates.io/crates/viu)
 - [rascii_art](https://crates.io/crates/rascii_art): well-structured
   implementation; useful reference for aspect-ratio and charset design
 - [ansimage](https://crates.io/crates/ansimage)
