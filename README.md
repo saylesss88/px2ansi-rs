@@ -384,7 +384,7 @@ programs.zsh.initContent = ''
 
 `px2ansi-rs` uses **auto-vectorization** rather than hand-written SIMD
 intrinsics. The pixel-processing hot path (`find_luma_range_rgba_bytes`)
-operates on contiguous `&[u8]` slices with simple arithmetic — exactly the shape
+operates on contiguous `&[u8]` slices with simple arithmetic exactly the shape
 LLVM needs to emit AVX2 or SSE4.2 code automatically.
 
 ```bash
@@ -471,10 +471,10 @@ an opaque image, `viu` is faster today.
 `--fetch` is designed for shell startup. By querying only the kernel fields
 enabled in config:
 
-|        | Mean        | System time |
-| ------ | ----------- | ----------- |
-| Before | 72.6 ms     | 62 ms       |
-| After  | **16.8 ms** | **13 ms**   |
+|                           | Mean        | System time |
+| ------------------------- | ----------- | ----------- |
+| Before                    | 72.6 ms     | 62 ms       |
+| After Auto-vectorization  | **16.8 ms** | **13 ms**   |
 
 ### Parallel Rendering (`--features parallel`)
 
