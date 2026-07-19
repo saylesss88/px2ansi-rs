@@ -251,7 +251,7 @@ label_disk     = Storage
 key_width      = 8
 ```
 
-**PokéSprite setup**
+**`PokéSprite` setup**
 
 ```bash
 git clone https://github.com/msikma/pokesprite.git
