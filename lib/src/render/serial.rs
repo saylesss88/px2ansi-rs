@@ -36,13 +36,8 @@ pub(super) fn render_serial<W: Write>(
                 write_pixel_scalar(writer, ctx.charset, px, lp, cp, &mut last_color)?;
             }
         } else {
-            for px in row_bytes.chunks_exact(4) {
-                let px = PixelRgba {
-                    r: px[0],
-                    g: px[1],
-                    b: px[2],
-                    a: px[3],
-                };
+            for &[r, g, b, a] in row_bytes.as_chunks::<4>().0 {
+                let px = PixelRgba { r, g, b, a };
                 write_pixel_scalar(writer, ctx.charset, px, lp, cp, &mut last_color)?;
             }
         }

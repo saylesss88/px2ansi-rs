@@ -14,15 +14,18 @@ pub fn luma_scalar(r: u8, g: u8, b: u8) -> u32 {
 /// LLVM will typically vectorize this alpha scan into a single wide comparison + OR reduction.
 #[inline]
 fn chunk_all_transparent(chunk: &[u8; 32]) -> bool {
-    chunk.chunks_exact(4).all(|px| px[3] < ALPHA_THRESHOLD)
+    chunk
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .all(|&[_, _, _, a]| a < ALPHA_THRESHOLD)
 }
 
 /// Scan RGBA bytes and return `(min, max)` luma of opaque pixels.
 /// Returns `(u32::MAX, u32::MIN)` if no opaque pixel found.
 #[must_use]
 pub fn find_luma_range_rgba_bytes(bytes: &[u8]) -> Option<(u32, u32)> {
-    let chunks = bytes.chunks_exact(32);
-    let remainder = chunks.remainder();
+    let (chunks, remainder) = bytes.as_chunks::<32>();
 
     let mut min = u32::MAX;
     let mut max = u32::MIN;
@@ -30,9 +33,6 @@ pub fn find_luma_range_rgba_bytes(bytes: &[u8]) -> Option<(u32, u32)> {
 
     // Process main blocks with your shortcut
     for chunk in chunks {
-        let Some(chunk) = chunk.first_chunk::<32>() else {
-            continue;
-        };
         if chunk_all_transparent(chunk) {
             continue;
         }
@@ -48,9 +48,9 @@ pub fn find_luma_range_rgba_bytes(bytes: &[u8]) -> Option<(u32, u32)> {
 #[allow(clippy::inline_always)]
 #[inline(always)]
 fn process_pixels(data: &[u8], min: &mut u32, max: &mut u32, found: &mut bool) {
-    for p in data.chunks_exact(4) {
-        if p[3] >= ALPHA_THRESHOLD {
-            let luma = luma_scalar(p[0], p[1], p[2]);
+    for &[r, g, b, a] in data.as_chunks::<4>().0 {
+        if a >= ALPHA_THRESHOLD {
+            let luma = luma_scalar(r, g, b);
             *min = (*min).min(luma);
             *max = (*max).max(luma);
             *found = true;

@@ -74,9 +74,9 @@ pub(super) fn luma_range_pass1(
                     .map(|row| {
                         let mut lo = u32::MAX;
                         let mut hi = u32::MIN;
-                        for px in row.chunks_exact(4) {
-                            if px[3] >= ALPHA_THRESHOLD {
-                                let l = crate::simd::luma_scalar(px[0], px[1], px[2]);
+                        for &[r, g, b, a] in row.as_chunks::<4>().0 {
+                            if a >= ALPHA_THRESHOLD {
+                                let l = crate::simd::luma_scalar(r, g, b);
                                 lo = lo.min(l);
                                 hi = hi.max(l);
                             }
