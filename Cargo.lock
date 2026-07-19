@@ -973,7 +973,7 @@ dependencies = [
 
 [[package]]
 name = "px2ansi"
-version = "0.3.13"
+version = "0.3.14"
 dependencies = [
  "ab_glyph",
  "criterion",
