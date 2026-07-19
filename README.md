@@ -58,7 +58,6 @@ Rust reimplementation.
 - [Configuration](#configuration)
 - [Shell Completions](#shell-completions)
 - [Rendering Styles](#rendering-styles)
-- [Performance](#performance)
 - [Rasterize Output to PNG](#rasterize-output-to-png)
 - [Using px2ansi as a Library](#using-px2ansi-as-a-library)
 - [Troubleshooting](#troubleshooting)

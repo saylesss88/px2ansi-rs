@@ -14,7 +14,7 @@ license = "GPL-3.0"
 repository = "https://github.com/saylesss88/px2ansi-rs"
 readme = "README.md"
 keywords = ["ansi", "pixel-art", "oklab", "rasterize", "colorspace"]
-description = "A customizable wallpaper daemon for per-monitor cycling, one-shot application, and optional theme synchronization for Waybar and terminals."
+description = "A high-fidelity terminal image renderer and asset manager"
 
 # ── Shared dependencies ─────────────────────────────────────────────────────
 [workspace.dependencies]
