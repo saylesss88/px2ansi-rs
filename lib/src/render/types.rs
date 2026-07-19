@@ -145,7 +145,7 @@ pub enum RenderError {
     /// Returned when an unsupported density string is provided via configuration.
     #[error("Invalid density: {0}. (valid: light, medium, heavy)")]
     InvalidDensity(String),
-    /// Errors occurring during font loading or glyph rasterization via fontdue.
+    /// Errors occurring during font loading or glyph rasterization.
     #[error("Font error: {0}")]
     Font(String),
     /// Returned when ANSI input parses to zero cells, producing nothing to render.

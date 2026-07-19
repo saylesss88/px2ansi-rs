@@ -2,7 +2,7 @@
 use crate::RenderError;
 use crate::themes::RasterTheme;
 
-use fontdue::{Font, FontSettings};
+use ab_glyph::{Font, FontRef, PxScale};
 use image::{Rgba, RgbaImage};
 
 const FONT_SIZE: f32 = 14.0;
@@ -54,8 +54,8 @@ pub fn rasterize_ansi_with_theme(
     ansi: &[u8],
     theme: RasterTheme,
 ) -> Result<RgbaImage, RenderError> {
-    let font = Font::from_bytes(DEFAULT_FONT, FontSettings::default())
-        .map_err(|e| RenderError::Font(e.to_string()))?;
+    let font =
+        FontRef::try_from_slice(DEFAULT_FONT).map_err(|e| RenderError::Font(e.to_string()))?;
     let bg_color = theme.color();
     let cells = parse_ansi(ansi, bg_color);
     if cells.is_empty() {
@@ -119,38 +119,35 @@ pub fn rasterize_ansi_with_theme(
                     );
                 }
 
-                // Ordinary text glyph — rasterize through fontdue.
+                // Ordinary text glyph, rasterize through fontdue.
                 Cell::Glyph(ch, [r, g, b]) => {
-                    let (metrics, bitmap) = font.rasterize(*ch, FONT_SIZE);
-                    if metrics.width == 0 {
-                        continue; // glyph not in font, skip silently
-                    }
-                    let glyph_h = u32::try_from(metrics.height).unwrap_or(0);
-                    let y_offset = CELL_H.saturating_sub(glyph_h) / 2;
+                    let glyph = font.glyph_id(*ch).with_scale(PxScale::from(FONT_SIZE));
+                    let Some(outlined) = font.outline_glyph(glyph) else {
+                        continue;
+                    };
+                    let bounds = outlined.px_bounds();
 
-                    for gy in 0..metrics.height {
-                        for gx in 0..metrics.width {
-                            let coverage = bitmap[gy * metrics.width + gx];
-                            if coverage == 0 {
-                                continue;
-                            }
-                            let Ok(gx_u32) = u32::try_from(gx) else {
-                                continue;
-                            };
-                            let Ok(glyph_u32) = u32::try_from(gy) else {
-                                continue;
-                            };
-                            let px_x = base_x.saturating_add(gx_u32);
-                            let px_y = base_y.saturating_add(y_offset).saturating_add(glyph_u32);
-                            if px_x < img_w && px_y < img_h {
-                                img.put_pixel(
-                                    px_x,
-                                    px_y,
-                                    blend_pixel([*r, *g, *b], coverage, bg_color),
-                                );
-                            }
-                        }
+                    let glyph_w = bounds.width().ceil() as u32;
+                    let glyph_h = bounds.height().ceil() as u32;
+                    if glyph_w == 0 {
+                        continue;
                     }
+                    let y_offset = CELL_H.saturating_sub(glyph_h) / 2;
+                    outlined.draw(|gx, gy, coverage| {
+                        let coverage_u8 = (coverage * 255.0).round() as u8;
+                        if coverage_u8 == 0 {
+                            return;
+                        }
+                        let px_x = base_x.saturating_add(gx);
+                        let px_y = base_y.saturating_add(y_offset).saturating_add(gy);
+                        if px_x < img_w && px_y < img_h {
+                            img.put_pixel(
+                                px_x,
+                                px_y,
+                                blend_pixel([*r, *g, *b], coverage_u8, bg_color),
+                            );
+                        }
+                    });
                 }
             }
         }
@@ -166,11 +163,11 @@ pub fn rasterize_ansi_with_theme(
 /// One parsed terminal cell.
 #[derive(Debug, Clone)]
 enum Cell {
-    /// Transparent / space — keep theme background.
+    /// Transparent / space (keep theme background).
     Transparent,
-    /// `▀` — top half fg color, bottom half bg color.
+    /// `▀` top half fg color, bottom half bg color.
     HalfBlock { top: Rgba<u8>, bot: Rgba<u8> },
-    /// `▄` — bottom half fg color only (top stays bg).
+    /// `▄` bottom half fg color only (top stays bg).
     HalfBlockBot { color: Rgba<u8> },
     /// Any other printable character with its foreground color.
     Glyph(char, [u8; 3]),
@@ -198,7 +195,7 @@ fn parse_ansi(input: &[u8], theme_bg: Rgba<u8>) -> Vec<Vec<Cell>> {
 
     while i < input.len() {
         if input[i] == 0x1b && input.get(i + 1) == Some(&b'[') {
-            // ESC [ — start of a CSI sequence
+            // ESC [ start of a CSI sequence
             i += 2;
             let mut seq = Vec::new();
             while i < input.len() && !input[i].is_ascii_alphabetic() {

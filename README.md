@@ -519,7 +519,7 @@ you a binary already compiled for your architecture's baseline (`SSE2` on
 specific CPU and unlock wider vector units:
 
 ```bash
-# Target your exact CPU — enables AVX2, AVX-512, etc. if available
+# Target your exact CPU (enables AVX2, AVX-512, etc. if available)
 RUSTFLAGS="-C target-cpu=native" cargo install --path cli
 
 # Verify what was enabled (look for avx2, sse4.2, neon, etc.)

@@ -34,7 +34,7 @@ dialoguer = {version = "0.12.0", features = [
 	"fuzzy-select",
 ], default-features = false}
 fontdue = {version = "0.9.3", default-features = false}
-# CLI-only — only px2ansi-cli inherits these
+# CLI-only only px2ansi-cli inherits these
 clap = {version = "4.6.2", features = [
 	"derive",
 	"help",
