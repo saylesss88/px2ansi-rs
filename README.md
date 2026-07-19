@@ -583,43 +583,43 @@ remainder is process startup and I/O.
 
 **Sixel rendering (`--style sixel` vs `viu --static`)**
 
-| Image        | `px2ansi-rs`(`icy_sixel`) | `viu` (`viuer`) | Difference |
+`viu` has optional sixel support via the `icy_sixel` feature, the same encoder
+`px2ansi-rs` uses, making this a fair apples-to-apples comparison on encoding
+speed. The difference in output is quality, not the encoder.
+
+
+| Image        | `px2ansi-rs`(`icy_sixel`) | `viu` (`icy_sixel`) | Difference |
 | ------------ | ------------------------- | --------------- | --------------- |
-| `nixos.png`  | 18.6 ms                   | 14.2 ms         | viu 4.4 ms faster         |
-| `scream.png` | 24.9 ms                     | 11.9            | viu +13.0 ms faster        |
+| `nixos.png`  | 23.2 ms                   | 15.1 ms         | viu ~8.1 ms faster         |
+| `scream.png` | 22.0 ms                     | 12.5            | viu ~9.5 ms faster        |
 
-`px2ansi-rs` is slower here, and that is worth being honest about. Sixel
-encoding is CPU-intensive, it involves palette quantization and bit-packing that
-`viu` offloads to `libsixel`, a heavily optimized C library with over a years of
-micro-optimization work behind it.
+`viu` is faster here, and that's worth being honest about.
 
-`px2ansi-rs` uses `icy_sixel`, a pure-Rust encoder. The trade-off is deliberate:
+The speed gap is not the encoder, both use `icy_sixel`. The difference is what
+each tool renders:
 
-- **No FFI**, no unsafe boundary: libsixel is linked via FFI, which means a C
-  toolchain dependency at build time, potential undefined behavior at the FFI
-  boundary, and unsafe code that rustc cannot reason about.
 
-- **Cross-platform without extra steps**: `icy_sixel` compiles anywhere Rust
-  does. No `pkg-config`, no system `libsixel`, no Homebrew dependency.
+- `viu` composites against a black background before encoding, then
+   sixel-encodes the flattened RGB result. Simple, fast.
+- `px2ansi-rs` preserves true alpha transparency throughout, encoding a
+   transparent-background sixel stream. This requires more work per pixel and
+   produces slightly larger output, but the image is accurate. Transparent
+   regions stay transparent rather than turning black.
 
-- **Optimization headroom**: `icy_sixel` is actively developed and has not had
-  the same years of profiling that libsixel has. The gap is a maturity
-  difference, not a fundamental one; auto-vectorization of the quantization loop
-  alone could close much of it.
+If your terminal supports sixel transparency and you care about image fidelity
+(neofetch-style overlays, images over colored backgrounds, PNGs with soft edges),
+`px2ansi-rs` gives you the correct result. If you just want the fastest sixel
+dump of an opaque image, `viu` wins today.
 
-If raw Sixel throughput is your priority and you are comfortable with a C
-dependency, `viu` is the faster choice today. If you want a fully auditable,
-dependency-minimal binary that compiles anywhere, `px2ansi-rs` is it.
 
 **Summary**
 
 ```text
+--style ansi:  px2ansi-rs 3.16× faster than viu -b  (nixos.png)
+               px2ansi-rs 1.92× faster than viu -b  (scream.png)
 
---style ansi:  3.16× faster than viu -b (nixos.png)
-               1.92× faster than viu -b (scream.png)
-
---style sixel: 1.30× slower than viu (nixos.png)
-               2.07× slower than viu (scream.png)
+--style sixel: viu ~1.35× faster (nixos.png)   — viu: black bg, px2ansi-rs: true alpha
+               viu ~1.43× faster (scream.png)  — viu: black bg, px2ansi-rs: true alpha
 ```
 
 - The Encoder Bottleneck: Sixel encoding requires complex quantization and
