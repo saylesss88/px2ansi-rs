@@ -49,7 +49,8 @@ output to any `Write` target.
 It is the rendering core behind `px2ansi-rs`, but it can also be used directly
 in other Rust projects.
 
-> [!IMPORTANT] This is a new project, the public API is subject to change
+> [!IMPORTANT]
+> This is a new project, the public API is subject to change
 
 ## Features
 
@@ -693,7 +694,7 @@ match result {
 | `InvalidDensity(String)`  | Triggered when a string cannot be parsed into a valid `Density`.            |
 | `Io(std::io::Error)`      | Wrapped standard I/O errors (e.g., pipe broken, disk full).                 |
 | `Image(String)`           | Errors during image manipulation or resizing.                               |
-| `Font(String)`            | Errors during font loading or glyph rasterization via fontdue.              |
+| `Font(String)`            | Errors during font loading or glyph rasterization.                          |
 | `EmptyCells`              | Returned when ANSI input parses to zero cells, producing nothing to render. |
 | `Json(serde_json::Error)` | Errors during JSON serialization of the image index.                        |
 
@@ -701,8 +702,9 @@ match result {
 
 ### Dev Tips
 
-> [!TIP] For faster compile times during development, you can use the `mold`
-> linker by adding this to your local `~/.cargo/config.toml`:
+> [!TIP]
+> For faster compile times during development, you can use the `mold` linker
+> by adding this to your local `~/.cargo/config.toml`:
 >
 > ```toml
 >  [target.x86_64-unknown-linux-gnu]
