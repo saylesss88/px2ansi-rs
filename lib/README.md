@@ -195,7 +195,7 @@ All features are **disabled by default**.
 | Feature     | Dependency  | What it does                                            |
 | ----------- | ----------- | ------------------------------------------------------- |
 | `sixel`     | `icy_sixel` | Pixel-accurate Sixel protocol output                    |
-| `rasterize` | `fontdue`   | Converts ANSI output back to PNG with selectable themes |
+| `rasterize` | `ab_glyph`   | Converts ANSI output back to PNG with selectable themes |
 | `parallel`  | `rayon`     | Multi-threaded rendering for large images (>120,000 px) |
 
 ```toml
