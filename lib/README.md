@@ -1,239 +1,128 @@
-# px2ansi library
+# px2ansi
 
 [![Crates.io](https://img.shields.io/crates/v/px2ansi.svg)](https://crates.io/crates/px2ansi)
 [![Documentation](https://docs.rs/px2ansi/badge.svg)](https://docs.rs/px2ansi)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-If you want the command-line interface, check out [px2ansi-rs](../cli).
-
-## Table of Contents
-
-<details>
-<summary> Table of Contents </summary>
-
-- [Features](#features)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-  - [Automatic Centering](#automatic-centering)
-  - [Rendering to a Buffer](#rendering-to-a-buffer)
-  - [Manual Image Preparation](#manual-image-preparation)
-- [Core Types](#core-types)
-  - [RenderOptions](#renderoptions-1)
-  - [RenderStylePreset](#renderstylepreset-1)
-  - [Density](#density-1)
-  - [ResizeFilter](#resizefilter-1)
-- [Builder API](#builder-api)
-  - [Inspecting Options](#inspecting-options)
-- [Indexer](#indexer)
-  - [Index Format](#index-format)
-- [Optional Features](#optional-features)
-  - [Controlling Features](#controlling-features)
-  - [Sixel](#sixel)
-  - [Dithering](#dithering)
-  - [Rasterize](#rasterize)
-- [⚡ Performance](#-performance)
-  - [SIMD Acceleration](#simd-acceleration-simd-feature)
-    - [Benchmark](#benchmark)
-  - [Parallel Rendering](#parallel-rendering-parallel-feature)
-- [Re-exports](#re-exports)
-- [Error Handling](#error-handling)
-- [Library vs CLI](#library-vs-cli)
-- [License](#license)
-
-## </details>
-
 `px2ansi` converts images into terminal art by resizing them to terminal cell
 proportions, mapping pixels to several character sets, and writing ANSI-colored
 output to any `Write` target.
 
-It is the rendering core behind `px2ansi-rs`, but it can also be used directly
-in other Rust projects.
+It is the rendering core behind [`px2ansi-rs`](../cli) (the CLI), but can be
+used directly in other Rust projects.
 
 > [!IMPORTANT]
-> This is a new project, the public API is subject to change
+> This is a new project, the public API is subject to change.
 
-## Features
+If you want the command-line interface, see [px2ansi-rs](../cli).
 
-- Multiple rendering styles: `Ansi`, `Unicode`, `Braille`, `Fade`, `Ascii`,
-  `Chinese`, `Kanji`, `FullBlock`, `Dense`, `Sixel`.
+---
 
-- Configurable resize filters.
+## Table of Contents
 
-- Automatic terminal-friendly dimension calculation.
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Core Types](#core-types)
+- [Builder API](#builder-api)
+- [Indexer](#indexer)
+- [Optional Features](#optional-features)
+- [Performance](#performance)
+- [Re-exports](#re-exports)
+- [Error Handling](#error-handling)
+- [License](#license)
 
-- Write ANSI art to any `std::io::Write` target.
-
-- Optionally rasterize ANSI output back into PNG (with selectable themes).
-
-- Optional Sixel output for terminals that support it.
-
-- Optional parallel execution (`rayon`)
+---
 
 ## Installation
 
-Add `px2ansi` to your `Cargo.toml`:
-
 ```toml
 [dependencies]
-px2ansi = "0.2.3"
+px2ansi = "0.3.13"
 image = "0.25"
 ```
 
-If you only want the core engine and already have `image` in your project, just
-depend on `px2ansi` and reuse your existing image setup.
+---
 
 ## Quick Start
 
 ```rust
 use px2ansi::{RenderOptions, RenderStylePreset, ResizeFilter};
-# use image::{DynamicImage, Rgba};
-# let img = DynamicImage::ImageRgba8(image::ImageBuffer::new(1, 1));
-#
-// Build options: use a preset and override specific fields
+
+let img = image::open("image.png").unwrap();
+
 let opts = RenderOptions::builder()
     .preset(RenderStylePreset::Braille)
     .width(120)
     .filter(ResizeFilter::Nearest)
     .build();
-// Render directly to stdout
-let mut out = std::io::sink();
-opts.render(&img, &mut out).unwrap();
+
+opts.render(&img, &mut std::io::stdout()).unwrap();
 ```
 
-### Automatic Centering
-
-The library can automatically detect terminal size, center the output, and
-handle resizing for you:
+### Render Centered (auto terminal sizing)
 
 ```rust
-use px2ansi::RenderOptions;
-use std::io;
-# use image::{DynamicImage, ImageBuffer};
-# let opts = RenderOptions::default();
-# let img = DynamicImage::ImageRgba8(ImageBuffer::new(1, 1));
-let mut stdout = io::sink(); // Using sink prevents flooding test output
-opts.render_centered(&img, &mut stdout).unwrap();
+let opts = RenderOptions::default();
+opts.render_centered(&img, &mut std::io::stdout()).unwrap();
 ```
 
-### Rendering to a Buffer
-
-You can render to any `std::io::Write` target, including an in-memory buffer:
+### Render to a Buffer
 
 ```rust
-# use image::{DynamicImage, ImageBuffer};
-# let img = DynamicImage::ImageRgba8(ImageBuffer::new(1, 1));
 let opts = px2ansi::RenderOptions::default();
 let mut buf = Vec::new();
 opts.render(&img, &mut buf).unwrap();
 let ansi = String::from_utf8(buf).unwrap();
-// In a real app, you'd println!("{ansi}");
-```
-
-`render` also works with a `std::io::Cursor`:
-
-```rust
-use px2ansi::RenderOptions;
-use std::io::Cursor;
-# use image::{DynamicImage, ImageBuffer};
-# let img = DynamicImage::ImageRgba8(ImageBuffer::new(1, 1));
-
-let opts = RenderOptions::default();
-let mut cursor = Cursor::new(Vec::new());
-
-opts.render(&img, &mut cursor).unwrap();
-
-// Access the data from the cursor
-let _result = cursor.into_inner();
 ```
 
 ### Manual Image Preparation
 
-If you need control over the image scaling step, use `prepare_image` separately.
-This is useful for TUI applications or when rendering to non-terminal targets
-like files or network streams:
+Useful when you need control over the resize step (e.g. TUI apps):
 
 ```rust
-use px2ansi::RenderOptions;
-# use image::{DynamicImage, ImageBuffer, Rgba};
-# // Create a 100x100 dummy image to test resizing logic
-# let img = DynamicImage::ImageRgba8(ImageBuffer::new(100, 100));
-
 let opts = RenderOptions::builder().width(40).build();
-
-// 1. Manually prepare the image (resizing happens here)
-let prepared = opts.prepare_image(&img);
-assert_eq!(prepared.width(), 40);
-
-// 2. Render directly to a writer
-let mut sink = std::io::sink();
-opts.render(&prepared, &mut sink).unwrap();
+let prepared = opts.prepare_image(&img); // resize happens here
+opts.render(&prepared, &mut std::io::sink()).unwrap();
 ```
 
 ---
 
 ## Core Types
 
-| **Type**               | **Purpose**                                                            |
+| Type                   | Purpose                                                                |
 | ---------------------- | ---------------------------------------------------------------------- |
-| `RenderOptions`        | Main render settings (width, filter, charset, color, etc.).            |
-| `RenderOptionsBuilder` | Builder for constructing `RenderOptions` step-by-step.                 |
-| `RenderStylePreset`    | Ready-made presets for common styles.                                  |
-| `CharsetMode`          | The character set used to render pixels.                               |
-| `Density`              | Output density for ASCII-style rendering (`Light`, `Medium`, `Heavy`). |
-| `RenderStyle`          | Low-level style tweaks (`is_full()`, `density()`).                     |
-| `ResizeFilter`         | Controls image resampling quality.                                     |
-| `ColorMode`            | Color output mode: `TrueColor`, `Ansi256`, or `None`.                  |
-| `RenderError`          | Structured error type for rendering failures.                          |
+| `RenderOptions`        | Main render settings (width, filter, charset, color, etc.)             |
+| `RenderOptionsBuilder` | Builder for constructing `RenderOptions` step-by-step                  |
+| `RenderStylePreset`    | Ready-made presets for common styles                                   |
+| `CharsetMode`          | The character set used to render pixels                                |
+| `Density`              | Output density for ASCII-style rendering (`Light`, `Medium`, `Heavy`)  |
+| `RenderStyle`          | Low-level style tweaks (`is_full()`, `density()`)                      |
+| `ResizeFilter`         | Controls image resampling quality                                      |
+| `ColorMode`            | Color output mode: `TrueColor`, `Ansi256`, or `None`                   |
+| `RenderError`          | Structured error type for rendering failures                           |
 
-### `RenderOptions`
-
-The main configuration object for rendering. Controls target width, resize
-filter, charset mode, density, and color output.
-
-Default configuration:
+### `RenderOptions` defaults
 
 - Charset: `Ansi`
-- `Color_Mode`: `truecolor`
-- Width: `Non` (auto-detect from terminal)
-
-```rust
-use px2ansi::{CharsetMode, ColorMode, RenderOptions};
-
-let opts = RenderOptions::default();
-
-assert_eq!(opts.charset(), CharsetMode::Ansi);
-assert_eq!(opts.color_mode(), ColorMode::TrueColor);
-assert_eq!(opts.width(), None);
-```
+- Color mode: `TrueColor`
+- Width: `None` (auto-detect from terminal)
 
 ### `RenderStylePreset`
 
-A convenience enum for quickly choosing a style:
-
-| Preset      | Charset   | Notes                                                         |
-| ----------- | --------- | ------------------------------------------------------------- |
-| `Ansi`      | `Ansi`    | Half-block characters (▀/▄)                                   |
-| `Unicode`   | `Unicode` | Half or full blocks                                           |
-| `Braille`   | `Braille` | 2×4 Braille dot patterns                                      |
-| `Fade`      | `Fade`    | Block-shade ramp (░▒▓█)                                       |
-| `Ascii`     | `Ascii`   | 92-character density ramp                                     |
-| `Kanji`     | `Kanji`   | Double-width Japanese characters                              |
-| `Chinese`   | `Chinese` | Double-width Chinese characters                               |
-| `FullBlock` | `Unicode` | Forces double-width full blocks (██), sets `is_full() = true` |
-| `Dense`     | `Ascii`   | ASCII with `Density::Heavy`                                   |
-| `Sixel`     | `Sixel`   | Pixel-accurate Sixel output                                   |
-
-### `Density`
-
-Controls the complexity of the ASCII character ramp. Only affects `Ascii` mode:
-
-- `Light` — Sparse, minimal characters
-- `Medium` — Default 92-character ramp
-- `Heavy` — Dense ramp including block elements
+| Preset      | Notes                                              |
+| ----------- | -------------------------------------------------- |
+| `Ansi`      | Half-block characters (▀/▄)                        |
+| `Unicode`   | Half or full blocks                                |
+| `Braille`   | 2×4 Braille dot patterns                           |
+| `Fade`      | Block-shade ramp (░▒▓█)                            |
+| `Ascii`     | 92-character density ramp                          |
+| `Kanji`     | Double-width Japanese characters                   |
+| `Chinese`   | Double-width Chinese characters                    |
+| `FullBlock` | Double-width solid blocks (██), `is_full() = true` |
+| `Dense`     | ASCII with `Density::Heavy`                        |
+| `Sixel`     | Pixel-accurate Sixel output (requires feature)     |
 
 ### `ResizeFilter`
-
-Controls image resampling quality:
 
 | Filter       | Description                       |
 | ------------ | --------------------------------- |
@@ -247,404 +136,154 @@ Controls image resampling quality:
 
 ## Builder API
 
-The builder supports chaining:
-
 ```rust
 use px2ansi::{ColorMode, RenderOptions, RenderStylePreset};
-# let monochrome = true;
-
-let mut builder = RenderOptions::builder()
-    .preset(RenderStylePreset::FullBlock)
-    .width(80);
-
-builder = if monochrome {
-    builder.color_mode(ColorMode::None)
-} else {
-    builder
-};
-
-let opts = builder.build();
-```
-
-### Inspecting Options
-
-```rust
-use px2ansi::{RenderOptions, RenderStylePreset};
 
 let opts = RenderOptions::builder()
     .preset(RenderStylePreset::FullBlock)
+    .width(80)
+    .color_mode(ColorMode::None)
     .build();
 
 if opts.style().is_full() {
-    println!("Rendering in double-width mode!");
+    println!("double-width mode");
 }
-
-assert!(opts.style().is_full());
-println!("Current density: {:?}", opts.style().density());
 ```
 
 ---
 
 ## Indexer
 
-The indexer scans a directory for image files and produces a JSON index. It is
-part of the public `px2ansi` library API:
+Scans a directory for images and produces a JSON index:
 
 ```rust
 use px2ansi::indexer::{build_index, ImageEntry};
 use std::path::Path;
 
-fn build_and_read_index() {
-    // Build the index, scans subdirectories, ignores non-image files
-    build_index(
-        Path::new("/home/user/sprites"),
-        Path::new("/home/user/sprites/index.json"),
-    ).unwrap();
+build_index(
+    Path::new("/home/user/sprites"),
+    Path::new("/home/user/sprites/index.json"),
+).unwrap();
 
-    // Load and use it
-    let json = std::fs::read_to_string("index.json").unwrap();
-    let entries: Vec<ImageEntry> = serde_json::from_str(&json).unwrap();
+let json = std::fs::read_to_string("index.json").unwrap();
+let entries: Vec<ImageEntry> = serde_json::from_str(&json).unwrap();
 
-    for entry in &entries {
-        println!("{}: {}x{}px at {}",
-            entry.name,
-            entry.dimensions.0,
-            entry.dimensions.1,
-            entry.path
-        );
-    }
+for entry in &entries {
+    println!("{}: {}x{}px", entry.name, entry.dimensions.0, entry.dimensions.1);
 }
 ```
 
-**Indexer behavior:**
-
-- Recursively scans subdirectories for images.
-- Ignores non-image files (`.txt`, `.json`, etc.).
-- Entries are sorted alphabetically by name.
-- An empty directory produces an empty JSON array (`[]`).
-- Image names are derived from the file stem (without extension).
-
-### Index Format
+**Index format:**
 
 ```json
 [
-  {
-    "name": "pikachu",
-    "path": "/home/user/sprites/pikachu.png",
-    "dimensions": [96, 96]
-  },
-  {
-    "name": "charizard",
-    "path": "/home/user/sprites/charizard.png",
-    "dimensions": [128, 128]
-  }
+  { "name": "pikachu",   "path": "/sprites/pikachu.png",   "dimensions": [96, 96]   },
+  { "name": "charizard", "path": "/sprites/charizard.png", "dimensions": [128, 128] }
 ]
 ```
+
+- Recursively scans subdirectories; ignores non-image files.
+- Entries sorted alphabetically by name.
+- Empty directory → empty JSON array `[]`.
 
 ---
 
 ## Optional Features
 
-All features are **disabled by default**. Enable them individually or together
-for minimal builds.
+All features are **disabled by default**.
 
-| Feature     | Dependency  | What it does                                                                                   |
-| ----------- | ----------- | ---------------------------------------------------------------------------------------------- |
-| `rasterize` | `fontdue`   | Renders ANSI art to a PNG image using an embedded monospace font                               |
-| `sixel`     | `icy_sixel` | Streams pixel-accurate images directly to Sixel-compatible terminals                           |
-| `parallel`  | `rayon`     | Enables parallel processing for performance                                                    |
-
-### Controlling Features
-
-```bash
-# Minimal — pure ANSI text output only
-cargo add px2ansi
-
-# Sixel terminal output, no PNG rasterization
-cargo add px2ansi --features sixel
-
-# PNG rasterization, no Sixel output
-cargo add px2ansi --features rasterize
-
-# Enable rayon
-cargo add px2ansi --features parallel
-
-# Everything (full feature set)
-cargo add px2ansi --features full
-```
-
-In `Cargo.toml`:
+| Feature     | Dependency  | What it does                                            |
+| ----------- | ----------- | ------------------------------------------------------- |
+| `sixel`     | `icy_sixel` | Pixel-accurate Sixel protocol output                    |
+| `rasterize` | `fontdue`   | Converts ANSI output back to PNG with selectable themes |
+| `parallel`  | `rayon`     | Multi-threaded rendering for large images (>120,000 px) |
 
 ```toml
-# Default (Minimal, no features enabled)
-px2ansi = "0.3.12"
-
 # Pick what you need
-px2ansi = { version = "0.3.12",  features = ["parallel", "sixel"] }
+px2ansi = { version = "0.3.12", features = ["parallel", "sixel"] }
 
-# Include all features ("parallel", "simd", "rasterize", "sixel")
-px2ansi = { version = "0.2.3",  features = ["full"] }
+# Everything
+px2ansi = { version = "0.3.12", features = ["full"] }
 ```
-
----
 
 ### Sixel
 
-Renders pixel-accurate images inline in the terminal using the
-[Sixel graphics protocol](https://en.wikipedia.org/wiki/Sixel).
-
-**Compatible terminals:** `foot`, `WezTerm`, `iTerm2`, `ghosTTY`, `xterm` (with
-`-ti 340`)
+Compatible terminals: `foot`, `WezTerm`, `iTerm2`, `ghostty`, `xterm -ti 340`
 
 ```rust
-use px2ansi::{RenderOptions, RenderStylePreset};
-# use image::{DynamicImage, ImageBuffer};
-# let img = DynamicImage::ImageRgba8(ImageBuffer::new(1, 1));
 let opts = RenderOptions::builder()
     .preset(RenderStylePreset::Sixel)
-    .max_colors(256)   // default: 64, max: 256
-    .diffusion(0.8)    // 0.0 = none, 1.0 = full Floyd-Steinberg
+    .max_colors(256)  // default: 64, max: 256
+    .diffusion(0.8)   // 0.0 = none, 1.0 = full Floyd-Steinberg
     .build();
-let mut out = std::io::stdout();
-opts.render_centered(&img, &mut out).unwrap();
+
+opts.render_centered(&img, &mut std::io::stdout()).unwrap();
 ```
-
-- I chose `64` for performance reasons and didn't notice a difference in the
-  output.
-
----
 
 ### Dithering
 
-The `px2ansi` library implements a specialized Luminance-Preserving Error
-Diffusion algorithm. This is designed to solve the "banding" problem common in
-terminal art, where a limited character set or color palette creates harsh
-transitions in gradients.
+Floyd-Steinberg error diffusion to reduce banding in gradients:
 
 ```rust
-use px2ansi::{RenderOptions, RenderStylePreset};
-# use image::{DynamicImage, ImageBuffer};
-# let img = DynamicImage::ImageRgba8(ImageBuffer::new(10, 10));
-
 let opts = RenderOptions::builder()
     .preset(RenderStylePreset::Ascii)
-    .dither(true) // Enables error-diffusion dither
+    .dither(true)
     .build();
-
-let mut buf = Vec::new();
-opts.render(&img, &mut buf).unwrap();
 ```
 
 ### Rasterize
 
-Converts ANSI art to a PNG image using an embedded
-[Iosevka Charon Mono](https://github.com/nicowillis/iosevka-charon) font. Useful
-for saving previews or sharing output as an image.
-
+Converts ANSI art to a PNG using an embedded Iosevka Charon Mono font:
 
 ```rust
-# #[cfg(feature = "rasterize")]
-# {
-use px2ansi::{RenderOptions, RasterTheme, rasterize_ansi_with_theme};
-# use image::{DynamicImage, ImageBuffer};
-# let img = DynamicImage::ImageRgba8(ImageBuffer::new(10, 10));
+#[cfg(feature = "rasterize")]
+{
+    use px2ansi::{RenderOptions, RasterTheme, rasterize_ansi_with_theme};
 
-let opts = RenderOptions::default();
+    let mut buf = Vec::new();
+    RenderOptions::default().render(&img, &mut buf).unwrap();
 
-// Render to an ANSI buffer
-let mut buf = Vec::new();
-opts.render(&img, &mut buf).unwrap();
-
-// Rasterize to a PNG image
-let png = rasterize_ansi_with_theme(&buf, RasterTheme::TokyoNight).unwrap();
-# // We use a sink/memory in tests instead of writing to disk
-# let mut output_buf = std::io::Cursor::new(Vec::new());
-# png.write_to(&mut output_buf, image::ImageFormat::Png).unwrap();
-# }
+    let png = rasterize_ansi_with_theme(&buf, RasterTheme::TokyoNight).unwrap();
+    png.save("output.png").unwrap();
+}
 ```
 
-**With a different theme:**
-
-```rust
-# #[cfg(feature = "rasterize")]
-# {
-use px2ansi::{RasterTheme, rasterize_ansi_with_theme};
-# let buf = b"\x1b[31mHello\x1b[0m".to_vec(); // Mock ANSI data
-
-let png = rasterize_ansi_with_theme(&buf, RasterTheme::Dracula).unwrap();
-// Save to disk
-// png.save("output.png").unwrap();
-# }
-```
-
-**Available themes:** `TokyoNight` (default), `Dracula`, `Nord`, `GruvboxDark`,
-`OneDark`, `SolarizedDark`, `Black`, `White`
-
-> Different themes produce different background colors. For example,
-> `TokyoNight` and `White` will render visibly different backgrounds.
+**Themes:** `TokyoNight` (default), `Dracula`, `Nord`, `GruvboxDark`, `OneDark`,
+`SolarizedDark`, `Black`, `White`
 
 ---
 
-## ⚡ Performance
+## Performance
 
-### Vectorization
+The pixel pipeline uses **LLVM auto-vectorization**, no unsafe intrinsics, no
+platform-specific code. On capable hardware, LLVM emits AVX2/NEON instructions
+automatically.
 
-The pixel pipeline relies on LLVM's auto-vectorizer rather than explicit SIMD
-intrinsics. No `simd` feature flag, no platform-specific dependency, no unsafe
-code. The same source compiles everywhere, and on capable hardware LLVM emits
-wide vector instructions automatically.
-
-
-By moving away from custom SIMD code and using standard Rust patterns, I let the
-compiler handle the heavy lifting. By organizing the image data into predictable
-32-byte chunks, the compiler was able to automatically trigger AVX2 and NEON
-hardware acceleration. This resulted in an 80% reduction in CPU time for
-processing brightness and character mapping.
-
-**Getting the most out of it**
-
-By default Rust targets a conservative baseline (SSE2 on x86-64) so binaries
-run on any machine. To unlock AVX2 on your own hardware, add to
-`.cargo/config.toml`:
+To unlock wider SIMD on your own machine:
 
 ```toml
+# .cargo/config.toml
 [build]
 rustflags = ["-C", "target-cpu=native"]
 ```
 
-Or per-invocation:
+The `parallel` feature activates Rayon-based multi-threading automatically when
+the pixel count exceeds **120,000 pixels**, avoiding overhead on typical terminal
+output.
+
+Run the bundled benchmarks:
 
 ```bash
-RUSTFLAGS="-C target-cpu=native" cargo build --release
-
-# Verify what was enabled (look for avx2, sse4.2, neon, etc.)
-rustc --print cfg | grep target_feature
+cargo bench --bench pixels      # pixel pipeline only
+cargo bench --features sixel    # include Sixel groups
+cargo bench --features full     # everything
 ```
-
-To confirm vectorization fired:
-
-```bash
-RUSTFLAGS="-C target-cpu=native -C llvm-args=-pass-remarks=loop-vectorize" \
-  cargo build --release 2>&1 | grep remark
-```
-
-`vectorized loop (vectorization width: 8, interleaved count: 2)` means it
-worked. Look for `ymm` registers in the disassembly (AVX2/256-bit) or `xmm`
-(SSE/128-bit).
-
-
-### How the pixel pipeline works
-
-Rendering runs in two passes over the image data:
-
-1. **Luma Range Scanning (Pass 1)** — scans all opaque pixels to find the
-   perceptual brightness floor and ceiling (L*min* and L*max*), allowing the
-   character ramp to be stretched across the image's actual dynamic range for
-   maximum contrast.
-2. **Character Indexing (Pass 2)** — maps every pixel to a character in the
-   selected charset by normalising its luma into the ramp index.
-
-Both passes use the Rec.709 perceptual luma formula:
-
-$$Y = \frac{2126 \cdot R + 7152 \cdot G + 722 \cdot B}{10000}$$
-
-This matches the [ITU-R BT.709](https://www.itu.int/rec/R-REC-BT.709) standard
-used in HDTV and sRGB color spaces. Transparent pixels (alpha < 30) are skipped
-in both passes via an early-exit check on 32-byte chunks before any luma math
-runs.
-
-LLVM auto-vectorizes both loops when compiled with `target-cpu=native`. See
-[Vectorization](#vectorization) above.
-
-#### Benchmark
-
-The library ships with [Criterion.rs](https://github.com/bheisler/criterion.rs)
-benchmarks covering both rendering throughput and low-level pixel pipeline
-performance.
-
-### Running
-
-```bash
-# Full benchmark suite (requires sixel feature for Sixel groups):
-cargo bench --features sixel
-
-# Pixel pipeline only (no features needed):
-cargo bench --bench pixels
-
-# All groups including Sixel and parallel rendering:
-cargo bench --features full
-```
-
-Results are written to `target/criterion/` as HTML reports with run-to-run
-comparison.
-
-### Rendering benchmarks (`benches/rendering.rs`)
-
-Covers the full render pipeline from raw `DynamicImage` to terminal output:
-
-- **Engine Performance**: compares `Nearest` vs `Lanczos3` resize filters at a
-  fixed width, giving a baseline cost for the ANSI render path.
-- **Sixel / Width**: renders at `w80`, `w160`, and `w320` with a pre-resized
-  reference run, isolating encode cost from resize cost.
-- **Sixel / Quantization**: sweeps color palette size (64–256) and diffusion
-  strength (`0.0` vs `0.875`) so you can tune the quality/performance trade-off
-  for your use case.
-
-### Pixel pipeline benchmarks (`benches/pixels.rs`)
-
-Microbenchmarks for the SIMD-accelerated inner loops, with throughput reported
-in MB/s:
-
-| Benchmark                    | What it measures                                     |
-| ---------------------------- | ---------------------------------------------------- |
-| `find_luma_range_rgba_bytes` | Min/max luma scan over RGBA buffers (256 – 65536 px) |
-| `compute_charset_indices`    | Luma → charset index mapping for an 8-pixel chunk    |
-| `luma_scalar`                | Scalar BT.709 luma baseline for auto-vectorization      |
-
-
-| Mode             | Wall time | User CPU | Test Image                    |
-| ---------------- | --------- | -------- | ----------------------------- |
-| `px2ansi`  | ~3.9 ms   | ~1.7 ms  | `nixos.png` (1.2M px, sparse) |
-| `px2ansi`  | ~5.9 ms   | ~3.9 ms  | `scream.png` (0.6M px, dense) |
-| `rascii --color` | ~6.1 ms  | ~3.9 ms  | `nixos.png`                   |
-| `rascii --color` | ~7.1 ms  | ~5.2 ms  | `scream.png`                  |
-
-The SIMD luma scan alone roughly **halves CPU time** for the render pass.
-
-> [!NOTE]
-> `px2ansi` scales better with resolution. Even though the NixOS image has
-> double the pixels of the Scream image, it actually completes the task
-> faster.
 
 ---
 
-### Parallel Rendering (`parallel` feature)
-
-The `parallel` feature enables [Rayon](https://crates.io/crates/rayon)-based
-multi-threaded rendering via `into_par_iter()` for Pass 2 (glyph mapping and
-colorization).
-
-> [!IMPORTANT]
-> Rayon has a fixed thread-pool startup cost of ~1–2 ms. For typical
-> terminal-sized output (~200×100 = 20,000 pixels) this overhead
-> **exceeds** the render time itself. The library therefore only activates
-> parallel rendering dynamically when the pixel count exceeds **120,000
-> pixels**,falling back to the fast serial + SIMD path otherwise:
-
-```rust
-# let (width, height) = (100, 100);
-let use_parallel = cfg!(feature = "parallel") && (width * height > 120_000);
-```
-
-This means standard terminal rendering always hits the fast path, while large
-off-screen or file renders automatically scale across all cores.
-
 ## Re-exports
 
-The crate root re-exports the most common types so users do not need to dig
-through internal modules:
-
-```rust,no_run
+```rust
 // Core (always available)
 use px2ansi::{
     RenderOptions, RenderOptionsBuilder, RenderStyle,
@@ -663,63 +302,30 @@ use px2ansi::{ rasterize_ansi, rasterize_ansi_with_theme, RasterTheme };
 
 ## Error Handling
 
-Unlike the CLI which uses `anyhow` for simplicity, the `px2ansi` library
-provides a structured `RenderError` enum. This allows you to programmatically
-react to specific failure states.
+Structured `RenderError` enum (unlike the CLI which uses `anyhow`):
 
 ```rust
 use px2ansi::{CharsetMode, RenderError};
 use std::str::FromStr;
 
-let result = CharsetMode::from_str("invalid_mode");
-
-match result {
-    Err(RenderError::InvalidCharset(name)) => {
-        eprintln!("Unsupported charset: {name}");
-        assert_eq!(name, "invalid_mode");
-    }
-    #
-    # Err(RenderError::Io(e)) => {
-    #     eprintln!("A writing error occurred: {e}");
-    # }
-    _ => { /* handle success or other errors */ }
+match CharsetMode::from_str("invalid_mode") {
+    Err(RenderError::InvalidCharset(name)) => eprintln!("Unknown charset: {name}"),
+    Err(e) => eprintln!("Error: {e}"),
+    Ok(_) => {}
 }
 ```
 
-**Error Variants**
-
-| **Variant**               | **Description**                                                             |
-| ------------------------- | --------------------------------------------------------------------------- |
-| `InvalidCharset(String)`  | Triggered when a string cannot be parsed into a valid `CharsetMode`.        |
-| `InvalidDensity(String)`  | Triggered when a string cannot be parsed into a valid `Density`.            |
-| `Io(std::io::Error)`      | Wrapped standard I/O errors (e.g., pipe broken, disk full).                 |
-| `Image(String)`           | Errors during image manipulation or resizing.                               |
-| `Font(String)`            | Errors during font loading or glyph rasterization.                          |
-| `EmptyCells`              | Returned when ANSI input parses to zero cells, producing nothing to render. |
-| `Json(serde_json::Error)` | Errors during JSON serialization of the image index.                        |
+| Variant                   | Description                                            |
+| ------------------------- | ------------------------------------------------------ |
+| `InvalidCharset(String)`  | String cannot be parsed into a valid `CharsetMode`     |
+| `InvalidDensity(String)`  | String cannot be parsed into a valid `Density`         |
+| `Io(std::io::Error)`      | Standard I/O errors (pipe broken, disk full, etc.)     |
+| `Image(String)`           | Errors during image manipulation or resizing           |
+| `Font(String)`            | Errors during font loading or glyph rasterization      |
+| `EmptyCells`              | ANSI input parsed to zero cells                        |
+| `Json(serde_json::Error)` | JSON serialization errors for the image index          |
 
 ---
-
-### Dev Tips
-
-> [!TIP]
-> For faster compile times during development, you can use the `mold` linker
-> by adding this to your local `~/.cargo/config.toml`:
->
-> ```toml
->  [target.x86_64-unknown-linux-gnu]
->  rustflags = ["-C", "link-arg=-fuse-ld=mold"]
-> ```
->
-> This requires `mold` to be installed
-
----
-
-## Library vs CLI
-
-`px2ansi` is the reusable rendering library.
-
-If you want the command-line interface, install `px2ansi-rs` instead.
 
 ## License
 
