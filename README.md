@@ -565,13 +565,29 @@ benchmarks into two categories:
 - End-to-End Rendering (`benches/rendering.rs`): Measures the full pipeline from
   raw bytes to ANSI/Sixel output.
 
+---
+
 **More benches with hyperfine**
 
 Benchmarked against [`viu`](https://github.com/atanunq/viu) with
-`hyperfine --warmup 3` on NixOS. Images: `nixos.png` (1183×1024) and
+`hyperfine --warmup 3` on Fedora Secureblue. Images: `nixos.png` (1183×1024) and
 `scream.png` (700×909).
 
-**Half-block rendering (`--style ansi` vs `viu --blocks`)**
+**TLDR**
+
+**ANSI mode**:
+
+- `nixos.png`: px2ansi-rs 7.75 ms, viu 15.05 ms → px2ansi-rs **1.94**× faster
+- `scream.png`: px2ansi-rs 8.7 ms, viu 12.35 ms → px2ansi-rs **1.42**× faster
+
+**Sixel mode**:
+
+- `nixos.png`: px2ansi-rs 23.2 ms, viu 15.1 ms → viu **1.54**× faster
+- `scream.png`: px2ansi-rs 22.0 ms, viu 12.5 ms → viu **1.76**× faster
+
+---
+
+**ANSI block rendering (`--style ansi` vs `viu --blocks`)**
 
 | Image        | `px2ansi-rs`        | `viu -b`         | Improvement |
 | ------------ | ------------------- | ---------------- | ----------- |

@@ -127,14 +127,14 @@ pub fn rasterize_ansi_with_theme(
                     };
                     let bounds = outlined.px_bounds();
 
-                    let glyph_w = bounds.width().ceil() as u32;
-                    let glyph_h = bounds.height().ceil() as u32;
+                    let glyph_w = f32_to_u32_px(bounds.width());
+                    let glyph_h = f32_to_u32_px(bounds.height());
                     if glyph_w == 0 {
                         continue;
                     }
                     let y_offset = CELL_H.saturating_sub(glyph_h) / 2;
                     outlined.draw(|gx, gy, coverage| {
-                        let coverage_u8 = (coverage * 255.0).round() as u8;
+                        let coverage_u8 = coverage_to_u8(coverage);
                         if coverage_u8 == 0 {
                             return;
                         }
@@ -156,6 +156,21 @@ pub fn rasterize_ansi_with_theme(
     Ok(img)
 }
 
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss
+)]
+const fn f32_to_u32_px(v: f32) -> u32 {
+    // ceil() ensures no fractional truncation; min() clamps to u32::MAX;
+    // max() ensures non-negative both lints are provably safe here.
+    v.ceil().max(0.0).min(u32::MAX as f32) as u32
+}
+
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn coverage_to_u8(c: f32) -> u8 {
+    (c * 255.0).round().clamp(0.0, 255.0) as u8
+}
 // ---------------------------------------------------------------------------
 // Cell representation
 // ---------------------------------------------------------------------------
