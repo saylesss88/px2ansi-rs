@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.31] - 2026-07-19
+
+### Added
+
+- `ab_glyph` over `fontdue`, it is better maintained
+
+### Fixed
+
+- Overly long README's
+
+## [0.5.30] - 2026-07-19
+
 ### Added
 - Criterion benchmarking suite with auto-vectorization vs explicit SIMD comparisons
 - `--all-features` enabled for docs.rs builds

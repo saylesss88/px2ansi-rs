@@ -37,7 +37,7 @@ If you want the command-line interface, see [px2ansi-rs](../cli).
 
 ```toml
 [dependencies]
-px2ansi = "0.3.13"
+px2ansi = "0.3.14"
 image = "0.25"
 ```
 
